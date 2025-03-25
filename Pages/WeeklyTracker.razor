@@ -1,0 +1,354 @@
+﻿@page "/weekly-tracker"
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@using System.Text.Json
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="bg-gray-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <button @onclick="NavigateHome" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
+                <span class="mr-2">←</span> Back to Champions
+            </button>
+            <h1 class="text-4xl font-bold text-center text-yellow-400">WEEKLY PERFORMANCE TRACKER</h1>
+            <div></div>
+        </div>
+
+        @if (_teamMembers == null)
+        {
+                <div class="text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                    <p class="mt-2">Loading data...</p>
+                </div>
+        }
+        else
+        {
+                <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg p-6 mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-yellow-400">Current Week's Data</h2>
+
+                        <div class="flex space-x-4">
+                            <input type="date" @bind="currentWeekDate" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" />
+                            <button @onclick="SaveWeeklyData" class="px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
+                                Save Week's Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-700">
+                                    <th class="p-3 text-left">Name</th>
+                                    <th class="p-3 text-center">M365 Attach</th>
+                                    <th class="p-3 text-center">GSP</th>
+                                    <th class="p-3 text-center">Revenue</th>
+                                    <th class="p-3 text-center">ASP</th>
+                                    <th class="p-3 text-center">Basket</th>
+                                    <th class="p-3 text-center">PM Attach %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var member in _teamMembers)
+                            {
+                                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
+                                            <td class="p-3 font-medium">@member.Name</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("M365Attach", member.GetMetricValue("M365Attach"))</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("GSP", member.GetMetricValue("GSP"))</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("Revenue", member.GetMetricValue("Revenue"))</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("ASP", member.GetMetricValue("ASP"))</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("Basket", member.GetMetricValue("Basket"))</td>
+                                            <td class="p-3 text-center">@FormatMetricValue("PMAttach", member.GetMetricValue("PMAttach"))</td>
+                                        </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            @if (_historicalData.Count > 0)
+            {
+                        <h2 class="text-2xl font-bold text-yellow-400 mb-6">Historical Data</h2>
+
+                @foreach (var weekData in _historicalData.OrderByDescending(w => w.WeekDate))
+                {
+                                <div class="bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg p-6 mb-6">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="text-xl font-bold text-white">Week of @weekData.WeekDate.ToString("MMM dd, yyyy")</h3>
+                                        <div class="flex space-x-2">
+                                            <button @onclick="() => CompareWithCurrent(weekData)" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-500 transition-colors">
+                                                Compare
+                                            </button>
+                                            <button @onclick="() => DeleteWeekData(weekData)" class="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-500 transition-colors">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full border-collapse">
+                                            <thead>
+                                                <tr class="bg-gray-700">
+                                                    <th class="p-3 text-left">Name</th>
+                                                    <th class="p-3 text-center">M365 Attach</th>
+                                                    <th class="p-3 text-center">GSP</th>
+                                                    <th class="p-3 text-center">Revenue</th>
+                                                    <th class="p-3 text-center">ASP</th>
+                                                    <th class="p-3 text-center">Basket</th>
+                                                    <th class="p-3 text-center">PM Attach %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                    @foreach (var member in weekData.TeamMembers)
+                                    {
+                                                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
+                                                            <td class="p-3 font-medium">@member.Name</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("M365Attach", member.GetMetricValue("M365Attach"))</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("GSP", member.GetMetricValue("GSP"))</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("Revenue", member.GetMetricValue("Revenue"))</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("ASP", member.GetMetricValue("ASP"))</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("Basket", member.GetMetricValue("Basket"))</td>
+                                                            <td class="p-3 text-center">@FormatMetricValue("PMAttach", member.GetMetricValue("PMAttach"))</td>
+                                                        </tr>
+                                    }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                }
+            }
+            else
+            {
+                        <div class="bg-gray-800 border border-gray-600 rounded-lg p-8 text-center">
+                            <p class="text-xl text-gray-400">No historical data available yet.</p>
+                            <p class="mt-2 text-gray-500">Save weekly data to start tracking performance over time.</p>
+                        </div>
+            }
+
+            @if (_comparisonData != null)
+            {
+                        <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+                            <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg w-full max-w-6xl max-h-screen overflow-y-auto">
+                                <div class="p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <h2 class="text-2xl font-bold text-yellow-400">Performance Comparison</h2>
+                                        <button @onclick="CloseComparison" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full border-collapse">
+                                            <thead>
+                                                <tr class="bg-gray-700">
+                                                    <th class="p-3 text-left">Name</th>
+                                                    <th class="p-3 text-center" colspan="2">M365 Attach</th>
+                                                    <th class="p-3 text-center" colspan="2">GSP</th>
+                                                    <th class="p-3 text-center" colspan="2">Revenue</th>
+                                                    <th class="p-3 text-center" colspan="2">ASP</th>
+                                                    <th class="p-3 text-center" colspan="2">Basket</th>
+                                                    <th class="p-3 text-center" colspan="2">PM Attach %</th>
+                                                </tr>
+                                                <tr class="bg-gray-700 text-sm text-gray-400">
+                                                    <th class="p-2"></th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                    <th class="p-2">Then</th>
+                                                    <th class="p-2">Now</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                        @foreach (var comparison in _comparisonData)
+                                        {
+                                                        <tr class="border-b border-gray-700">
+                                                            <td class="p-3 font-medium">@comparison.Name</td>
+
+                                                @foreach (var metric in new[] { "M365Attach", "GSP", "Revenue", "ASP", "Basket", "PMAttach" })
+                                                {
+                                                                    <td class="p-2 text-center">@FormatMetricValue(metric, comparison.OldValues[metric])</td>
+                                                                    <td class="p-2 text-center @GetTrendClass(comparison.OldValues[metric], comparison.NewValues[metric], metric)">
+                                                        @FormatMetricValue(metric, comparison.NewValues[metric])
+                                                        @GetTrendIndicator(comparison.OldValues[metric], comparison.NewValues[metric])
+                                                                    </td>
+                                                }
+                                                        </tr>
+                                        }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<TeamMember> _teamMembers;
+    private List<WeeklyData> _historicalData = new List<WeeklyData>();
+    private DateTime currentWeekDate = DateTime.Today;
+    private List<MemberComparison> _comparisonData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teamMembers = await DataService.GetTeamMembersAsync();
+        await LoadHistoricalData();
+    }
+
+    private async Task LoadHistoricalData()
+    {
+        try
+        {
+            var storedData = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "weeklyPerformanceData");
+            if (!string.IsNullOrEmpty(storedData))
+            {
+                _historicalData = JsonSerializer.Deserialize<List<WeeklyData>>(storedData) ?? new List<WeeklyData>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            _historicalData = new List<WeeklyData>();
+        }
+    }
+
+    private async Task SaveWeeklyData()
+    {
+        var weekData = new WeeklyData
+            {
+                WeekDate = currentWeekDate,
+                WeekId = Guid.NewGuid().ToString(),
+                TeamMembers = _teamMembers.Select(m => new TeamMember
+                {
+                    Id = m.Id,
+                    Name = m.Name,
+                    AvatarUrl = m.AvatarUrl,
+                    Metrics = new Dictionary<string, double>(m.Metrics)
+                }).ToList()
+            };
+
+        // Remove any existing data for the same week
+        _historicalData.RemoveAll(w => w.WeekDate.Date == weekData.WeekDate.Date);
+
+        // Add new data
+        _historicalData.Add(weekData);
+
+        // Save to localStorage
+        try
+        {
+            var jsonData = JsonSerializer.Serialize(_historicalData);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "weeklyPerformanceData", jsonData);
+            await JSRuntime.InvokeVoidAsync("alert", "Week's data saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error saving data: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteWeekData(WeeklyData weekData)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete data for week of {weekData.WeekDate.ToString("MMM dd, yyyy")}?");
+
+        if (confirmed)
+        {
+            _historicalData.RemoveAll(w => w.WeekId == weekData.WeekId);
+
+            try
+            {
+                var jsonData = JsonSerializer.Serialize(_historicalData);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "weeklyPerformanceData", jsonData);
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error deleting data: {ex.Message}");
+            }
+        }
+    }
+
+    private void CompareWithCurrent(WeeklyData historicalWeek)
+    {
+        _comparisonData = new List<MemberComparison>();
+
+        foreach (var oldMember in historicalWeek.TeamMembers)
+        {
+            var currentMember = _teamMembers.FirstOrDefault(m => m.Id == oldMember.Id);
+
+            if (currentMember != null)
+            {
+                _comparisonData.Add(new MemberComparison
+                    {
+                        Name = oldMember.Name,
+                        OldValues = oldMember.Metrics,
+                        NewValues = currentMember.Metrics
+                    });
+            }
+        }
+    }
+
+    private void CloseComparison()
+    {
+        _comparisonData = null;
+    }
+
+    private void NavigateHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private string FormatMetricValue(string metricKey, double value)
+    {
+        return metricKey switch
+        {
+            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
+            "Revenue" => $"${value:N2}",
+            "ASP" => $"${value:F2}",
+            "Basket" => $"{value:F1}",
+            _ => value.ToString("F2")
+        };
+    }
+
+    private string GetTrendIndicator(double oldValue, double newValue)
+    {
+        if (newValue > oldValue)
+            return " ↑";
+        else if (newValue < oldValue)
+            return " ↓";
+        else
+            return " —";
+    }
+
+    private string GetTrendClass(double oldValue, double newValue, string metric)
+    {
+        // For all metrics, higher is better
+        if (newValue > oldValue)
+            return "text-green-400";
+        else if (newValue < oldValue)
+            return "text-red-400";
+        else
+            return "text-gray-400";
+    }
+
+    public class WeeklyData
+    {
+        public string WeekId { get; set; }
+        public DateTime WeekDate { get; set; }
+        public List<TeamMember> TeamMembers { get; set; }
+    }
+
+    public class MemberComparison
+    {
+        public string Name { get; set; }
+        public Dictionary<string, double> OldValues { get; set; }
+        public Dictionary<string, double> NewValues { get; set; }
+    }
+}

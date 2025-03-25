@@ -24,93 +24,154 @@ namespace GameScoreboard.Services
                 new TeamMember
                 {
                     Id = 1,
-                    Name = "Alex Johnson",
+                    Name = "Adam",
                     AvatarUrl = "/images/avatars/avatar1.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 85.4 },
-                        { "GSP", 67.2 },
-                        { "Revenue", 12450.75 },
-                        { "ASP", 435.22 },
-                        { "Basket", 3.8 },
-                        { "PMAttach", 42.5 }
+                        { "M365Attach", 42.3 },
+                        { "GSP", 14 },
+                        { "Revenue", 21035 },
+                        { "ASP", 578 },
+                        { "Basket", 146 },
+                        { "PMAttach", 15.4 }
                     }
                 },
                 new TeamMember
                 {
                     Id = 2,
-                    Name = "Taylor Smith",
+                    Name = "Ruben",
                     AvatarUrl = "/images/avatars/avatar2.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 62.8 },
-                        { "GSP", 94.5 },
-                        { "Revenue", 10275.50 },
-                        { "ASP", 512.88 },
-                        { "Basket", 2.5 },
-                        { "PMAttach", 38.2 }
+                        { "M365Attach", 42.9 },
+                        { "GSP", 22 },
+                        { "Revenue", 19456 },
+                        { "ASP", 738 },
+                        { "Basket", 170 },
+                        { "PMAttach", 9.5 }
                     }
                 },
                 new TeamMember
                 {
                     Id = 3,
-                    Name = "Morgan Wong",
+                    Name = "Ishack",
                     AvatarUrl = "/images/avatars/avatar3.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 73.1 },
-                        { "GSP", 81.6 },
-                        { "Revenue", 15820.25 },
-                        { "ASP", 659.18 },
-                        { "Basket", 4.2 },
-                        { "PMAttach", 56.7 }
+                        { "M365Attach", 21.7 },
+                        { "GSP", 3 },
+                        { "Revenue", 23740 },
+                        { "ASP", 762 },
+                        { "Basket", 241 },
+                        { "PMAttach", 13 }
                     }
                 },
                 new TeamMember
                 {
                     Id = 4,
-                    Name = "Casey Martinez",
+                    Name = "Drew",
                     AvatarUrl = "/images/avatars/avatar4.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 92.3 },
-                        { "GSP", 74.8 },
-                        { "Revenue", 9875.50 },
-                        { "ASP", 395.02 },
-                        { "Basket", 3.1 },
-                        { "PMAttach", 47.3 }
+                        { "M365Attach", 42.9 },
+                        { "GSP", 5 },
+                        { "Revenue", 21081 },
+                        { "ASP", 712 },
+                        { "Basket", 132 },
+                        { "PMAttach", 19 }
                     }
                 },
                 new TeamMember
                 {
                     Id = 5,
-                    Name = "Riley Zhang",
+                    Name = "Vinny",
                     AvatarUrl = "/images/avatars/avatar5.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 79.5 },
-                        { "GSP", 86.3 },
-                        { "Revenue", 11950.75 },
-                        { "ASP", 478.03 },
-                        { "Basket", 5.2 },
-                        { "PMAttach", 51.8 }
+                        { "M365Attach", 0 },
+                        { "GSP", 0 },
+                        { "Revenue", 9305 },
+                        { "ASP", 472 },
+                        { "Basket", 113 },
+                        { "PMAttach", 31.3 }
                     }
                 },
                 new TeamMember
                 {
                     Id = 6,
-                    Name = "Jordan Wilson",
+                    Name = "Matthew",
                     AvatarUrl = "/images/avatars/avatar6.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 68.7 },
-                        { "GSP", 79.2 },
-                        { "Revenue", 14320.00 },
-                        { "ASP", 596.67 },
-                        { "Basket", 3.9 },
-                        { "PMAttach", 63.4 }
+                        { "GSP", 0 },
+                        { "Revenue", 9296 },
+                        { "ASP", 527 },
+                        { "Basket", 125 },
+                        { "PMAttach", 50 }
                     }
-                }
+
+                },
+                 new TeamMember
+                {
+                    Id = 7,
+                    Name = "Jonathan",
+                    AvatarUrl = "/images/avatars/avatar4.png",
+                    Metrics = new Dictionary<string, double>
+                    {
+                        { "M365Attach", 12.5 },
+                        { "GSP", 10 },
+                        { "Revenue", 8577 },
+                        { "ASP", 842 },
+                        { "Basket", 160 },
+                        { "PMAttach", 62.5 }
+                    }
+                },
+                  new TeamMember
+                {
+                    Id = 8,
+                    Name = "Gustavo G",
+                    AvatarUrl = "/images/avatars/avatar4.png",
+                    Metrics = new Dictionary<string, double>
+                    {
+                        { "M365Attach", 41.7 },
+                        { "GSP", 0 },
+                        { "Revenue", 7590 },
+                        { "ASP", 497 },
+                        { "Basket", 123 },
+                        { "PMAttach", 0 }
+                    }
+                },
+                   new TeamMember
+                {
+                    Id = 9,
+                    Name = "Felipe",
+                    AvatarUrl = "/images/avatars/avatar4.png",
+                    Metrics = new Dictionary<string, double>
+                    {
+                        { "M365Attach", 0 },
+                        { "GSP", 5 },
+                        { "Revenue", 7406 },
+                        { "ASP", 347 },
+                        { "Basket", 175 },
+                        { "PMAttach", 13.3 }
+                    }
+                },
+                    new TeamMember
+                {
+                    Id = 10,
+                    Name = "Klarensky",
+                    AvatarUrl = "/images/avatars/avatar4.png",
+                    Metrics = new Dictionary<string, double>
+                    {
+                        { "M365Attach", 0 },
+                        { "GSP", 0 },
+                        { "Revenue", 7926 },
+                        { "ASP", 361 },
+                        { "Basket", 54 },
+                        { "PMAttach", 0 }
+                    }
+                },
             };
         }
 

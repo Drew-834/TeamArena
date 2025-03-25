@@ -29,14 +29,24 @@ main {
     flex: 1;
 }
 
+/* Carousel container styling */
+.carousel-container {
+    position: relative;
+    padding: 20px 0;
+    width: 100%;
+}
+
+/* Character card styling */
 .character-card {
     position: relative;
     transition: all 0.3s ease;
+    user-select: none;
 }
 
     .character-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-5px) scale(1.02);
         box-shadow: 0 10px 25px -5px rgba(255, 193, 7, 0.4);
+        z-index: 10;
     }
 
         .character-card:hover::after {
@@ -76,9 +86,57 @@ main {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* Carousel transitions */
+.carousel-inner {
+    will-change: transform;
+}
+
+    .carousel-inner.transition-transform {
+        transition: transform 0.5s ease-out;
+    }
+
+/* Make background images translucent */
+.opacity-15 {
+    opacity: 0.15;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .character-card {
-        margin-bottom: 1.5rem;
+        width: 200px !important;
     }
+}
+
+/* Weekly tracker styles */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th, td {
+    border: 1px solid #374151;
+}
+
+th {
+    background-color: #374151;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Animation for new entries */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
 }

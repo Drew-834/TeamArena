@@ -3,80 +3,163 @@
 @using GameScoreboard.Services
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <div class="bg-gray-900 min-h-screen text-white">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-center mb-8 text-yellow-400">TEAM PERFORMANCE ARENA</h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-center text-yellow-400">TEAM PERFORMANCE ARENA</h1>
+            <button @onclick="NavigateToWeeklyTracker" class="px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
+                Weekly Tracker
+            </button>
+        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            @if (_teamMembers == null)
-            {
-                    <div class="col-span-full text-center">
-                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
-                        <p class="mt-2">Loading champions...</p>
-                    </div>
-            }
-            else
-            {
-                @foreach (var member in _teamMembers)
-                {
-                            <div class="character-card cursor-pointer transform transition-all duration-300 hover:scale-105" 
-                         @onclick="() => NavigateToDetails(member.Id)">
-                                <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg">
-                                    <div class="p-4 relative">
-                                        <div class="character-avatar mb-4 rounded-full overflow-hidden mx-auto" style="width: 100px; height: 100px; background-color: #2d2d2d;">
-                                    @if (!string.IsNullOrEmpty(member.AvatarUrl))
-                                    {
-                                                    <img src="@member.AvatarUrl" alt="@member.Name" class="w-full h-full object-cover" />
-                                    }
-                                    else
-                                    {
-                                                    <div class="w-full h-full flex items-center justify-center bg-gray-700 text-3xl font-bold">
-                                            @member.Name[0]
+        @if (_teamMembers == null)
+        {
+                <div class="text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                    <p class="mt-2">Loading champions...</p>
+                </div>
+        }
+        else
+        {
+                <div class="relative">
+                    <!-- Carousel Controls -->
+                    <button @onclick="ScrollLeft" class="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-gray-800 bg-opacity-70 p-3 rounded-r-lg text-yellow-400 hover:bg-opacity-90">
+                        <span class="text-2xl">←</span>
+                    </button>
+
+                    <button @onclick="ScrollRight" class="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-gray-800 bg-opacity-70 p-3 rounded-l-lg text-yellow-400 hover:bg-opacity-90">
+                        <span class="text-2xl">→</span>
+                    </button>
+
+                    <!-- Carousel Container -->
+                    <div class="carousel-container overflow-x-hidden" @ref="carouselContainer">
+                        <div class="carousel-inner flex space-x-4 transition-transform duration-500 ease-in-out" @ref="carouselInner">
+                        @foreach (var member in _teamMembers)
+                        {
+                                    <div class="character-card cursor-pointer flex-shrink-0" style="width: 240px;" 
+                                 @onclick="() => NavigateToDetails(member.Id)">
+                                        <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg h-96 relative">
+                                            <!-- Background Avatar (translucent) -->
+                                            <div class="absolute inset-0 opacity-15 z-0">
+                                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                                        {
+                                                        <img src="@member.AvatarUrl" alt="" class="w-full h-full object-cover" />
+                                        }
+                                        else
+                                        {
+                                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-8xl font-bold text-gray-600">
+                                                @member.Name[0]
+                                                        </div>
+                                        }
+                                            </div>
+
+                                            <!-- Content (foreground) -->
+                                            <div class="p-4 relative z-10 flex flex-col h-full justify-between">
+                                                <div>
+                                                    <h3 class="text-2xl font-bold text-center mt-4">@member.Name</h3>
+                                                    <p class="text-yellow-400 text-center text-lg mt-2">@member.GetTitle()</p>
+                                                </div>
+
+                                        @{
+                                            var strongestMetric = member.GetStrongestMetric();
+                                            var metricValue = member.GetMetricValue(strongestMetric);
+                                            var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
+                                        }
+
+                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border border-yellow-500 rounded-md p-4 text-center mt-auto mb-8">
+                                                    <div class="text-sm text-gray-400">Strongest Metric</div>
+                                                    <div class="text-lg font-semibold">@metricName</div>
+                                                    <div class="text-2xl font-bold text-yellow-400">
+                                                @FormatMetricValue(strongestMetric, metricValue)
                                                     </div>
-                                    }
-                                        </div>
+                                                </div>
 
-                                        <h3 class="text-xl font-bold text-center">@member.Name</h3>
-                                        <p class="text-yellow-400 text-center text-sm mb-3">@member.GetTitle()</p>
-
-                                @{
-                                    var strongestMetric = member.GetStrongestMetric();
-                                    var metricValue = member.GetMetricValue(strongestMetric);
-                                    var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
-                                }
-
-                                        <div class="metric-highlight bg-gray-700 rounded-md p-3 text-center">
-                                            <div class="text-sm text-gray-400">Strongest Metric</div>
-                                            <div class="text-lg font-semibold">@metricName</div>
-                                            <div class="text-xl font-bold text-yellow-400">
-                                        @FormatMetricValue(strongestMetric, metricValue)
+                                                <div class="text-center text-sm text-gray-400 absolute bottom-2 left-0 right-0">
+                                                    Tap to view details
+                                                </div>
                                             </div>
                                         </div>
-
-                                        <div class="mt-4 text-center text-sm text-gray-400">
-                                            Click to view details
-                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                }
-            }
-        </div>
+                        }
+                        </div>
+                    </div>
+
+                    <!-- Pagination Indicators -->
+                    <div class="flex justify-center mt-4 space-x-2">
+                    @for (int i = 0; i < Math.Ceiling((double)_teamMembers.Count / 3); i++)
+                    {
+                        int pageIndex = i;
+                                <button @onclick="() => GoToPage(pageIndex)" 
+                                class="h-3 w-3 rounded-full @(currentPage == pageIndex ? "bg-yellow-400" : "bg-gray-600") transition-colors">
+                                </button>
+                    }
+                    </div>
+                </div>
+        }
     </div>
 </div>
 
 @code {
     private List<TeamMember> _teamMembers;
+    private ElementReference carouselContainer;
+    private ElementReference carouselInner;
+    private int currentPage = 0;
+    private int itemsPerPage = 3;
 
     protected override async Task OnInitializedAsync()
     {
         _teamMembers = await DataService.GetTeamMembersAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize drag-to-scroll functionality
+            await JSRuntime.InvokeVoidAsync("initCarousel", carouselContainer, carouselInner);
+        }
+    }
+
     private void NavigateToDetails(int id)
     {
         NavigationManager.NavigateTo($"/character/{id}");
+    }
+
+    private void NavigateToWeeklyTracker()
+    {
+        NavigationManager.NavigateTo("/weekly-tracker");
+    }
+
+    private async Task ScrollLeft()
+    {
+        if (currentPage > 0)
+        {
+            currentPage--;
+            await ScrollToCurrentPage();
+        }
+    }
+
+    private async Task ScrollRight()
+    {
+        int maxPage = (int)Math.Ceiling((double)_teamMembers.Count / itemsPerPage) - 1;
+        if (currentPage < maxPage)
+        {
+            currentPage++;
+            await ScrollToCurrentPage();
+        }
+    }
+
+    private async Task GoToPage(int pageIndex)
+    {
+        currentPage = pageIndex;
+        await ScrollToCurrentPage();
+    }
+
+    private async Task ScrollToCurrentPage()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollCarouselToPage", carouselInner, currentPage, itemsPerPage);
     }
 
     private string FormatMetricValue(string metricKey, double value)
