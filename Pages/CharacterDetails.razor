@@ -1,0 +1,141 @@
+﻿@page "/character/{Id:int}"
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+
+<div class="bg-gray-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        @if (_teamMember == null)
+        {
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                    <p class="mt-2">Loading champion data...</p>
+                </div>
+        }
+        else
+        {
+                <div class="mb-4">
+                    <button @onclick="NavigateBack" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
+                        <span class="mr-2">←</span> Back to Champions
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg p-6">
+                    <div class="flex flex-col md:flex-row">
+                        <!-- Character Details Section -->
+                        <div class="md:w-1/3 mb-6 md:mb-0 md:pr-6">
+                            <div class="character-avatar mb-4 rounded-full overflow-hidden mx-auto" style="width: 150px; height: 150px; background-color: #2d2d2d;">
+                            @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
+                            {
+                                        <img src="@_teamMember.AvatarUrl" alt="@_teamMember.Name" class="w-full h-full object-cover" />
+                            }
+                            else
+                            {
+                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-5xl font-bold">
+                                    @_teamMember.Name[0]
+                                        </div>
+                            }
+                            </div>
+
+                            <h1 class="text-3xl font-bold text-center mb-2">@_teamMember.Name</h1>
+                            <p class="text-xl text-yellow-400 text-center mb-4">@_teamMember.GetTitle()</p>
+
+                            <div class="bg-gray-700 rounded-md p-4 text-center">
+                                <div class="text-sm text-gray-400">Strongest Metric</div>
+                            @{
+                                var strongestMetric = _teamMember.GetStrongestMetric();
+                                var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
+                            }
+                                <div class="text-lg font-semibold">@metricName</div>
+                                <div class="text-xl font-bold text-yellow-400">
+                                @FormatMetricValue(strongestMetric, _teamMember.GetMetricValue(strongestMetric))
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Section -->
+                        <div class="md:w-2/3">
+                            <h2 class="text-2xl font-bold mb-4 text-yellow-400">Performance Metrics</h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @foreach (var metric in _teamMember.GetAllMetrics())
+                            {
+                                        <div class="bg-gray-700 rounded-md p-4">
+                                            <div class="flex justify-between items-center">
+                                                <div class="text-lg font-semibold">@TeamMember.GetMetricDisplayName(metric.Key)</div>
+                                                <div class="text-xl font-bold @(IsStrongestMetric(metric.Key) ? "text-yellow-400" : "text-white")">
+                                            @FormatMetricValue(metric.Key, metric.Value)
+                                                </div>
+                                            </div>
+
+                                            <!-- Metric Bar -->
+                                            <div class="mt-2 bg-gray-800 rounded-full h-4 overflow-hidden">
+                                                <div class="@GetMetricBarClass(metric.Key) h-full rounded-full" 
+                                             style="width: @GetMetricBarWidth(metric.Key, metric.Value)"></div>
+                                            </div>
+                                        </div>
+                            }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private TeamMember _teamMember;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teamMember = await DataService.GetTeamMemberByIdAsync(Id);
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private bool IsStrongestMetric(string metricKey)
+    {
+        return _teamMember.GetStrongestMetric() == metricKey;
+    }
+
+    private string GetMetricBarClass(string metricKey)
+    {
+        return IsStrongestMetric(metricKey)
+            ? "bg-yellow-400"
+            : "bg-blue-500";
+    }
+
+    private string GetMetricBarWidth(string metricKey, double value)
+    {
+        // Calculate percentage based on metric type
+        double percentage = metricKey switch
+        {
+            "M365Attach" or "GSP" or "PMAttach" => value, // These are already percentages
+            "Revenue" => Math.Min((value / 20000) * 100, 100), // Max revenue reference of $20,000
+            "ASP" => Math.Min((value / 800) * 100, 100),  // Max ASP reference of $800
+            "Basket" => Math.Min((value / 6) * 100, 100),  // Max basket reference of 6 items
+            _ => 50 // Default fallback
+        };
+
+        return $"{percentage}%";
+    }
+
+    private string FormatMetricValue(string metricKey, double value)
+    {
+        return metricKey switch
+        {
+            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
+            "Revenue" => $"${value:N2}",
+            "ASP" => $"${value:F2}",
+            "Basket" => $"{value:F1}",
+            _ => value.ToString("F2")
+        };
+    }
+}

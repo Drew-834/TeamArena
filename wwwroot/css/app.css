@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-bg: #1a1a1a;
+    --secondary-bg: #292929;
+    --accent-gold: #ffc107;
+    --accent-silver: #c0c0c0;
+    --text-primary: #ffffff;
+    --text-secondary: #d1d1d1;
+}
+
+html, body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.character-card {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+    .character-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(255, 193, 7, 0.4);
+    }
+
+        .character-card:hover::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 0.5rem;
+            border: 2px solid var(--accent-gold);
+            pointer-events: none;
+            animation: pulse 1.5s infinite;
+        }
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+}
+
+/* Elden Ring inspired styling */
+.metric-highlight {
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    background: linear-gradient(145deg, rgba(41, 41, 41, 0.7) 0%, rgba(26, 26, 26, 0.9) 100%);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .character-card {
+        margin-bottom: 1.5rem;
+    }
+}

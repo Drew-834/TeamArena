@@ -1,0 +1,93 @@
+﻿@page "/"
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+
+<div class="bg-gray-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-yellow-400">TEAM PERFORMANCE ARENA</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            @if (_teamMembers == null)
+            {
+                    <div class="col-span-full text-center">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                        <p class="mt-2">Loading champions...</p>
+                    </div>
+            }
+            else
+            {
+                @foreach (var member in _teamMembers)
+                {
+                            <div class="character-card cursor-pointer transform transition-all duration-300 hover:scale-105" 
+                         @onclick="() => NavigateToDetails(member.Id)">
+                                <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg">
+                                    <div class="p-4 relative">
+                                        <div class="character-avatar mb-4 rounded-full overflow-hidden mx-auto" style="width: 100px; height: 100px; background-color: #2d2d2d;">
+                                    @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                                    {
+                                                    <img src="@member.AvatarUrl" alt="@member.Name" class="w-full h-full object-cover" />
+                                    }
+                                    else
+                                    {
+                                                    <div class="w-full h-full flex items-center justify-center bg-gray-700 text-3xl font-bold">
+                                            @member.Name[0]
+                                                    </div>
+                                    }
+                                        </div>
+
+                                        <h3 class="text-xl font-bold text-center">@member.Name</h3>
+                                        <p class="text-yellow-400 text-center text-sm mb-3">@member.GetTitle()</p>
+
+                                @{
+                                    var strongestMetric = member.GetStrongestMetric();
+                                    var metricValue = member.GetMetricValue(strongestMetric);
+                                    var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
+                                }
+
+                                        <div class="metric-highlight bg-gray-700 rounded-md p-3 text-center">
+                                            <div class="text-sm text-gray-400">Strongest Metric</div>
+                                            <div class="text-lg font-semibold">@metricName</div>
+                                            <div class="text-xl font-bold text-yellow-400">
+                                        @FormatMetricValue(strongestMetric, metricValue)
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 text-center text-sm text-gray-400">
+                                            Click to view details
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<TeamMember> _teamMembers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _teamMembers = await DataService.GetTeamMembersAsync();
+    }
+
+    private void NavigateToDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/character/{id}");
+    }
+
+    private string FormatMetricValue(string metricKey, double value)
+    {
+        return metricKey switch
+        {
+            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
+            "Revenue" => $"${value:N2}",
+            "ASP" => $"${value:F2}",
+            "Basket" => $"{value:F1}",
+            _ => value.ToString("F2")
+        };
+    }
+}
