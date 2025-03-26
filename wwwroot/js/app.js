@@ -7,6 +7,7 @@ let animationID = 0;
 let currentCarousel = null;
 let currentInner = null;
 
+// Make sure to define window functions
 window.initCarousel = (containerElement, innerElement) => {
     if (!containerElement || !innerElement) return;
 

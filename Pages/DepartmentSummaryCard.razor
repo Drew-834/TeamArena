@@ -1,0 +1,117 @@
+﻿@using GameScoreboard.Models
+
+<div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg mb-8">
+    <div class="p-5">
+        <h2 class="text-xl font-bold text-yellow-400 mb-4">Department Performance Overview</h2>
+
+        <div class="flex flex-col md:flex-row">
+            <!-- Overall Score -->
+            <div class="md:w-1/4 mb-6 md:mb-0 flex flex-col items-center justify-center">
+                <div class="text-4xl font-bold @GetScoreColorClass(Summary.OverallPerformanceScore)">
+                    @Summary.OverallPerformanceScore.ToString("F1")
+                </div>
+                <div class="text-sm text-gray-400">Overall Performance Score</div>
+
+                <div class="mt-4 w-full max-w-xs">
+                    <div class="text-sm flex justify-between">
+                        <span>Poor</span>
+                        <span>Average</span>
+                        <span>Excellent</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1">
+                        <div class="@GetScoreColorClass(Summary.OverallPerformanceScore) h-2.5 rounded-full" 
+                             style="width: @(Summary.OverallPerformanceScore)%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="md:w-3/4 md:pl-6 md:border-l border-gray-700">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @foreach (var metric in Summary.AverageMetrics)
+                    {
+                            <div class="bg-gray-700 rounded-md p-3">
+                                <div class="text-sm text-gray-400 mb-1">@GetMetricDisplayName(metric.Key)</div>
+                                <div class="flex justify-between">
+                                    <div>
+                                        <div class="font-bold text-xl">@FormatMetricValue(metric.Key, metric.Value)</div>
+                                        <div class="text-xs text-gray-400">Avg</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-green-400 font-bold">@FormatMetricValue(metric.Key, Summary.MaxMetrics[metric.Key])</div>
+                                        <div class="text-xs text-gray-400">High</div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between mt-2 text-xs">
+                                    <div class="text-green-400">Best: @(Summary.TopPerformers.ContainsKey(metric.Key) ? Summary.TopPerformers[metric.Key] : "N/A")</div>
+                                    <div class="text-red-400">Lowest: @(Summary.BottomPerformers.ContainsKey(metric.Key) ? Summary.BottomPerformers[metric.Key] : "N/A")</div>
+                                </div>
+
+                                <!-- Progress bar -->
+                                <div class="w-full bg-gray-800 rounded-full h-1.5 mt-2">
+                                    <div class="bg-blue-500 h-1.5 rounded-full" 
+                                     style="width: @GetMetricPercentage(metric.Key, metric.Value)%"></div>
+                                </div>
+                            </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public DepartmentSummary Summary { get; set; }
+
+    private string GetScoreColorClass(double score)
+    {
+        if (score >= 80) return "text-green-400";
+        if (score >= 60) return "text-yellow-400";
+        if (score >= 40) return "text-orange-400";
+        return "text-red-400";
+    }
+
+    private string GetMetricDisplayName(string metricKey)
+    {
+        return metricKey switch
+        {
+            "M365Attach" => "M365 Attach",
+            "GSP" => "GSP (Warranty)",
+            "Revenue" => "Revenue",
+            "ASP" => "ASP",
+            "Basket" => "Basket",
+            "PMAttach" => "PM Attach %",
+            _ => metricKey
+        };
+    }
+
+    private string FormatMetricValue(string metricKey, double value)
+    {
+        return metricKey switch
+        {
+            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
+            "Revenue" => $"${value:N0}",
+            "ASP" => $"${value:F0}",
+            "Basket" => $"{value:F1}",
+            _ => value.ToString("F2")
+        };
+    }
+
+    private double GetMetricPercentage(string metricKey, double value)
+    {
+        // Maximum reference values for each metric
+        var maxValues = new Dictionary<string, double>
+        {
+               { "M365Attach", 30 },
+               { "GSP", 20 },
+               { "Revenue", 20000 },
+               { "ASP", 800 },
+               { "Basket", 160 },
+               { "PMAttach", 25 }
+        };
+
+        double maxValue = maxValues.ContainsKey(metricKey) ? maxValues[metricKey] : 100;
+        return System.Math.Min(value / maxValue, 1) * 100;
+    }
+}

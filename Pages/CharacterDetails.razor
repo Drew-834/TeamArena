@@ -1,4 +1,10 @@
-﻿@page "/character/{Id:int}"
+﻿private string GetFormattedMetricName(string metricKey)
+    {
+        var displayName = TeamMember.GetMetricDisplayName(metricKey);
+        return displayName.Split(' ')[0]; // Return just the first word for brevity
+    }
+@page "/character/{Id:int}"
+@namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
 @inject IDataService DataService
@@ -9,147 +15,152 @@
     <div class="container mx-auto px-4 py-8">
         @if (_teamMember == null)
         {
-                <div class="text-center py-12">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
-                    <p class="mt-2">Loading champion data...</p>
-                </div>
+            <div class="text-center py-12">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
+                <p class="mt-2">Loading champion data...</p>
+            </div>
         }
         else
         {
-                <div class="mb-4">
-                    <button @onclick="NavigateBack" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
-                        <span class="mr-2">←</span> Back to Champions
-                    </button>
-                </div>
+            <div class="mb-4">
+                <button @onclick="NavigateBack" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
+                    <span class="mr-2">←</span> Back to Champions
+                </button>
+            </div>
 
-                <div @ref="detailsContainer" id="character-details-container" class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg relative">
-                    <!-- Full-size background avatar with low opacity -->
-                    <div class="absolute top-0 right-0 w-1/2 h-full opacity-10 z-0">
+            <div @ref="detailsContainer" id="character-details-container" class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg relative">
+                <!-- Full-size background avatar with low opacity -->
+                <div class="absolute top-0 right-0 w-1/2 h-full opacity-10 z-0">
                     @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
                     {
-                                <img src="@_teamMember.AvatarUrl" alt="" class="w-full h-full object-cover" />
+                        <img src="@_teamMember.AvatarUrl" alt="" class="w-full h-full object-cover" />
                     }
                     else
                     {
-                                <div class="w-full h-full flex items-center justify-center bg-gray-700 text-9xl font-bold text-gray-600">
+                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-9xl font-bold text-gray-600">
                             @_teamMember.Name[0]
-                                </div>
+                        </div>
                     }
-                    </div>
-
-                    <!-- Radar chart in background -->
-                    <div class="absolute top-0 right-0 w-1/2 h-full opacity-40 z-0 flex items-center justify-center">
-                        <RadarChart 
+                </div>
+                
+                <!-- Radar chart in background -->
+                <div class="absolute top-0 right-0 w-1/2 h-full opacity-40 z-0 flex items-center justify-center">
+                    <RadarChart 
                         TeamMember="@_teamMember" 
                         TeamAverages="@_teamAverages" 
                         MetricMaxValues="@_metricMaxValues"
                         Width="300px"
                         Height="300px" />
-                    </div>
-
-                    <div class="p-6 flex flex-col md:flex-row relative z-10">
-                        <!-- Metrics Section - Left Side -->
-                        <div class="md:w-3/5 pr-8">
-                            <div class="flex items-center mb-6">
-                                <div class="mr-4">
-                                    <div class="rounded-full overflow-hidden w-16 h-16 bg-gray-700 border-2 border-yellow-400">
+                </div>
+                
+                <div class="p-6 flex flex-col md:flex-row relative z-10">
+                    <!-- Metrics Section - Left Side -->
+                    <div class="md:w-3/5 pr-8">
+                        <div class="flex items-center mb-6">
+                            <div class="mr-4">
+                                <div class="rounded-full overflow-hidden w-16 h-16 bg-gray-700 border-2 border-yellow-400">
                                     @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
                                     {
-                                                <img src="@_teamMember.AvatarUrl" alt="@_teamMember.Name" class="w-full h-full object-cover" />
+                                        <img src="@_teamMember.AvatarUrl" alt="@_teamMember.Name" class="w-full h-full object-cover" />
                                     }
                                     else
                                     {
-                                                <div class="w-full h-full flex items-center justify-center bg-gray-700 text-2xl font-bold">
+                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-2xl font-bold">
                                             @_teamMember.Name[0]
-                                                </div>
+                                        </div>
                                     }
-                                    </div>
-                                </div>
-                                <div>
-                                    <h1 class="text-3xl font-bold">@_teamMember.Name</h1>
-                                    <p class="text-xl text-yellow-400">@_teamMember.GetTitle()</p>
                                 </div>
                             </div>
-
-                            <h2 class="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-500 pb-2">Performance Metrics</h2>
-
-                            <div class="space-y-6">
-                            @foreach (var metric in _teamMember.GetAllMetrics().OrderByDescending(m => GetPerformanceScore(m.Key, m.Value)))
+                            <div>
+                                <h1 class="text-3xl font-bold">@_teamMember.Name</h1>
+                                <p class="text-xl text-yellow-400">@_teamMember.GetChampionTitle(_allTeamMembers)</p>
+                            </div>
+                        </div>
+                        
+                        <h2 class="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-500 pb-2">Performance Metrics</h2>
+                        
+                        <div class="space-y-6">
+                            @foreach (var metric in _teamMember.GetAllMetrics().OrderByDescending(m => (_teamMember.GetMetricValue(m.Key) / _teamAverages[m.Key])))
                             {
-                                        <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 @GetMetricBorderClass(metric.Key, metric.Value)">
-                                            <div class="flex justify-between items-center mb-2">
-                                                <div>
-                                                    <div class="text-lg font-semibold flex items-center">
+                                <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 @GetMetricBorderClass(metric.Key, metric.Value)">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div>
+                                            <div class="text-lg font-semibold flex items-center">
                                                 @TeamMember.GetMetricDisplayName(metric.Key)
                                                 @if (IsTopPerformer(metric.Key, metric.Value))
                                                 {
-                                                                <span class="ml-2 text-yellow-400 text-sm font-bold px-2 py-0.5 bg-yellow-900 bg-opacity-50 rounded-full">TOP</span>
+                                                    <span class="ml-2 text-yellow-400 text-sm font-bold px-2 py-0.5 bg-yellow-900 bg-opacity-50 rounded-full">BEST</span>
                                                 }
                                                 @if (IsBottomPerformer(metric.Key, metric.Value))
                                                 {
-                                                                <span class="ml-2 text-red-400 text-sm font-bold px-2 py-0.5 bg-red-900 bg-opacity-50 rounded-full">LOWEST</span>
+                                                    <span class="ml-2 text-red-400 text-sm font-bold px-2 py-0.5 bg-red-900 bg-opacity-50 rounded-full">LOWEST</span>
                                                 }
-                                                    </div>
-                                                    <div class="text-sm text-gray-400">
-                                                        Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
-                                                    </div>
-                                                </div>
-                                                <div class="text-xl font-bold @GetMetricValueClass(metric.Key, metric.Value)">
-                                            @FormatMetricValue(metric.Key, metric.Value)
-                                                </div>
                                             </div>
-
-                                            <!-- Metric Bar with Avg Marker -->
-                                            <div class="mt-2 bg-gray-800 rounded-full h-4 overflow-hidden relative">
-                                                <div class="@GetMetricBarClass(metric.Key, metric.Value) h-full rounded-full" 
-                                             style="width: @GetMetricBarWidth(metric.Key, metric.Value)"></div>
-
-                                                <!-- Team Average Marker -->
-                                                <div class="absolute top-0 bottom-0 w-0.5 bg-white opacity-70"
-                                             style="left: @GetAverageMarkerPosition(metric.Key)"></div>
-                                            </div>
-
-                                            <!-- Performance Score -->
-                                            <div class="mt-1 flex justify-between text-xs">
-                                                <span>0</span>
-                                                <span class="text-gray-400">Performance Score: @GetPerformanceScore(metric.Key, metric.Value).ToString("F0")</span>
-                                                <span>@GetMetricMaxValue(metric.Key)</span>
+                                            <div class="text-sm text-gray-400">
+                                                Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
                                             </div>
                                         </div>
+                                        <div class="text-xl font-bold @GetMetricValueClass(metric.Key, metric.Value)">
+                                            @FormatMetricValue(metric.Key, metric.Value)
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Metric Bar with Avg Marker -->
+                                    <div class="mt-2 bg-gray-800 rounded-full h-4 overflow-hidden relative">
+                                        <div class="@GetMetricBarClass(metric.Key, metric.Value) h-full rounded-full" 
+                                             style="width: @GetMetricBarWidth(metric.Key, metric.Value)"></div>
+                                        
+                                        <!-- Team Average Marker -->
+                                        <div class="absolute top-0 bottom-0 w-0.5 bg-white opacity-70"
+                                             style="left: @GetAverageMarkerPosition(metric.Key)"></div>
+                                    </div>
+                                    
+                                    <!-- Performance Score -->
+                                    <div class="mt-1 flex justify-between text-xs">
+                                        <span>0</span>
+                                        <span class="text-gray-400">Performance Score: @GetPerformanceScore(metric.Key, metric.Value).ToString("F0")</span>
+                                        <span>@GetMetricMaxValue(metric.Key)</span>
+                                    </div>
+                                </div>
                             }
-                            </div>
                         </div>
-
-                        <!-- Character Profile Section - Right Side (empty, we use background image and radar chart instead) -->
-                        <div class="md:w-2/5 mt-8 md:mt-0">
-                            <div class="mb-8 bg-gray-800 bg-opacity-60 p-6 rounded-lg border border-gray-700">
-                                <h3 class="text-xl font-bold mb-4 text-yellow-400">Champion Stats</h3>
-
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-400">Overall Rank:</span>
-                                        <span class="font-bold">#@GetOverallRank() of @_allTeamMembers.Count</span>
-                                    </div>
-
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-400">Top Categories:</span>
-                                        <span class="font-bold">@GetTopCategories()</span>
-                                    </div>
-
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-400">Needs Improvement:</span>
-                                        <span class="font-bold">@GetImprovedCategories()</span>
-                                    </div>
-
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-400">Performance Score:</span>
-                                        <span class="font-bold">@GetTotalPerformanceScore().ToString("F0")</span>
-                                    </div>
+                    </div>
+                    
+                    <!-- Character Profile Section - Right Side (empty, we use background image and radar chart instead) -->
+                    <div class="md:w-2/5 mt-8 md:mt-0">
+                                                        <div class="mb-8 bg-gray-800 bg-opacity-60 p-6 rounded-lg border border-gray-700">
+                            <h3 class="text-xl font-bold mb-4 text-yellow-400">Champion Stats</h3>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Overall Rank:</span>
+                                    <span class="font-bold">#@GetOverallRank() of @_allTeamMembers.Count</span>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Strongest Area:</span>
+                                    <span class="font-bold">@TeamMember.GetMetricDisplayName(_teamMember.GetStrongestMetricRelativeToTeam(_teamAverages)).Split(' ')[0]</span>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Top Categories:</span>
+                                    <span class="font-bold">@GetTopCategories()</span>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Needs Improvement:</span>
+                                    <span class="font-bold">@GetImprovedCategories()</span>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Performance Score:</span>
+                                    <span class="font-bold">@GetTotalPerformanceScore().ToString("F0")</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
         }
     </div>
 </div>
@@ -157,41 +168,51 @@
 @code {
     [Parameter]
     public int Id { get; set; }
-
+    
     private TeamMember _teamMember;
     private List<TeamMember> _allTeamMembers;
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
     private ElementReference detailsContainer;
     private Dictionary<string, double> _metricMaxValues = new Dictionary<string, double> {
-        { "M365Attach", 60 },
-        { "GSP", 25 },
-        { "Revenue", 20000 },
-        { "ASP", 800 },
-        { "Basket", 300 },
-        { "PMAttach", 50 }
+               { "M365Attach", 30 },
+               { "GSP", 20 },
+               { "Revenue", 20000 },
+               { "ASP", 800 },
+               { "Basket", 160 },
+               { "PMAttach", 25 }
     };
-
+    
     protected override async Task OnInitializedAsync()
     {
         _allTeamMembers = await DataService.GetTeamMembersAsync();
         _teamMember = _allTeamMembers.FirstOrDefault(m => m.Id == Id);
         CalculateTeamAverages();
     }
-
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && _teamMember != null)
         {
-            // Scroll to center the details container
-            await JSRuntime.InvokeVoidAsync("scrollToElement", "character-details-container");
+            try
+            {
+                // Add a delay to ensure the DOM is fully rendered
+                await Task.Delay(300);
+                
+                // Try to scroll to the element
+                await JSRuntime.InvokeVoidAsync("scrollToCenter", detailsContainer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error scrolling: {ex.Message}");
+            }
         }
     }
-
+    
     private void CalculateTeamAverages()
     {
         // Get all metric keys
         var metricKeys = _allTeamMembers.First().Metrics.Keys;
-
+        
         // Calculate averages for each metric
         foreach (var key in metricKeys)
         {
@@ -203,35 +224,27 @@
             _teamAverages[key] = sum / _allTeamMembers.Count;
         }
     }
-
+    
     private void NavigateBack()
     {
         NavigationManager.NavigateTo("/");
     }
-
+    
     private bool IsTopPerformer(string metricKey, double value)
     {
-        // Get the maximum value for this metric among all team members
-        var maxValue = _allTeamMembers.Max(m => m.GetMetricValue(metricKey));
-
-        // Check if this team member's value is the highest or within 2% of the highest
-        return Math.Abs(value - maxValue) < (maxValue * 0.02);
+        return _teamMember.IsBestInMetric(metricKey, _allTeamMembers);
     }
-
+    
     private bool IsBottomPerformer(string metricKey, double value)
     {
-        // Get the minimum value for this metric among all team members
-        var minValue = _allTeamMembers.Min(m => m.GetMetricValue(metricKey));
-
-        // Check if this team member's value is the lowest or within 2% of the lowest
-        return Math.Abs(value - minValue) < (minValue * 0.02);
+        return _teamMember.IsWorstInMetric(metricKey, _allTeamMembers);
     }
-
+    
     private double GetTeamAverage(string metricKey)
     {
         return _teamAverages.TryGetValue(metricKey, out var avg) ? avg : 0;
     }
-
+    
     private string GetMetricBarClass(string metricKey, double value)
     {
         if (IsTopPerformer(metricKey, value))
@@ -243,7 +256,7 @@
         else
             return "bg-blue-400";
     }
-
+    
     private string GetMetricBorderClass(string metricKey, double value)
     {
         if (IsTopPerformer(metricKey, value))
@@ -255,7 +268,7 @@
         else
             return "border-gray-600";
     }
-
+    
     private string GetMetricValueClass(string metricKey, double value)
     {
         if (IsTopPerformer(metricKey, value))
@@ -267,7 +280,7 @@
         else
             return "text-white";
     }
-
+    
     private string GetMetricBarWidth(string metricKey, double value)
     {
         // Calculate percentage based on metric type and its max value
@@ -275,7 +288,7 @@
         double percentage = Math.Min((value / maxValue) * 100, 100);
         return $"{percentage}%";
     }
-
+    
     private string GetAverageMarkerPosition(string metricKey)
     {
         double avgValue = GetTeamAverage(metricKey);
@@ -283,32 +296,32 @@
         double percentage = Math.Min((avgValue / maxValue) * 100, 100);
         return $"{percentage}%";
     }
-
+    
     private double GetMetricMaxValue(string metricKey)
     {
         return _metricMaxValues.TryGetValue(metricKey, out var maxValue) ? maxValue : 100;
     }
-
+    
     private double GetPerformanceScore(string metricKey, double value)
     {
         // Calculate a performance score based on the team average
         double average = GetTeamAverage(metricKey);
-
+        
         if (average == 0) return 50; // Default score if average is 0
-
+        
         // Score is based on how much better/worse the value is compared to average
         // 50 is average, 100 is 2x average, 0 is 0
         double score = (value / average) * 50;
-
+        
         // Cap the score between 0 and 100
         return Math.Min(Math.Max(score, 0), 100);
     }
-
+    
     private int GetOverallRank()
     {
         // Calculate total performance score for all team members
         var scores = new List<(int Id, double Score)>();
-
+        
         foreach (var member in _allTeamMembers)
         {
             double totalScore = 0;
@@ -318,10 +331,10 @@
             }
             scores.Add((member.Id, totalScore));
         }
-
+        
         // Sort by score descending
         var sortedScores = scores.OrderByDescending(s => s.Score).ToList();
-
+        
         // Find current member's rank
         for (int i = 0; i < sortedScores.Count; i++)
         {
@@ -330,10 +343,10 @@
                 return i + 1; // Rank is 1-based
             }
         }
-
+        
         return _allTeamMembers.Count; // Default to last if not found
     }
-
+    
     private string GetTopCategories()
     {
         // Get the top 2 metrics based on performance score
@@ -342,10 +355,10 @@
             .Take(2)
             .Select(m => TeamMember.GetMetricDisplayName(m.Key).Split(' ')[0]) // Take first word only
             .ToList();
-
+        
         return string.Join(", ", topMetrics);
     }
-
+    
     private string GetImprovedCategories()
     {
         // Get the bottom 2 metrics based on performance score
@@ -354,19 +367,25 @@
             .Take(2)
             .Select(m => TeamMember.GetMetricDisplayName(m.Key).Split(' ')[0]) // Take first word only
             .ToList();
-
+        
         return string.Join(", ", bottomMetrics);
     }
-
+    
     private double GetTotalPerformanceScore()
     {
         // Calculate average performance score across all metrics
         return _teamMember.GetAllMetrics()
             .Average(m => GetPerformanceScore(m.Key, m.Value));
     }
+    
 
-
-
+    
+    private string GetFormattedMetricName(string metricKey)
+    {
+        var displayName = TeamMember.GetMetricDisplayName(metricKey);
+        return displayName.Split(' ')[0]; // Return just the first word for brevity
+    }
+    
     private string FormatMetricValue(string metricKey, double value)
     {
         return metricKey switch

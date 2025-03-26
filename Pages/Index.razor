@@ -1,4 +1,5 @@
 ﻿@page "/"
+@namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
 @inject IDataService DataService
@@ -22,6 +23,9 @@
         }
         else
         {
+                <!-- Department Summary -->
+                <DepartmentSummaryCard Summary="@_departmentSummary" />
+
                 <div class="relative">
                     <!-- Carousel Controls -->
                     <button @onclick="ScrollLeft" class="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-gray-800 bg-opacity-70 p-3 rounded-r-lg text-yellow-400 hover:bg-opacity-90">
@@ -58,20 +62,26 @@
                                             <div class="p-3 relative z-10 flex flex-col h-full justify-between">
                                                 <div>
                                                     <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
-                                                    <p class="text-yellow-400 text-center text-sm mt-1">@member.GetTitle()</p>
+                                                    <p class="text-yellow-400 text-center text-sm mt-1">@member.GetChampionTitle(_teamMembers)</p>
                                                 </div>
 
                                         @{
-                                            var strongestMetric = member.GetStrongestMetric();
+                                            // Get the metric where they're strongest compared to team
+                                            var strongestMetric = member.GetStrongestMetricRelativeToTeam(_teamAverages);
                                             var metricValue = member.GetMetricValue(strongestMetric);
                                             var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
+                                            var isBest = member.IsBestInMetric(strongestMetric, _teamMembers);
                                         }
 
-                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border border-yellow-500 rounded-md p-3 text-center mt-auto mb-6">
+                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border @(isBest ? "border-yellow-500" : "border-gray-600") rounded-md p-3 text-center mt-auto mb-6">
                                                     <div class="text-xs text-gray-400">Strongest Metric</div>
                                                     <div class="text-sm font-semibold">@metricName</div>
-                                                    <div class="text-xl font-bold text-yellow-400">
+                                                    <div class="text-xl font-bold @(isBest ? "text-yellow-400" : "text-white")">
                                                 @FormatMetricValue(strongestMetric, metricValue)
+                                                @if (isBest)
+                                                {
+                                                                <span class="text-xs ml-1">★</span>
+                                                }
                                                     </div>
                                                 </div>
 
@@ -106,10 +116,16 @@
     private ElementReference carouselInner;
     private int currentPage = 0;
     private int itemsPerPage = 5;
+    private DepartmentSummary _departmentSummary;
+    private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
 
     protected override async Task OnInitializedAsync()
     {
         _teamMembers = await DataService.GetTeamMembersAsync();
+        _departmentSummary = DepartmentSummary.CalculateSummary(_teamMembers);
+
+        // Extract team averages for relative strength calculation
+        _teamAverages = _departmentSummary.AverageMetrics;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
