@@ -71,7 +71,7 @@ function dragEnd() {
 
     // Snap to closest slide
     const containerWidth = currentCarousel.offsetWidth;
-    const slideWidth = 240 + 16; // card width + margin
+    const slideWidth = 180 + 16; // card width + margin
     const maxSlides = currentInner.children.length;
     const maxTranslate = 0;
     const minTranslate = -((maxSlides * slideWidth) - containerWidth);

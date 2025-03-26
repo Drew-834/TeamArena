@@ -1,17 +1,10 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
+    <header class="bg-gray-900 border-b border-gray-800 py-2 px-4 flex justify-center items-center">
+        <h1 class="text-xl font-bold text-yellow-400">TEAM PERFORMANCE ARENA</h1>
+    </header>
+    <main class="flex-grow">
+        @Body
     </main>
 </div>

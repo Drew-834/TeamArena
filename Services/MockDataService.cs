@@ -25,7 +25,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 1,
                     Name = "Adam",
-                    AvatarUrl = "/images/avatars/avatar1.png",
+                    AvatarUrl = "/images/avatars/adam1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 42.3 },
@@ -40,7 +40,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 2,
                     Name = "Ruben",
-                    AvatarUrl = "/images/avatars/avatar2.png",
+                    AvatarUrl = "/images/avatars/ruben1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 42.9 },
@@ -55,7 +55,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 3,
                     Name = "Ishack",
-                    AvatarUrl = "/images/avatars/avatar3.png",
+                    AvatarUrl = "/images/avatars/ishack2.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 21.7 },
@@ -70,7 +70,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 4,
                     Name = "Drew",
-                    AvatarUrl = "/images/avatars/avatar4.png",
+                    AvatarUrl = "/images/avatars/drew1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 42.9 },
@@ -85,7 +85,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 5,
                     Name = "Vinny",
-                    AvatarUrl = "/images/avatars/avatar5.png",
+                    AvatarUrl = "/images/avatars/vinny2.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 0 },
@@ -100,10 +100,10 @@ namespace GameScoreboard.Services
                 {
                     Id = 6,
                     Name = "Matthew",
-                    AvatarUrl = "/images/avatars/avatar6.png",
+                    AvatarUrl = "/images/avatars/matthew1.png",
                     Metrics = new Dictionary<string, double>
                     {
-                        { "M365Attach", 68.7 },
+                        { "M365Attach", 16.7 },
                         { "GSP", 0 },
                         { "Revenue", 9296 },
                         { "ASP", 527 },
@@ -116,7 +116,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 7,
                     Name = "Jonathan",
-                    AvatarUrl = "/images/avatars/avatar4.png",
+                    AvatarUrl = "/images/avatars/jon1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 12.5 },
@@ -131,7 +131,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 8,
                     Name = "Gustavo G",
-                    AvatarUrl = "/images/avatars/avatar4.png",
+                    AvatarUrl = "/images/avatars/gustavo1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 41.7 },
@@ -161,7 +161,7 @@ namespace GameScoreboard.Services
                 {
                     Id = 10,
                     Name = "Klarensky",
-                    AvatarUrl = "/images/avatars/avatar4.png",
+                    AvatarUrl = "/images/avatars/kla1.png",
                     Metrics = new Dictionary<string, double>
                     {
                         { "M365Attach", 0 },
