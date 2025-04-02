@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game-Inspired Performance Scoreboard</title>
+    <base href="/TeamArena/" />
+    <meta name="description" content="Game-inspired performance scoreboard for tracking team metrics. Press '.' three times to reveal the Weekly Tracker feature." />
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link href="css/app.css" rel="stylesheet" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png" />
+    
+    <!-- GitHub Pages SPA routing -->
+    <script type="text/javascript">
+        // Single Page Apps for GitHub Pages
+        // MIT License
+        // https://github.com/rafgraph/spa-github-pages
+        (function(l) {
+            if (l.search[1] === '/' ) {
+                var decoded = l.search.slice(1).split('&').map(function(s) { 
+                    return s.replace(/~and~/g, '&')
+                }).join('?');
+                window.history.replaceState(null, null,
+                    l.pathname.slice(0, -1) + decoded + l.hash
+                );
+            }
+        }(window.location))
+    </script>
+</head>
+<body>
+    <div id="app">
+        <div class="flex items-center justify-center h-screen bg-gray-900 text-white">
+            <div class="text-center">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400 mb-4"></div>
+                <h2 class="text-xl">Loading champions...</h2>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" class="hidden fixed bottom-0 w-full z-50 bg-red-600 text-white p-4">
+        An unhandled error has occurred.
+        <a href="" class="underline">Reload</a>
+        <button class="ml-4 bg-white text-red-600 px-2 py-1 rounded" onclick="document.getElementById('blazor-error-ui').style.display = 'none'">Dismiss</button>
+    </div>
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
