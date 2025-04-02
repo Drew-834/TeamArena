@@ -7,6 +7,35 @@ let animationID = 0;
 let currentCarousel = null;
 let currentInner = null;
 
+// Key sequence detection for Weekly Tracker
+let keySequence = [];
+let keyTimeout = null;
+
+// Add key sequence detector
+window.initKeySequenceDetector = () => {
+    document.addEventListener('keydown', (e) => {
+        // Only track period key presses
+        if (e.key === '.') {
+            clearTimeout(keyTimeout);
+            keySequence.push('.');
+            
+            // Reset sequence after 2 seconds of inactivity
+            keyTimeout = setTimeout(() => {
+                keySequence = [];
+            }, 2000);
+            
+            // Check if we have 3 periods in a row
+            if (keySequence.length === 3) {
+                const weeklyTrackerBtn = document.getElementById('weekly-tracker-btn');
+                if (weeklyTrackerBtn) {
+                    weeklyTrackerBtn.classList.remove('hidden');
+                }
+                keySequence = [];
+            }
+        }
+    });
+};
+
 // Make sure to define window functions
 window.initCarousel = (containerElement, innerElement) => {
     if (!containerElement || !innerElement) return;

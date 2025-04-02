@@ -24,7 +24,7 @@ namespace GameScoreboard.Models
         // Dictionary to map metric names to character titles
         private static readonly Dictionary<string, string> MetricTitles = new()
       {
-            { "M365Attach   ", "Microsoft Champion" },
+            { "M365Attach", "Microsoft Champion" },
             { "GSP", "Guardian of Guarantees" },
             { "Revenue", "Revenue Raider" },
             { "ASP", "Highest Bidder" },

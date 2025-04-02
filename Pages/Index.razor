@@ -9,7 +9,7 @@
 <div class="bg-gray-900 min-h-screen text-white">
     <div class="container mx-auto px-4 py-8">
         <div class="flex justify-end items-center mb-6">
-            <button @onclick="NavigateToWeeklyTracker" class="px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
+            <button id="weekly-tracker-btn" @onclick="NavigateToWeeklyTracker" class="hidden px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
                 Weekly Tracker
             </button>
         </div>
@@ -134,6 +134,9 @@
         {
             // Initialize drag-to-scroll functionality
             await JSRuntime.InvokeVoidAsync("initCarousel", carouselContainer, carouselInner);
+            
+            // Initialize key sequence detector
+            await JSRuntime.InvokeVoidAsync("initKeySequenceDetector");
         }
     }
 
