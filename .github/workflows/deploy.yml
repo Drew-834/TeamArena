@@ -25,36 +25,64 @@ jobs:
     - name: List release directory
       run: ls -la release
       
-    - name: List wwwroot directory (if exists)
+    - name: Find wwwroot and copy to root folder
       run: |
-        if [ -d "release/wwwroot" ]; then
-          ls -la release/wwwroot
-        else
+        # Find the wwwroot directory
+        WWWROOT_PATH=$(find release -type d -name "wwwroot" | head -n 1)
+        if [ -z "$WWWROOT_PATH" ]; then
           echo "wwwroot directory not found!"
-          echo "Checking for alternative locations..."
-          find release -type d -name "wwwroot" | xargs -I{} ls -la {}
+          exit 1
+        fi
+        echo "Found wwwroot at $WWWROOT_PATH"
+        
+        # Find the _framework directory
+        FRAMEWORK_PATH=$(find release -type d -name "_framework" | head -n 1)
+        if [ -z "$FRAMEWORK_PATH" ]; then
+          echo "_framework directory not found!"
+          exit 1
+        fi
+        echo "Found _framework at $FRAMEWORK_PATH"
+        
+        # Ensure the destination wwwroot directory exists
+        mkdir -p release/deploy
+        
+        # Copy all content from found wwwroot to deployment directory
+        cp -r $WWWROOT_PATH/* release/deploy/
+        
+        # Copy framework files if they're not already in the wwwroot
+        if [ ! -d "release/deploy/_framework" ]; then
+          mkdir -p release/deploy/_framework
+          cp -r $FRAMEWORK_PATH/* release/deploy/_framework/
         fi
         
-    - name: Verify index.html exists
-      run: |
+        # Look for the index.html file
         INDEX_HTML=$(find release -name "index.html" | head -n 1)
         if [ -z "$INDEX_HTML" ]; then
           echo "index.html not found!"
           exit 1
         fi
         echo "Found index.html at $INDEX_HTML"
-        mkdir -p release/wwwroot
-        cp $INDEX_HTML release/wwwroot/index.html
+        cp $INDEX_HTML release/deploy/
+        
+        # List the final deployment directory
+        echo "Final deployment directory contents:"
+        ls -la release/deploy
+    
+    # Update the base href in index.html
+    - name: Update base href
+      run: |
+        sed -i 's|<base href=.*/>|<base href="/TeamArena/" />|' release/deploy/index.html
+        grep "<base" release/deploy/index.html
         
     # Copy index.html to 404.html for SPA routing
     - name: Copy index.html to 404.html
-      run: cp release/wwwroot/index.html release/wwwroot/404.html
+      run: cp release/deploy/index.html release/deploy/404.html
       
     # Add .nojekyll file to tell GitHub pages not to use Jekyll processing
     - name: Add .nojekyll file
-      run: touch release/wwwroot/.nojekyll
+      run: touch release/deploy/.nojekyll
       
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
-        folder: release/wwwroot 
+        folder: release/deploy 
