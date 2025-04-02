@@ -25,37 +25,25 @@ jobs:
     - name: List release directory
       run: ls -la release
       
-    - name: Find wwwroot and copy to root folder
+    - name: Prepare deployment directory
       run: |
-        # Find the wwwroot directory
-        WWWROOT_PATH=$(find release -type d -name "wwwroot" | head -n 1)
-        if [ -z "$WWWROOT_PATH" ]; then
-          echo "wwwroot directory not found!"
-          exit 1
-        fi
-        echo "Found wwwroot at $WWWROOT_PATH"
+        # Create deployment directory
+        mkdir -p release/deploy
         
-        # Find the _framework directory
+        # Copy the original wwwroot directory contents
+        echo "Copying wwwroot files..."
+        cp -r wwwroot/* release/deploy/
+        
+        # Find and copy the _framework directory from the published output
         FRAMEWORK_PATH=$(find release -type d -name "_framework" | head -n 1)
         if [ -z "$FRAMEWORK_PATH" ]; then
           echo "_framework directory not found!"
           exit 1
         fi
         echo "Found _framework at $FRAMEWORK_PATH"
+        cp -r $FRAMEWORK_PATH release/deploy/
         
-        # Ensure the destination wwwroot directory exists
-        mkdir -p release/deploy
-        
-        # Copy all content from found wwwroot to deployment directory
-        cp -r $WWWROOT_PATH/* release/deploy/
-        
-        # Copy framework files if they're not already in the wwwroot
-        if [ ! -d "release/deploy/_framework" ]; then
-          mkdir -p release/deploy/_framework
-          cp -r $FRAMEWORK_PATH/* release/deploy/_framework/
-        fi
-        
-        # Look for the index.html file
+        # Find and copy the published index.html file
         INDEX_HTML=$(find release -name "index.html" | head -n 1)
         if [ -z "$INDEX_HTML" ]; then
           echo "index.html not found!"
@@ -64,9 +52,27 @@ jobs:
         echo "Found index.html at $INDEX_HTML"
         cp $INDEX_HTML release/deploy/
         
+        # Copy any other published content directories if they exist
+        for dir in css js images; do
+          if [ -d "release/wwwroot/$dir" ]; then
+            echo "Copying published $dir directory..."
+            cp -r release/wwwroot/$dir release/deploy/
+          fi
+        done
+        
+        # List the original wwwroot directory
+        echo "Original wwwroot contents:"
+        ls -la wwwroot
+        
         # List the final deployment directory
         echo "Final deployment directory contents:"
         ls -la release/deploy
+        
+        # Check for specific files
+        echo "Checking for specific files in deployment directory:"
+        find release/deploy -name "app.js" || echo "app.js not found"
+        find release/deploy -name "app.css" || echo "app.css not found"
+        find release/deploy -name "*.png" | head -n 5 || echo "No PNG files found"
     
     # Update the base href in index.html
     - name: Update base href
