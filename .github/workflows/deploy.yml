@@ -63,25 +63,34 @@ jobs:
         # Ensure avatar images are copied
         echo "Checking for avatar images..."
         mkdir -p release/deploy/images/avatars
+        chmod 755 release/deploy/images/avatars
 
-        # First try to find them in wwwroot
+        # Enhanced avatar image handling - first copy from wwwroot
         if [ -d "wwwroot/images/avatars" ]; then
-          echo "Avatar directory found in wwwroot/images/avatars"
-          find wwwroot/images/avatars -name "*.png" -exec cp -v {} release/deploy/images/avatars/ \;
+          echo "Copying avatars from wwwroot/images/avatars"
+          cp -rfv wwwroot/images/avatars/* release/deploy/images/avatars/ || echo "Copy failed but continuing"
+          chmod -R 755 release/deploy/images/avatars
         fi
 
-        # Then try to find them in the repository root
-        echo "Searching for avatar images in repository..."
-        find . -path "*/images/avatars/*.png" -exec cp -v {} release/deploy/images/avatars/ \;
-
-        # As a fallback, create simple placeholder avatar images
-        echo "Creating placeholder avatars if needed..."
+        # If no avatars found in wwwroot, search the repository and copy
         if [ -z "$(ls -A release/deploy/images/avatars 2>/dev/null)" ]; then
-          echo "No avatar images found. Creating placeholders..."
+          echo "No avatars found in wwwroot, searching entire repository..."
+          find . -path "*/images/avatars/*.png" -exec cp -v {} release/deploy/images/avatars/ \; || echo "Find and copy failed but continuing"
+          chmod -R 755 release/deploy/images/avatars
+        fi
+
+        # Create placeholder avatars if still empty
+        if [ -z "$(ls -A release/deploy/images/avatars 2>/dev/null)" ]; then
+          echo "No avatar images found. Creating placeholders with ImageMagick..."
+          
+          # List available colors to verify ImageMagick is working
+          convert -list color | head -5
+          
+          # Create simple placeholders with character names embedded
           cd release/deploy/images/avatars
-          # Create simple colored squares for every avatar mentioned in MockDataService
           for name in adam1 ruben1 ishack2 drew1 vinny2 matthew1 jon1 gustavo1 avatar4 kla1; do
-            convert -size 200x200 xc:blue ${name}.png || echo "Failed to create ${name}.png"
+            echo "Creating placeholder for $name"
+            convert -size 200x200 -background blue -fill white -gravity center -font Arial label:"${name:0:1}" ${name}.png || echo "Failed to create ${name}.png"
           done
           cd ../../../../
         fi
@@ -125,8 +134,11 @@ jobs:
     
     # Install ImageMagick for avatar placeholder creation
     - name: Setup ImageMagick
-      uses: mfinelli/setup-imagemagick@v2
-      
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y imagemagick
+        convert --version
+    
     # Create placeholder avatars if needed
     - name: Create placeholder avatars
       run: |
