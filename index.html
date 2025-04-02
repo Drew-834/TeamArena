@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Game-Inspired Performance Scoreboard</title>
     <base href="/TeamArena/" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; img-src 'self' data:;" />
     <meta name="description" content="Game-inspired performance scoreboard for tracking team metrics. Press '.' three times to reveal the Weekly Tracker feature." />
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,12 +24,18 @@
                 var decoded = l.search.slice(1).split('&').map(function(s) { 
                     return s.replace(/~and~/g, '&')
                 }).join('?');
+                // Also handle deep linking to SPA routes
+                if (window.location.pathname.includes("/character/")) {
+                  var route = window.location.pathname;
+                  window.history.replaceState(null, null, "/TeamArena/" + route.split("/character/")[1]);
+                }
                 window.history.replaceState(null, null,
                     l.pathname.slice(0, -1) + decoded + l.hash
                 );
             }
         }(window.location))
     </script>
+    <link rel="canonical" href="https://drew-834.github.io/TeamArena/" />
 </head>
 <body>
     <div id="app">
@@ -46,6 +53,7 @@
         <button class="ml-4 bg-white text-red-600 px-2 py-1 rounded" onclick="document.getElementById('blazor-error-ui').style.display = 'none'">Dismiss</button>
     </div>
 
+    <script src="js/app.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="js/app.js"></script>
 </body>
