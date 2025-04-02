@@ -21,7 +21,30 @@ jobs:
         
     - name: Publish .NET Project
       run: dotnet publish GameScoreboard.csproj -c Release -o release --nologo
+    
+    - name: List release directory
+      run: ls -la release
       
+    - name: List wwwroot directory (if exists)
+      run: |
+        if [ -d "release/wwwroot" ]; then
+          ls -la release/wwwroot
+        else
+          echo "wwwroot directory not found!"
+          echo "Checking for alternative locations..."
+          find release -type d -name "wwwroot" | xargs -I{} ls -la {}
+        fi
+        
+    - name: Verify index.html exists
+      run: |
+        if [ ! -f release/wwwroot/index.html ]; then
+          echo "index.html not found!"
+          # Find where index.html might be
+          echo "Searching for index.html files..."
+          find release -name "index.html"
+          exit 1
+        fi
+        
     # Copy index.html to 404.html for SPA routing
     - name: Copy index.html to 404.html
       run: cp release/wwwroot/index.html release/wwwroot/404.html
