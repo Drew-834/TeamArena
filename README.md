@@ -229,3 +229,33 @@ The modular architecture allows for easy extension. Common additions include:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## How to Use
+
+This application displays team performance metrics in a visually appealing way. Team members are shown as "champions" with their strongest metrics highlighted.
+
+### Features
+
+- View team members as game characters with their strongest metrics
+- See department-wide performance summary
+- Compare individual performance against team averages
+- Hidden "Weekly Tracker" feature accessible by pressing the period (.) key three times
+
+## Deployment
+
+This app is deployed using GitHub Pages and can be accessed at: https://drew-834.github.io/TeamArena/
+
+## Development
+
+To run locally:
+
+```
+dotnet restore
+dotnet run
+```
+
+## Technologies Used
+
+- Blazor WebAssembly
+- Tailwind CSS
+- GitHub Pages for hosting
