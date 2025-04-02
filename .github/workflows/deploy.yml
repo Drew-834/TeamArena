@@ -37,13 +37,14 @@ jobs:
         
     - name: Verify index.html exists
       run: |
-        if [ ! -f release/wwwroot/index.html ]; then
+        INDEX_HTML=$(find release -name "index.html" | head -n 1)
+        if [ -z "$INDEX_HTML" ]; then
           echo "index.html not found!"
-          # Find where index.html might be
-          echo "Searching for index.html files..."
-          find release -name "index.html"
           exit 1
         fi
+        echo "Found index.html at $INDEX_HTML"
+        mkdir -p release/wwwroot
+        cp $INDEX_HTML release/wwwroot/index.html
         
     # Copy index.html to 404.html for SPA routing
     - name: Copy index.html to 404.html
