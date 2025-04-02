@@ -6,9 +6,9 @@ namespace GameScoreboard.Models
     public class TeamMember
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public string AvatarUrl { get; set; }
-        public Dictionary<string, double> Metrics { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string AvatarUrl { get; set; } = string.Empty;
+        public Dictionary<string, double> Metrics { get; set; } = new Dictionary<string, double>();
 
         // Dictionary to map metric names to their display names
         private static readonly Dictionary<string, string> MetricDisplayNames = new()

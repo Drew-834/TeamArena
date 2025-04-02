@@ -169,8 +169,8 @@
     [Parameter]
     public int Id { get; set; }
     
-    private TeamMember _teamMember;
-    private List<TeamMember> _allTeamMembers;
+    private TeamMember _teamMember = new TeamMember();
+    private List<TeamMember> _allTeamMembers = new List<TeamMember>();
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
     private ElementReference detailsContainer;
     private Dictionary<string, double> _metricMaxValues = new Dictionary<string, double> {

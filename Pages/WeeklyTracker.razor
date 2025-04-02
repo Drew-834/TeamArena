@@ -194,10 +194,10 @@
 </div>
 
 @code {
-    private List<TeamMember> _teamMembers;
+    private List<TeamMember> _teamMembers = new List<TeamMember>();
     private List<WeeklyData> _historicalData = new List<WeeklyData>();
     private DateTime currentWeekDate = DateTime.Today;
-    private List<MemberComparison> _comparisonData;
+    private List<MemberComparison> _comparisonData = new List<MemberComparison>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -298,7 +298,7 @@
 
     private void CloseComparison()
     {
-        _comparisonData = null;
+        _comparisonData.Clear();
     }
 
     private void NavigateHome()
@@ -341,15 +341,15 @@
 
     public class WeeklyData
     {
-        public string WeekId { get; set; }
+        public string WeekId { get; set; } = string.Empty;
         public DateTime WeekDate { get; set; }
-        public List<TeamMember> TeamMembers { get; set; }
+        public List<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
     }
 
     public class MemberComparison
     {
-        public string Name { get; set; }
-        public Dictionary<string, double> OldValues { get; set; }
-        public Dictionary<string, double> NewValues { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Dictionary<string, double> OldValues { get; set; } = new Dictionary<string, double>();
+        public Dictionary<string, double> NewValues { get; set; } = new Dictionary<string, double>();
     }
 }

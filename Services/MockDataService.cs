@@ -182,7 +182,7 @@ namespace GameScoreboard.Services
 
         public Task<TeamMember> GetTeamMemberByIdAsync(int id)
         {
-            return Task.FromResult(_teamMembers.FirstOrDefault(m => m.Id == id));
+            return Task.FromResult(_teamMembers.First(m => m.Id == id));
         }
     }
 }
