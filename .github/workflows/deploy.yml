@@ -62,18 +62,33 @@ jobs:
         
         # Ensure avatar images are copied
         echo "Checking for avatar images..."
+        mkdir -p release/deploy/images/avatars
+
+        # First try to find them in wwwroot
         if [ -d "wwwroot/images/avatars" ]; then
           echo "Avatar directory found in wwwroot/images/avatars"
-          mkdir -p release/deploy/images/avatars
-          cp -v wwwroot/images/avatars/*.png release/deploy/images/avatars/ || echo "No PNG files in avatars directory"
-          echo "Content of avatars directory after copy:"
-          ls -la release/deploy/images/avatars/
-        else
-          echo "Avatar directory not found in wwwroot/images/avatars!"
-          # Search for avatar images in the repository
-          echo "Searching for avatar images in repository..."
-          find . -path "*/avatars/*.png" -type f | xargs -I{} cp -v {} release/deploy/images/avatars/
+          find wwwroot/images/avatars -name "*.png" -exec cp -v {} release/deploy/images/avatars/ \;
         fi
+
+        # Then try to find them in the repository root
+        echo "Searching for avatar images in repository..."
+        find . -path "*/images/avatars/*.png" -exec cp -v {} release/deploy/images/avatars/ \;
+
+        # As a fallback, create simple placeholder avatar images
+        echo "Creating placeholder avatars if needed..."
+        if [ -z "$(ls -A release/deploy/images/avatars 2>/dev/null)" ]; then
+          echo "No avatar images found. Creating placeholders..."
+          cd release/deploy/images/avatars
+          # Create simple colored squares for every avatar mentioned in MockDataService
+          for name in adam1 ruben1 ishack2 drew1 vinny2 matthew1 jon1 gustavo1 avatar4 kla1; do
+            convert -size 200x200 xc:blue ${name}.png || echo "Failed to create ${name}.png"
+          done
+          cd ../../../../
+        fi
+        
+        # Show what avatar images we have
+        echo "Avatar images in deployment directory:"
+        ls -la release/deploy/images/avatars/
         
         # List the original wwwroot directory
         echo "Original wwwroot contents:"

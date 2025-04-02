@@ -142,7 +142,8 @@
 
     private void NavigateToDetails(int id)
     {
-        NavigationManager.NavigateTo($"/character/{id}");
+        var baseUri = NavigationManager.BaseUri;
+        NavigationManager.NavigateTo($"character/{id}");
     }
 
     private void NavigateToWeeklyTracker()
