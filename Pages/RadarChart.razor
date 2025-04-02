@@ -77,13 +77,13 @@
     public string Height { get; set; } = "250px";
 
     [Parameter]
-    public TeamMember TeamMember { get; set; }
+    public TeamMember TeamMember { get; set; } = new TeamMember();
 
     [Parameter]
-    public Dictionary<string, double> TeamAverages { get; set; }
+    public Dictionary<string, double> TeamAverages { get; set; } = new Dictionary<string, double>();
 
     [Parameter]
-    public Dictionary<string, double> MetricMaxValues { get; set; }
+    public Dictionary<string, double> MetricMaxValues { get; set; } = new Dictionary<string, double>();
 
     private string ChartId = $"radar-chart-{Guid.NewGuid()}";
 

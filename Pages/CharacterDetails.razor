@@ -185,7 +185,11 @@
     protected override async Task OnInitializedAsync()
     {
         _allTeamMembers = await DataService.GetTeamMembersAsync();
-        _teamMember = _allTeamMembers.FirstOrDefault(m => m.Id == Id);
+        var foundMember = _allTeamMembers.FirstOrDefault(m => m.Id == Id);
+        if (foundMember != null)
+        {
+            _teamMember = foundMember;
+        }
         CalculateTeamAverages();
     }
     

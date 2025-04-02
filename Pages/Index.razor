@@ -111,12 +111,12 @@
 </div>
 
 @code {
-    private List<TeamMember> _teamMembers;
+    private List<TeamMember> _teamMembers = new List<TeamMember>();
     private ElementReference carouselContainer;
     private ElementReference carouselInner;
     private int currentPage = 0;
     private int itemsPerPage = 5;
-    private DepartmentSummary _departmentSummary;
+    private DepartmentSummary _departmentSummary = new DepartmentSummary();
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
 
     protected override async Task OnInitializedAsync()

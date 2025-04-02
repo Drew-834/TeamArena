@@ -62,7 +62,7 @@
 
 @code {
     [Parameter]
-    public DepartmentSummary Summary { get; set; }
+    public DepartmentSummary Summary { get; set; } = new DepartmentSummary();
 
     private string GetScoreColorClass(double score)
     {
