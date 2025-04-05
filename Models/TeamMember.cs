@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace GameScoreboard.Models
@@ -7,157 +8,223 @@ namespace GameScoreboard.Models
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string Department { get; set; } = "Unknown";
         public string AvatarUrl { get; set; } = string.Empty;
-        public Dictionary<string, double> Metrics { get; set; } = new Dictionary<string, double>();
+        public Dictionary<string, object> Metrics { get; set; } = new Dictionary<string, object>();
 
-        // Dictionary to map metric names to their display names
+        // Dictionary to map internal metric keys to their user-friendly display names
         private static readonly Dictionary<string, string> MetricDisplayNames = new()
         {
-            { "M365Attach", "M365 Attach" },
-            { "GSP", "GSP (Warranty)" },
-            { "Revenue", "Revenue" },
-            { "ASP", "ASP (Average Selling Price)" },
-            { "Basket", "Basket" },
-            { "PMAttach", "PM Attach %" }
+            // Computers
+            { "M365Attach", "M365 Attach %" },
+            { "GSP", "GSP %" }, // Generic GSP, context will clarify (Warranty, BP)
+            { "Revenue", "Revenue $" }, // Generic Revenue, context will clarify (Comp Revenue, Store Revenue, Pick $)
+            { "ASP", "ASP $" },
+            { "Basket", "Basket $" }, // Generic Basket, context will clarify (Comp Basket, Store Basket)
+            { "PMAttach", "PM Attach %" },
+            // Store
+            { "5Star", "5 Star Rating" }, // Generic 5-star
+            // Front End
+            { "BP", "BP #" }, // Branded Payments (Integer)
+            { "PM", "PM #" }, // Paid Memberships (Integer)
+            // Warehouse
+            { "PickRate", "Pick Rate %" },
+            { "PickQuantity", "Pick Quantity #" },
+            { "Awk", "AWK (Mins)" }, // Awkward items time
+            { "MVP", "MVP" } // Selected MVP (string)
         };
 
-        // Dictionary to map metric names to character titles
+        // Dictionary to map metric keys to potential character titles when excelling
         private static readonly Dictionary<string, string> MetricTitles = new()
-      {
-            { "M365Attach", "Microsoft Champion" },
-            { "GSP", "Guardian of Guarantees" },
-            { "Revenue", "Revenue Raider" },
-            { "ASP", "Highest Bidder" },
-            { "Basket", "Master of Addons" },
-            { "PMAttach", "Membership Pro" }
+        {
+             // Computers
+            { "M365Attach", "Microsoft Maestro" },
+            { "GSP", "Guardian of Guarantees" }, // Generic title, could be adapted
+            { "Revenue", "Revenue Raider" }, // Generic title
+            { "ASP", "Price Paragon" },
+            { "Basket", "Basket Baron" }, // Generic title
+            { "PMAttach", "Membership Maximizer" },
+             // Store
+            { "5Star", "Customer Champion" }, // Generic title
+             // Front End
+            { "BP", "Payment Pro" },
+            { "PM", "Membership Master" },
+             // Warehouse
+            { "PickRate", "Picking Prodigy" },
+            { "PickQuantity", "Quantity King/Queen" },
+            { "Awk", "Logistics Legend" },
+            { "Pick$", "Value Voyager" } // Added for Pick$ which is likely warehouse Revenue
+            // MVP doesn't have a typical "best score" title, handled differently
         };
 
-        // Get the strongest metric for this team member
-        public string GetStrongestMetric()
+        // Helper to safely get metric value as double?
+        public double? GetMetricDoubleValue(string metricKey)
         {
-            if (Metrics == null || !Metrics.Any())
-                return string.Empty;
-
-            return Metrics.OrderByDescending(m => m.Value).First().Key;
+            if (Metrics.TryGetValue(metricKey, out var value))
+            {
+                if (value is double d) return d;
+                if (value is int i) return (double)i;
+                if (value is decimal dec) return (double)dec;
+                if (value is long l) return (double)l;
+                // Could add more numeric types or try parsing if stored as string
+            }
+            return null; // Return null if key not found or value is not convertible to double
         }
 
-        // Get the strongest metric relative to team averages
+        // Helper to get metric value as object?
+        public object? GetMetricValue(string metricKey)
+        {
+            return Metrics.TryGetValue(metricKey, out var value) ? value : null;
+        }
+
+        // Get the strongest *numeric* metric relative to team averages
         public string GetStrongestMetricRelativeToTeam(Dictionary<string, double> teamAverages)
         {
             if (Metrics == null || !Metrics.Any() || teamAverages == null || !teamAverages.Any())
-                return GetStrongestMetric();
+                return string.Empty; // Or a default metric key if appropriate
 
             var relativeStrengths = new Dictionary<string, double>();
 
             foreach (var metric in Metrics)
             {
-                if (teamAverages.TryGetValue(metric.Key, out var avgValue) && avgValue > 0)
+                double? metricValue = GetMetricDoubleValue(metric.Key);
+                if (metricValue.HasValue) // Only consider numeric metrics
                 {
-                    // Calculate how much better than average they are (as a percentage)
-                    relativeStrengths[metric.Key] = (metric.Value / avgValue) * 100;
-                }
-                else
-                {
-                    relativeStrengths[metric.Key] = metric.Value;
+                    if (teamAverages.TryGetValue(metric.Key, out var avgValue) && avgValue != 0)
+                    {
+                        // Calculate relative strength (handle potential division by zero)
+                        relativeStrengths[metric.Key] = (metricValue.Value / avgValue) * 100;
+                    }
+                    else
+                    {
+                        // If no average or average is 0, use the value itself (or handle differently)
+                        relativeStrengths[metric.Key] = metricValue.Value;
+                    }
                 }
             }
 
-            // Return the metric where they're strongest relative to team average
-            return relativeStrengths.OrderByDescending(m => m.Value).First().Key;
+            if (!relativeStrengths.Any())
+                return string.Empty; // No numeric metrics found to compare
+
+            // Return the metric key with the highest relative strength
+            return relativeStrengths.OrderByDescending(rs => rs.Value).First().Key;
         }
 
         // Get the display name for a metric
         public static string GetMetricDisplayName(string metricKey)
         {
+            // Handle specific cases like Pick$ using the generic Revenue display name
+             if (metricKey == "Pick$") return "Pick Revenue $";
+
             return MetricDisplayNames.TryGetValue(metricKey, out var displayName)
                 ? displayName
-                : metricKey;
+                : metricKey; // Return the key itself if no display name is found
         }
 
-        // Get the title based on the strongest metric
-        public string GetTitle()
-        {
-            var strongestMetric = GetStrongestMetric();
-            return MetricTitles.TryGetValue(strongestMetric, out var title)
-                ? title
-                : "Team Member";
-        }
-
-        // Get the title based on the metric where this member is team champion
+        // Get the title based on the metric where this member is team champion (numeric metrics only for score comparison)
         public string GetChampionTitle(List<TeamMember> allMembers)
         {
             if (allMembers == null || !allMembers.Any() || Metrics == null || !Metrics.Any())
                 return "Team Member";
 
-            // Get all metrics where this member could be a champion
-            var championMetrics = new List<string>();
+            var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
+            if (!relevantMembers.Any()) return "Team Member";
 
-            foreach (var metric in Metrics)
+            string? bestOverallMetric = null;
+            double highestScore = double.MinValue;
+
+            foreach (var metricKey in Metrics.Keys)
             {
-                // Find the best score for this metric among all team members
-                var bestScore = allMembers.Max(m => m.GetMetricValue(metric.Key));
+                 // Only consider metrics that have titles defined (usually performance-based)
+                if (!MetricTitles.ContainsKey(metricKey)) continue;
 
-                // If this member is within 3 units of the best (or is the best), add to champion metrics
-                if (bestScore - metric.Value <= 3 || metric.Value >= bestScore * 0.97)
+                double? memberScore = GetMetricDoubleValue(metricKey);
+                if (!memberScore.HasValue) continue; // Skip non-numeric metrics
+
+                // Find the best score for this numeric metric among relevant team members
+                double? bestScoreNullable = relevantMembers
+                                            .Select(m => m.GetMetricDoubleValue(metricKey))
+                                            .Where(v => v.HasValue)
+                                            .DefaultIfEmpty(null) // Handle case where no one has the metric
+                                            .Max();
+
+                if (!bestScoreNullable.HasValue) continue; // Skip if no one has this metric
+
+                double bestScore = bestScoreNullable.Value;
+
+                // If this member has the best score (allowing for small tolerance)
+                 // Consider a small tolerance for floating point comparisons if necessary
+                 // Example: >= bestScore * 0.999
+                if (memberScore.Value >= bestScore)
                 {
-                    championMetrics.Add(metric.Key);
+                    // If this score is higher than the current highest score found across all metrics
+                    if (memberScore.Value > highestScore)
+                    {
+                         highestScore = memberScore.Value;
+                         bestOverallMetric = metricKey;
+                    }
+                    // If scores are equal, maybe prioritize based on a predefined list or keep the first one found
                 }
             }
 
-            // If no champion metrics found, return based on strongest personal metric
-            if (!championMetrics.Any())
-                return GetTitle();
+             // If a best overall metric was found where this member excels
+             if (bestOverallMetric != null && MetricTitles.TryGetValue(bestOverallMetric, out var title))
+             {
+                return title;
+             }
 
-            // First, check if they are the absolute best in any metric
-            foreach (var metric in championMetrics)
-            {
-                var bestScore = allMembers.Max(m => m.GetMetricValue(metric));
-                if (GetMetricValue(metric) >= bestScore * 0.99) // Essentially equal to the best
-                {
-                    return MetricTitles.TryGetValue(metric, out var title) ? title : "Team Champion";
-                }
-            }
-
-            // If not the absolute best, then use their strongest champion metric
-            var strongestChampionMetric = championMetrics
-                .OrderByDescending(m => GetMetricValue(m))
-                .First();
-
-            return MetricTitles.TryGetValue(strongestChampionMetric, out var championTitle)
-                ? championTitle
-                : "Team Champion";
+            // Fallback title if not a champion in any specific metric
+            return "Team Contributor"; // Or another suitable default
         }
 
-        // Determine if this member is the best in a specific metric
+        // Determine if this member is the best in a specific *numeric* metric
         public bool IsBestInMetric(string metricKey, List<TeamMember> allMembers)
         {
             if (allMembers == null || !allMembers.Any() || !Metrics.ContainsKey(metricKey))
                 return false;
 
-            var bestScore = allMembers.Max(m => m.GetMetricValue(metricKey));
-            return GetMetricValue(metricKey) >= bestScore * 0.99; // Within 1% of the best
+            var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
+             if (!relevantMembers.Any()) return false;
+
+            double? memberScore = GetMetricDoubleValue(metricKey);
+            if (!memberScore.HasValue) return false; // Cannot be best if not numeric
+
+            double? bestScore = relevantMembers
+                                .Select(m => m.GetMetricDoubleValue(metricKey))
+                                .Where(v => v.HasValue)
+                                .DefaultIfEmpty(null)
+                                .Max();
+
+            // Check if member's score is the best (consider tolerance if needed)
+            return bestScore.HasValue && memberScore.Value >= bestScore.Value;
         }
 
-        // Determine if this member is the worst in a specific metric
+        // Determine if this member is the worst in a specific *numeric* metric
         public bool IsWorstInMetric(string metricKey, List<TeamMember> allMembers)
         {
-            if (allMembers == null || !allMembers.Any() || !Metrics.ContainsKey(metricKey))
+             if (allMembers == null || !allMembers.Any() || !Metrics.ContainsKey(metricKey))
                 return false;
 
-            var worstScore = allMembers.Min(m => m.GetMetricValue(metricKey));
-            return GetMetricValue(metricKey) <= worstScore * 1.01; // Within 1% of the worst
+            var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
+             if (!relevantMembers.Any()) return false;
+
+            double? memberScore = GetMetricDoubleValue(metricKey);
+            if (!memberScore.HasValue) return false; // Cannot be worst if not numeric
+
+            double? worstScore = relevantMembers
+                                 .Select(m => m.GetMetricDoubleValue(metricKey))
+                                 .Where(v => v.HasValue)
+                                 .DefaultIfEmpty(null)
+                                 .Min();
+
+            // Check if member's score is the worst (consider tolerance if needed)
+             return worstScore.HasValue && memberScore.Value <= worstScore.Value;
         }
 
-        // Get the value of a specific metric
-        public double GetMetricValue(string metricKey)
+        // Get all available metrics as key-value pairs
+        public IEnumerable<KeyValuePair<string, object>> GetAllMetrics()
         {
-            return Metrics.TryGetValue(metricKey, out var value) ? value : 0;
-        }
-
-        // Get all available metrics as a list
-        public IEnumerable<KeyValuePair<string, double>> GetAllMetrics()
-        {
-            return Metrics ?? new Dictionary<string, double>();
+            return Metrics ?? new Dictionary<string, object>();
         }
     }
 }

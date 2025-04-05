@@ -1,195 +1,62 @@
 ﻿@page "/"
-@namespace GameScoreboard.Pages
-@using GameScoreboard.Models
-@using GameScoreboard.Services
-@inject IDataService DataService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
 <div class="bg-gray-900 min-h-screen text-white">
     <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-end items-center mb-6">
-            <button id="weekly-tracker-btn" @onclick="NavigateToWeeklyTracker" class="hidden px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
-                Weekly Tracker
-            </button>
+        <h1 class="text-4xl font-bold text-yellow-400 text-center mb-12">Select Department</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Store Card (Landscape) -->
+            <div @onclick='() => NavigateTo("/departments/store")' 
+                 class="department-card md:col-span-3 bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
+                <h2 class="text-2xl font-semibold mb-2">Store</h2>
+                <p class="text-gray-400">Overall store performance metrics.</p>
+                </div>
+
+            <!-- Front Card -->
+            <div @onclick='() => NavigateTo("/departments/front")'
+                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
+                <h2 class="text-2xl font-semibold mb-2">Front End</h2>
+                <p class="text-gray-400">Checkout and service metrics.</p>
+            </div>
+
+            <!-- Computers Card -->
+            <div @onclick='() => NavigateTo("/departments/computers")'
+                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
+                <h2 class="text-2xl font-semibold mb-2">Computers</h2>
+                <p class="text-gray-400">Sales and performance for the computer department.</p>
+            </div>
+
+            <!-- Warehouse Card -->
+            <div @onclick='() => NavigateTo("/departments/warehouse")'
+                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
+                <h2 class="text-2xl font-semibold mb-2">Warehouse</h2>
+                <p class="text-gray-400">Pick/pack efficiency and accuracy.</p>
+            </div>
+
+            <!-- Hidden Weekly Tracker Card -->
+            <div id="weekly-tracker-card" @onclick='() => NavigateTo("/weeklytracker")'
+                 class="hidden department-card md:col-span-3 bg-gray-800 border-2 border-purple-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
+                <h2 class="text-2xl font-semibold mb-2 text-purple-400">Weekly Tracker</h2>
+                <p class="text-gray-400">Input and update team metrics.</p>
+            </div>
+
         </div>
-
-        @if (_teamMembers == null)
-        {
-                <div class="text-center">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
-                    <p class="mt-2">Loading champions...</p>
-                </div>
-        }
-        else
-        {
-                <!-- Department Summary -->
-                <DepartmentSummaryCard Summary="@_departmentSummary" />
-
-                <div class="relative">
-                    <!-- Carousel Controls -->
-                    <button @onclick="ScrollLeft" class="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-gray-800 bg-opacity-70 p-3 rounded-r-lg text-yellow-400 hover:bg-opacity-90">
-                        <span class="text-2xl">←</span>
-                    </button>
-
-                    <button @onclick="ScrollRight" class="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-gray-800 bg-opacity-70 p-3 rounded-l-lg text-yellow-400 hover:bg-opacity-90">
-                        <span class="text-2xl">→</span>
-                    </button>
-
-                    <!-- Carousel Container -->
-                    <div class="carousel-container overflow-x-hidden" @ref="carouselContainer">
-                        <div class="carousel-inner flex space-x-4 transition-transform duration-500 ease-in-out" @ref="carouselInner">
-                        @foreach (var member in _teamMembers)
-                        {
-                                    <div class="character-card cursor-pointer flex-shrink-0" style="width: 180px;" 
-                                 @onclick="() => NavigateToDetails(member.Id)">
-                                        <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg h-80 relative">
-                                            <!-- Background Avatar (translucent) -->
-                                            <div class="absolute inset-0 opacity-15 z-0">
-                                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
-                                        {
-                                                        <img src="@member.AvatarUrl" alt="" class="w-full h-full object-cover" />
-                                        }
-                                        else
-                                        {
-                                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-8xl font-bold text-gray-600">
-                                                @member.Name[0]
-                                                        </div>
-                                        }
-                                            </div>
-
-                                            <!-- Content (foreground) -->
-                                            <div class="p-3 relative z-10 flex flex-col h-full justify-between">
-                                                <div>
-                                                    <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
-                                                    <p class="text-yellow-400 text-center text-sm mt-1">@member.GetChampionTitle(_teamMembers)</p>
-                                                </div>
-
-                                        @{
-                                            // Get the metric where they're strongest compared to team
-                                            var strongestMetric = member.GetStrongestMetricRelativeToTeam(_teamAverages);
-                                            var metricValue = member.GetMetricValue(strongestMetric);
-                                            var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
-                                            var isBest = member.IsBestInMetric(strongestMetric, _teamMembers);
-                                        }
-
-                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border @(isBest ? "border-yellow-500" : "border-gray-600") rounded-md p-3 text-center mt-auto mb-6">
-                                                    <div class="text-xs text-gray-400">Strongest Metric</div>
-                                                    <div class="text-sm font-semibold">@metricName</div>
-                                                    <div class="text-xl font-bold @(isBest ? "text-yellow-400" : "text-white")">
-                                                @FormatMetricValue(strongestMetric, metricValue)
-                                                @if (isBest)
-                                                {
-                                                                <span class="text-xs ml-1">★</span>
-                                                }
-                                                    </div>
-                                                </div>
-
-                                                <div class="text-center text-xs text-gray-400 absolute bottom-2 left-0 right-0">
-                                                    Tap to view details
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                        }
-                        </div>
-                    </div>
-
-                    <!-- Pagination Indicators -->
-                    <div class="flex justify-center mt-4 space-x-2">
-                    @for (int i = 0; i < Math.Ceiling((double)_teamMembers.Count / 3); i++)
-                    {
-                        int pageIndex = i;
-                                <button @onclick="() => GoToPage(pageIndex)" 
-                                class="h-3 w-3 rounded-full @(currentPage == pageIndex ? "bg-yellow-400" : "bg-gray-600") transition-colors">
-                                </button>
-                    }
-                    </div>
-                </div>
-        }
     </div>
 </div>
 
 @code {
-    private List<TeamMember> _teamMembers = new List<TeamMember>();
-    private ElementReference carouselContainer;
-    private ElementReference carouselInner;
-    private int currentPage = 0;
-    private int itemsPerPage = 5;
-    private DepartmentSummary _departmentSummary = new DepartmentSummary();
-    private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
-
-    protected override async Task OnInitializedAsync()
+    private void NavigateTo(string path)
     {
-        _teamMembers = await DataService.GetTeamMembersAsync();
-        _departmentSummary = DepartmentSummary.CalculateSummary(_teamMembers);
-
-        // Extract team averages for relative strength calculation
-        _teamAverages = _departmentSummary.AverageMetrics;
+        NavigationManager.NavigateTo(path);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Initialize drag-to-scroll functionality
-            await JSRuntime.InvokeVoidAsync("initCarousel", carouselContainer, carouselInner);
-            
-            // Initialize key sequence detector
             await JSRuntime.InvokeVoidAsync("initKeySequenceDetector");
         }
-    }
-
-    private void NavigateToDetails(int id)
-    {
-        var baseUri = NavigationManager.BaseUri;
-        NavigationManager.NavigateTo($"character/{id}");
-    }
-
-    private void NavigateToWeeklyTracker()
-    {
-        NavigationManager.NavigateTo("weekly-tracker");
-    }
-
-    private async Task ScrollLeft()
-    {
-        if (currentPage > 0)
-        {
-            currentPage--;
-            await ScrollToCurrentPage();
-        }
-    }
-
-    private async Task ScrollRight()
-    {
-        int maxPage = (int)Math.Ceiling((double)_teamMembers.Count / itemsPerPage) - 1;
-        if (currentPage < maxPage)
-        {
-            currentPage++;
-            await ScrollToCurrentPage();
-        }
-    }
-
-    private async Task GoToPage(int pageIndex)
-    {
-        currentPage = pageIndex;
-        await ScrollToCurrentPage();
-    }
-
-    private async Task ScrollToCurrentPage()
-    {
-        await JSRuntime.InvokeVoidAsync("scrollCarouselToPage", carouselInner, currentPage, itemsPerPage);
-    }
-
-    private string FormatMetricValue(string metricKey, double value)
-    {
-        return metricKey switch
-        {
-            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
-            "Revenue" => $"${value:N2}",
-            "ASP" => $"${value:F2}",
-            "Basket" => $"{value:F1}",
-            _ => value.ToString("F2")
-        };
     }
 }

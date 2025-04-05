@@ -17,7 +17,7 @@
         </g>
 
         <!-- Axis Lines -->
-        @for (int i = 0; i < MetricKeys.Length; i++)
+        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
         {
             var x2 = GetAxisEndX(i);
             var y2 = GetAxisEndY(i);
@@ -29,13 +29,13 @@
         }
 
         <!-- Metric Labels -->
-        @for (int i = 0; i < MetricKeys.Length; i++)
+        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
         {
             var x = GetLabelX(i);
             var y = GetLabelY(i);
             var anchor = GetTextAnchor(i);
             var baseline = GetDominantBaseline(i);
-            var metricName = GetMetricShortName(MetricKeys[i]);
+            var metricName = GetMetricShortName(DisplayedMetricKeys[i]);
 
                 <g>
                     <text x="@x" 
@@ -54,7 +54,7 @@
                  stroke-width="2" />
 
         <!-- Data Points -->
-        @for (int i = 0; i < MetricKeys.Length; i++)
+        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
         {
             var cx = GetDataPointX(i);
             var cy = GetDataPointY(i);
@@ -83,12 +83,28 @@
     public Dictionary<string, double> TeamAverages { get; set; } = new Dictionary<string, double>();
 
     [Parameter]
-    public Dictionary<string, double> MetricMaxValues { get; set; } = new Dictionary<string, double>();
+    public List<TeamMember> AllTeamMembers { get; set; } = new List<TeamMember>();
 
     private string ChartId = $"radar-chart-{Guid.NewGuid()}";
 
-    // The order of metrics in the radar chart
-    private string[] MetricKeys = new[] { "M365Attach", "GSP", "Revenue", "ASP", "Basket", "PMAttach" };
+    // Keep MetricKeys for defining chart axes, but filter dynamically
+    private string[] DisplayedMetricKeys = Array.Empty<string>();
+
+    protected override void OnParametersSet()
+    {
+        // Filter MetricKeys to only those numeric metrics present for the current TeamMember
+        if (TeamMember != null && TeamMember.Metrics != null)
+        {
+             DisplayedMetricKeys = TeamMember.Metrics.Keys
+                                     .Where(key => TeamMember.GetMetricDoubleValue(key).HasValue)
+                                     .ToArray();
+        }
+         else
+        {
+            DisplayedMetricKeys = Array.Empty<string>();
+        }
+        base.OnParametersSet();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -103,9 +119,9 @@
         var radius = percentage;
         var points = new List<string>();
 
-        for (int i = 0; i < MetricKeys.Length; i++)
+        for (int i = 0; i < DisplayedMetricKeys.Length; i++)
         {
-            double angle = 2 * Math.PI * i / MetricKeys.Length - Math.PI / 2;
+            double angle = 2 * Math.PI * i / DisplayedMetricKeys.Length - Math.PI / 2;
             double x = 125 + radius * Math.Cos(angle);
             double y = 125 + radius * Math.Sin(angle);
             points.Add($"{x},{y}");
@@ -118,7 +134,7 @@
     {
         var points = new List<string>();
 
-        for (int i = 0; i < MetricKeys.Length; i++)
+        for (int i = 0; i < DisplayedMetricKeys.Length; i++)
         {
             var x = GetDataPointX(i);
             var y = GetDataPointY(i);
@@ -130,47 +146,47 @@
 
     private double GetDataPointX(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
-        double normalizedValue = GetNormalizedValue(MetricKeys[index]);
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
+        double normalizedValue = GetNormalizedValue(DisplayedMetricKeys[index]);
         double radius = normalizedValue * 100;
         return 125 + radius * Math.Cos(angle);
     }
 
     private double GetDataPointY(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
-        double normalizedValue = GetNormalizedValue(MetricKeys[index]);
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
+        double normalizedValue = GetNormalizedValue(DisplayedMetricKeys[index]);
         double radius = normalizedValue * 100;
         return 125 + radius * Math.Sin(angle);
     }
 
     private double GetAxisEndX(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         return 125 + 100 * Math.Cos(angle);
     }
 
     private double GetAxisEndY(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         return 125 + 100 * Math.Sin(angle);
     }
 
     private double GetLabelX(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         return 125 + 115 * Math.Cos(angle);
     }
 
     private double GetLabelY(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         return 125 + 115 * Math.Sin(angle);
     }
 
     private string GetTextAnchor(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         double x = Math.Cos(angle);
 
         if (Math.Abs(x) < 0.3) return "middle";
@@ -179,7 +195,7 @@
 
     private string GetDominantBaseline(int index)
     {
-        double angle = 2 * Math.PI * index / MetricKeys.Length - Math.PI / 2;
+        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
         double y = Math.Sin(angle);
 
         if (Math.Abs(y) < 0.3) return "middle";
@@ -188,27 +204,33 @@
 
     private double GetNormalizedValue(string metricKey)
     {
-        if (TeamMember == null || !TeamMember.Metrics.ContainsKey(metricKey) || !MetricMaxValues.ContainsKey(metricKey))
+        if (TeamMember == null || AllTeamMembers == null || !AllTeamMembers.Any())
             return 0;
 
-        double value = TeamMember.Metrics[metricKey];
-        double maxValue = MetricMaxValues[metricKey];
+        double? value = TeamMember.GetMetricDoubleValue(metricKey);
+        if (!value.HasValue) return 0;
+
+        // Calculate Max value dynamically from all members in the same department
+        double maxInDept = AllTeamMembers
+            .Where(m => m.Department == TeamMember.Department)
+            .Select(m => m.GetMetricDoubleValue(metricKey))
+            .Where(v => v.HasValue)
+            .DefaultIfEmpty(0)
+            .Max() ?? 0;
+
+        if (maxInDept <= 0) return 0; // Avoid division by zero or negative max
 
         // Normalize to a value between 0 and 1
-        return Math.Min(value / maxValue, 1);
+        return Math.Min(Math.Max(value.Value / maxInDept, 0), 1);
     }
 
     private string GetMetricShortName(string metricKey)
     {
-        return metricKey switch
-        {
-            "M365Attach" => "M365",
-            "GSP" => "GSP",
-            "Revenue" => "Rev",
-            "ASP" => "ASP",
-            "Basket" => "Basket",
-            "PMAttach" => "PM",
-            _ => metricKey
-        };
+         // Use the static method from TeamMember for consistency
+         var displayName = TeamMember.GetMetricDisplayName(metricKey);
+         // Simple shortening logic (take first word or abbreviation)
+         if (displayName.Contains(" ")) return displayName.Split(' ')[0];
+         if (displayName.Length > 6) return displayName.Substring(0, 5) + "."; // Abbreviate long names
+         return displayName;
     }
 }

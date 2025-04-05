@@ -5,40 +5,25 @@
         <h2 class="text-xl font-bold text-yellow-400 mb-4">Department Performance Overview</h2>
 
         <div class="flex flex-col md:flex-row">
-            <!-- Overall Score -->
-            <div class="md:w-1/4 mb-6 md:mb-0 flex flex-col items-center justify-center">
-                <div class="text-4xl font-bold @GetScoreColorClass(Summary.OverallPerformanceScore)">
-                    @Summary.OverallPerformanceScore.ToString("F1")
-                </div>
-                <div class="text-sm text-gray-400">Overall Performance Score</div>
-
-                <div class="mt-4 w-full max-w-xs">
-                    <div class="text-sm flex justify-between">
-                        <span>Poor</span>
-                        <span>Average</span>
-                        <span>Excellent</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1">
-                        <div class="@GetScoreColorClass(Summary.OverallPerformanceScore) h-2.5 rounded-full" 
-                             style="width: @(Summary.OverallPerformanceScore)%"></div>
-                    </div>
-                </div>
-            </div>
+            <!-- Removed Overall Score Section -->
 
             <!-- Key Metrics -->
-            <div class="md:w-3/4 md:pl-6 md:border-l border-gray-700">
+            <div class="w-full"> <!-- Take full width now -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    @foreach (var metric in Summary.AverageMetrics)
+                    @foreach (var metric in Summary.AverageMetrics.OrderBy(kv => kv.Key)) // Order for consistency
                     {
                             <div class="bg-gray-700 rounded-md p-3">
-                                <div class="text-sm text-gray-400 mb-1">@GetMetricDisplayName(metric.Key)</div>
+                                <!-- Use TeamMember static method for display name -->
+                                <div class="text-sm text-gray-400 mb-1">@TeamMember.GetMetricDisplayName(metric.Key)</div>
                                 <div class="flex justify-between">
                                     <div>
-                                        <div class="font-bold text-xl">@FormatMetricValue(metric.Key, metric.Value)</div>
+                                        <!-- Use Callback for formatting -->
+                                        <div class="font-bold text-xl">@FormatValueCallback(metric.Key, metric.Value)</div>
                                         <div class="text-xs text-gray-400">Avg</div>
                                     </div>
                                     <div>
-                                        <div class="text-green-400 font-bold">@FormatMetricValue(metric.Key, Summary.MaxMetrics[metric.Key])</div>
+                                         <!-- Use Callback for formatting -->
+                                        <div class="text-green-400 font-bold">@FormatValueCallback(metric.Key, Summary.MaxMetrics.GetValueOrDefault(metric.Key))</div>
                                         <div class="text-xs text-gray-400">High</div>
                                     </div>
                                 </div>
@@ -47,10 +32,18 @@
                                     <div class="text-red-400">Lowest: @(Summary.BottomPerformers.ContainsKey(metric.Key) ? Summary.BottomPerformers[metric.Key] : "N/A")</div>
                                 </div>
 
-                                <!-- Progress bar -->
-                                <div class="w-full bg-gray-800 rounded-full h-1.5 mt-2">
-                                    <div class="bg-blue-500 h-1.5 rounded-full" 
-                                     style="width: @GetMetricPercentage(metric.Key, metric.Value)%"></div>
+                                <!-- Progress bar showing distance to goal -->
+                                <div class="mt-2 relative">
+                                    <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                        @{
+                                            var maxValue = Summary.MaxMetrics.ContainsKey(metric.Key) ? (double)Summary.MaxMetrics[metric.Key] : 0;
+                                            var avgValue = (double)metric.Value;
+                                            var percentage = maxValue > 0 ? (avgValue / maxValue) * 100 : 0;
+                                            percentage = Math.Min(percentage, 100); // Cap at 100%
+                                        }
+                                        <div class="h-full bg-blue-500 rounded-full" style="width: @percentage%"></div>
+                                    </div>
+                                    <div class="mt-1 text-xs text-gray-400 text-right">@percentage.ToString("F0")% of goal</div>
                                 </div>
                             </div>
                     }
@@ -64,54 +57,12 @@
     [Parameter]
     public DepartmentSummary Summary { get; set; } = new DepartmentSummary();
 
-    private string GetScoreColorClass(double score)
-    {
-        if (score >= 80) return "text-green-400";
-        if (score >= 60) return "text-yellow-400";
-        if (score >= 40) return "text-orange-400";
-        return "text-red-400";
-    }
+    // Callback function passed from parent to handle value formatting
+    [Parameter]
+    public Func<string, object?, string> FormatValueCallback { get; set; } = (key, value) => value?.ToString() ?? "N/A";
 
-    private string GetMetricDisplayName(string metricKey)
-    {
-        return metricKey switch
-        {
-            "M365Attach" => "M365 Attach",
-            "GSP" => "GSP (Warranty)",
-            "Revenue" => "Revenue",
-            "ASP" => "ASP",
-            "Basket" => "Basket",
-            "PMAttach" => "PM Attach %",
-            _ => metricKey
-        };
-    }
-
-    private string FormatMetricValue(string metricKey, double value)
-    {
-        return metricKey switch
-        {
-            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
-            "Revenue" => $"${value:N0}",
-            "ASP" => $"${value:F0}",
-            "Basket" => $"{value:F1}",
-            _ => value.ToString("F2")
-        };
-    }
-
-    private double GetMetricPercentage(string metricKey, double value)
-    {
-        // Maximum reference values for each metric
-        var maxValues = new Dictionary<string, double>
-        {
-               { "M365Attach", 30 },
-               { "GSP", 20 },
-               { "Revenue", 20000 },
-               { "ASP", 800 },
-               { "Basket", 160 },
-               { "PMAttach", 25 }
-        };
-
-        double maxValue = maxValues.ContainsKey(metricKey) ? maxValues[metricKey] : 100;
-        return System.Math.Min(value / maxValue, 1) * 100;
-    }
+    // Removed GetScoreColorClass
+    // Removed internal GetMetricDisplayName
+    // Removed internal FormatMetricValue
+    // Removed GetMetricPercentage
 }

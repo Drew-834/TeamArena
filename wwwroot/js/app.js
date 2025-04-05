@@ -26,9 +26,16 @@ window.initKeySequenceDetector = () => {
             
             // Check if we have 3 periods in a row
             if (keySequence.length === 3) {
+                // Reveal the Weekly Tracker button on Computers page
                 const weeklyTrackerBtn = document.getElementById('weekly-tracker-btn');
                 if (weeklyTrackerBtn) {
                     weeklyTrackerBtn.classList.remove('hidden');
+                }
+                
+                // Reveal the Weekly Tracker card on Index page
+                const weeklyTrackerCard = document.getElementById('weekly-tracker-card');
+                if (weeklyTrackerCard) {
+                    weeklyTrackerCard.classList.remove('hidden');
                 }
                 keySequence = [];
             }

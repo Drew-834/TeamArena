@@ -1,4 +1,4 @@
-﻿@page "/weekly-tracker"
+﻿@page "/weeklytracker"
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
@@ -7,349 +7,383 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
-<div class="bg-gray-900 min-h-screen text-white">
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-center mb-8">
-            <button @onclick="NavigateHome" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
-                <span class="mr-2">←</span> Back to Champions
-            </button>
-            <h2 class="text-2xl font-bold text-center text-yellow-400">Weekly Performance Tracker</h2>
-            <div></div>
+@* TODO: Inject a Toast Notification service for user feedback *@
+
+<div class="bg-gray-900 min-h-screen text-white p-8">
+    
+    @if (!_isAuthenticated)
+    {
+        <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-500 @(_showPasswordModal ? "opacity-100" : "opacity-0 pointer-events-none")">
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-purple-500 transform transition-transform duration-500 @(_showPasswordModal ? "scale-100" : "scale-90")">
+                <h2 class="text-2xl font-bold text-purple-400 mb-4">Enter Admin Password</h2>
+                <input type="password" @bind="_enteredPassword" @onkeydown="HandlePasswordInputKeydown" 
+                       class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-purple-500 mb-4" 
+                       placeholder="Password" />
+                @if (!string.IsNullOrEmpty(_passwordError))
+                {
+                    <p class="text-red-500 text-sm mb-4">@_passwordError</p>
+                }
+                <button @onclick="CheckPassword" 
+                        class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded font-semibold transition-colors">
+                    Authenticate
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <h1 class="text-4xl font-bold text-yellow-400 mb-8">Weekly Metrics Tracker</h1>
+
+        <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+            &lt; Back to Home
+        </button>
+
+        <!-- Department and Period Selection -->
+        <div class="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <h2 class="text-xl font-semibold text-yellow-400 mb-3">Selection</h2>
+            <div class="flex space-x-4">
+                <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnDepartmentChanged">
+                    <option value="">Select Department...</option>
+                    @foreach (var department in _departments)
+                    {
+                        <option value="@department">@department</option>
+                    }
+                </select>
+                <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
+                    <option value="">Select Period...</option>
+                    @foreach (var period in _periods)
+                    {
+                        <option value="@period">@period</option>
+                    }
+                </select>
+            </div>
         </div>
 
-        @if (_teamMembers == null)
-        {
-                <div class="text-center">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
-                    <p class="mt-2">Loading data...</p>
-                </div>
-        }
-        else
-        {
-                <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg p-6 mb-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-yellow-400">Current Week's Data</h2>
-
-                        <div class="flex space-x-4">
-                            <input type="date" @bind="currentWeekDate" class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" />
-                            <button @onclick="SaveWeeklyData" class="px-4 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
-                                Save Week's Data
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse">
-                            <thead>
-                                <tr class="bg-gray-700">
-                                    <th class="p-3 text-left">Name</th>
-                                    <th class="p-3 text-center">M365 Attach</th>
-                                    <th class="p-3 text-center">GSP</th>
-                                    <th class="p-3 text-center">Revenue</th>
-                                    <th class="p-3 text-center">ASP</th>
-                                    <th class="p-3 text-center">Basket</th>
-                                    <th class="p-3 text-center">PM Attach %</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var member in _teamMembers)
-                            {
-                                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
-                                            <td class="p-3 font-medium">@member.Name</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("M365Attach", member.GetMetricValue("M365Attach"))</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("GSP", member.GetMetricValue("GSP"))</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("Revenue", member.GetMetricValue("Revenue"))</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("ASP", member.GetMetricValue("ASP"))</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("Basket", member.GetMetricValue("Basket"))</td>
-                                            <td class="p-3 text-center">@FormatMetricValue("PMAttach", member.GetMetricValue("PMAttach"))</td>
-                                        </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            @if (_historicalData.Count > 0)
+        <!-- Data Input Grid -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+            <h2 class="text-xl font-semibold text-yellow-400 mb-3">Enter Metrics for @(_selectedDepartment ?? "Selected Department")</h2>
+            @if (_currentDepartmentMembers != null && _currentDepartmentMembers.Any() && !string.IsNullOrEmpty(_selectedDepartment) && _departmentMetrics.ContainsKey(_selectedDepartment))
             {
-                        <h2 class="text-2xl font-bold text-yellow-400 mb-6">Historical Data</h2>
-
-                @foreach (var weekData in _historicalData.OrderByDescending(w => w.WeekDate))
-                {
-                                <div class="bg-gray-800 border border-gray-600 rounded-lg overflow-hidden shadow-lg p-6 mb-6">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h3 class="text-xl font-bold text-white">Week of @weekData.WeekDate.ToString("MMM dd, yyyy")</h3>
-                                        <div class="flex space-x-2">
-                                            <button @onclick="() => CompareWithCurrent(weekData)" class="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-500 transition-colors">
-                                                Compare
-                                            </button>
-                                            <button @onclick="() => DeleteWeekData(weekData)" class="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-500 transition-colors">
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="overflow-x-auto">
-                                        <table class="w-full border-collapse">
-                                            <thead>
-                                                <tr class="bg-gray-700">
-                                                    <th class="p-3 text-left">Name</th>
-                                                    <th class="p-3 text-center">M365 Attach</th>
-                                                    <th class="p-3 text-center">GSP</th>
-                                                    <th class="p-3 text-center">Revenue</th>
-                                                    <th class="p-3 text-center">ASP</th>
-                                                    <th class="p-3 text-center">Basket</th>
-                                                    <th class="p-3 text-center">PM Attach %</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                    @foreach (var member in weekData.TeamMembers)
-                                    {
-                                                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
-                                                            <td class="p-3 font-medium">@member.Name</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("M365Attach", member.GetMetricValue("M365Attach"))</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("GSP", member.GetMetricValue("GSP"))</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("Revenue", member.GetMetricValue("Revenue"))</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("ASP", member.GetMetricValue("ASP"))</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("Basket", member.GetMetricValue("Basket"))</td>
-                                                            <td class="p-3 text-center">@FormatMetricValue("PMAttach", member.GetMetricValue("PMAttach"))</td>
-                                                        </tr>
-                                    }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                }
+                <table class="w-full min-w-[800px] border-collapse">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="p-3 text-left sticky left-0 bg-gray-700 z-10">Name</th>
+                            @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
+                            {
+                                <th class="p-3 text-center">@GetMetricDisplayName(metricKey)</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var member in _currentDepartmentMembers.OrderBy(m => m.Name))
+                        {
+                            <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                                <td class="p-3 font-medium sticky left-0 bg-gray-800 hover:bg-gray-700/50 z-10">@member.Name</td>
+                                @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
+                                {
+                                    <td>
+                                        @* TODO: Add input validation (e.g., number type for numeric metrics) *@
+                                        <input type="text" 
+                                               class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded focus:outline-none focus:border-yellow-500 focus:bg-gray-500 text-center" 
+                                               placeholder="-" 
+                                               @bind="_inputValues[member.Id][metricKey]" 
+                                               @bind:event="oninput" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else if (!string.IsNullOrEmpty(_selectedDepartment))
+            {
+                <p class="text-gray-500">No team members found for @_selectedDepartment or metrics not defined.</p>
             }
             else
             {
-                        <div class="bg-gray-800 border border-gray-600 rounded-lg p-8 text-center">
-                            <p class="text-xl text-gray-400">No historical data available yet.</p>
-                            <p class="mt-2 text-gray-500">Save weekly data to start tracking performance over time.</p>
-                        </div>
+                <p class="text-gray-500">Select a department to display the input grid.</p>
             }
+        </div>
 
-            @if (_comparisonData != null)
-            {
-                        <div class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-                            <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg w-full max-w-6xl max-h-screen overflow-y-auto">
-                                <div class="p-6">
-                                    <div class="flex justify-between items-center mb-6">
-                                        <h2 class="text-2xl font-bold text-yellow-400">Performance Comparison</h2>
-                                        <button @onclick="CloseComparison" class="text-gray-400 hover:text-white text-2xl">&times;</button>
-                                    </div>
-
-                                    <div class="overflow-x-auto">
-                                        <table class="w-full border-collapse">
-                                            <thead>
-                                                <tr class="bg-gray-700">
-                                                    <th class="p-3 text-left">Name</th>
-                                                    <th class="p-3 text-center" colspan="2">M365 Attach</th>
-                                                    <th class="p-3 text-center" colspan="2">GSP</th>
-                                                    <th class="p-3 text-center" colspan="2">Revenue</th>
-                                                    <th class="p-3 text-center" colspan="2">ASP</th>
-                                                    <th class="p-3 text-center" colspan="2">Basket</th>
-                                                    <th class="p-3 text-center" colspan="2">PM Attach %</th>
-                                                </tr>
-                                                <tr class="bg-gray-700 text-sm text-gray-400">
-                                                    <th class="p-2"></th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                    <th class="p-2">Then</th>
-                                                    <th class="p-2">Now</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                        @foreach (var comparison in _comparisonData)
-                                        {
-                                                        <tr class="border-b border-gray-700">
-                                                            <td class="p-3 font-medium">@comparison.Name</td>
-
-                                                @foreach (var metric in new[] { "M365Attach", "GSP", "Revenue", "ASP", "Basket", "PMAttach" })
-                                                {
-                                                                    <td class="p-2 text-center">@FormatMetricValue(metric, comparison.OldValues[metric])</td>
-                                                                    <td class="p-2 text-center @GetTrendClass(comparison.OldValues[metric], comparison.NewValues[metric], metric)">
-                                                        @FormatMetricValue(metric, comparison.NewValues[metric])
-                                                        @GetTrendIndicator(comparison.OldValues[metric], comparison.NewValues[metric])
-                                                                    </td>
-                                                }
-                                                        </tr>
-                                        }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-            }
-        }
-    </div>
+        <!-- Save Button -->
+        <div class="mt-6 text-right">
+             @* TODO: Add loading indicator while saving *@
+             @* TODO: Add confirmation before saving? *@
+            <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors" disabled="_isSaving">
+                @(_isSaving ? "Saving..." : "Save Metrics")
+            </button>
+             @if (!string.IsNullOrEmpty(_saveError))
+             {
+                 <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
+             }
+        </div>
+    }
 </div>
 
 @code {
-    private List<TeamMember> _teamMembers = new List<TeamMember>();
-    private List<WeeklyData> _historicalData = new List<WeeklyData>();
-    private DateTime currentWeekDate = DateTime.Today;
-    private List<MemberComparison> _comparisonData = new List<MemberComparison>();
+    private bool _isAuthenticated = false;
+    private bool _showPasswordModal = false;
+    private string _enteredPassword = string.Empty;
+    private string _passwordError = string.Empty;
+    private const string CorrectPassword = "Admin321";
+    private bool _isSaving = false; // For loading state on save button
+    private string? _saveError = null;
+
+    private List<string> _departments = new List<string>();
+    private List<string> _periods = new List<string>();
+    private string? _selectedDepartment;
+    private string? _selectedPeriod;
+    private List<TeamMember>? _currentDepartmentMembers;
+    private Dictionary<int, Dictionary<string, string>> _inputValues = new Dictionary<int, Dictionary<string, string>>();
+
+    // Define known metrics per department (adjust as needed)
+    private readonly Dictionary<string, List<string>> _departmentMetrics = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Computers", new List<string> { "M365Attach", "GSP", "Revenue", "ASP", "Basket", "PMAttach" } },
+        { "Store", new List<string> { "Revenue", "5Star", "GSP", "Basket" } },
+        { "Front", new List<string> { "GSP", "BP", "PM", "5Star" } },
+        { "Warehouse", new List<string> { "Picks", "Accuracy", "Awk", "Units" } }
+        // TODO: Consider loading metric definitions from a configuration or backend source
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        _teamMembers = await DataService.GetTeamMembersAsync();
-        await LoadHistoricalData();
+        var allMembers = await DataService.GetTeamMembersAsync();
+        _departments = allMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList(); // Added OrderBy
+        _periods = GenerateBiweeklyPeriods(6);
     }
 
-    private async Task LoadHistoricalData()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        try
+        if (firstRender && !_isAuthenticated)
         {
-            var storedData = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "weeklyPerformanceData");
-            if (!string.IsNullOrEmpty(storedData))
+            await Task.Delay(100);
+            _showPasswordModal = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private List<string> GenerateBiweeklyPeriods(int monthsToGoBack)
+    {
+        var periods = new List<string>();
+        var today = DateTime.Today;
+        var currentMonth = new DateTime(today.Year, today.Month, 1);
+
+        for (int i = 0; i < monthsToGoBack; i++)
+        {
+            var month = currentMonth.AddMonths(-i);
+            periods.Add($"EOM-{month:MMM yyyy}"); // EOM first for chronological order descending
+            periods.Add($"Mid-{month:MMM yyyy}");
+        }
+        return periods; // Returns newest first
+    }
+
+    private async Task OnDepartmentChanged(ChangeEventArgs e)
+    {
+        _selectedDepartment = e.Value?.ToString();
+        await LoadMembersAndInitializeInputs();
+    }
+    
+    private async Task OnPeriodChanged(ChangeEventArgs e)
+    {
+        _selectedPeriod = e.Value?.ToString();
+        await LoadMembersAndInitializeInputs(); // Reload to potentially fetch period-specific data in future
+    }
+
+    private async Task LoadMembersAndInitializeInputs()
+    {
+        _currentDepartmentMembers = null;
+        _inputValues.Clear();
+        _saveError = null; // Clear any previous save errors
+        
+        if (!string.IsNullOrEmpty(_selectedDepartment))
+        {
+            _currentDepartmentMembers = await DataService.GetTeamMembersAsync(_selectedDepartment);
+            
+            // TODO: When persistence is added, load saved metric data for the selected department AND period here.
+            // Example: var savedData = await ApiClient.GetMetricsForPeriod(_selectedDepartment, _selectedPeriod);
+            // This would replace or supplement the initialization below.
+
+            InitializeInputValues(); // Initialize based on current members
+        }
+        StateHasChanged();
+    }
+
+    // Initialize the input dictionary
+    private void InitializeInputValues()
+    {
+        _inputValues.Clear();
+        if (_currentDepartmentMembers == null || string.IsNullOrEmpty(_selectedDepartment))
+        {
+            return;
+        }
+
+        if (!_departmentMetrics.TryGetValue(_selectedDepartment, out var metricsForDept))
+        {
+            metricsForDept = new List<string>(); // Handle case where department metrics aren't defined
+        }
+
+        foreach (var member in _currentDepartmentMembers)
+        {
+            var memberInputs = new Dictionary<string, string>();
+            foreach (var metricKey in metricsForDept)
             {
-                _historicalData = JsonSerializer.Deserialize<List<WeeklyData>>(storedData) ?? new List<WeeklyData>();
+                // TODO: If saved data for the period was loaded, use that value here instead of empty string.
+                // Example: memberInputs[metricKey] = savedData.GetValueOrDefault(member.Id)?.GetValueOrDefault(metricKey) ?? string.Empty;
+                memberInputs[metricKey] = string.Empty; // Default to empty for new input
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading data: {ex.Message}");
-            _historicalData = new List<WeeklyData>();
+            _inputValues[member.Id] = memberInputs;
         }
     }
 
-    private async Task SaveWeeklyData()
+    private void CheckPassword()
     {
-        var weekData = new WeeklyData
-            {
-                WeekDate = currentWeekDate,
-                WeekId = Guid.NewGuid().ToString(),
-                TeamMembers = _teamMembers.Select(m => new TeamMember
-                {
-                    Id = m.Id,
-                    Name = m.Name,
-                    AvatarUrl = m.AvatarUrl,
-                    Metrics = new Dictionary<string, double>(m.Metrics)
-                }).ToList()
-            };
-
-        // Remove any existing data for the same week
-        _historicalData.RemoveAll(w => w.WeekDate.Date == weekData.WeekDate.Date);
-
-        // Add new data
-        _historicalData.Add(weekData);
-
-        // Save to localStorage
-        try
+        if (_enteredPassword == CorrectPassword)
         {
-            var jsonData = JsonSerializer.Serialize(_historicalData);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "weeklyPerformanceData", jsonData);
-            await JSRuntime.InvokeVoidAsync("alert", "Week's data saved successfully!");
+            _passwordError = string.Empty;
+            _isAuthenticated = true;
+            _showPasswordModal = false;
         }
-        catch (Exception ex)
+        else
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error saving data: {ex.Message}");
+            _passwordError = "Incorrect password.";
+            _enteredPassword = string.Empty;
         }
+        StateHasChanged();
     }
 
-    private async Task DeleteWeekData(WeeklyData weekData)
+    private void HandlePasswordInputKeydown(KeyboardEventArgs e)
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete data for week of {weekData.WeekDate.ToString("MMM dd, yyyy")}?");
-
-        if (confirmed)
+        if (e.Key == "Enter")
         {
-            _historicalData.RemoveAll(w => w.WeekId == weekData.WeekId);
-
-            try
-            {
-                var jsonData = JsonSerializer.Serialize(_historicalData);
-                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "weeklyPerformanceData", jsonData);
-            }
-            catch (Exception ex)
-            {
-                await JSRuntime.InvokeVoidAsync("alert", $"Error deleting data: {ex.Message}");
-            }
+            CheckPassword();
         }
     }
-
-    private void CompareWithCurrent(WeeklyData historicalWeek)
-    {
-        _comparisonData = new List<MemberComparison>();
-
-        foreach (var oldMember in historicalWeek.TeamMembers)
-        {
-            var currentMember = _teamMembers.FirstOrDefault(m => m.Id == oldMember.Id);
-
-            if (currentMember != null)
-            {
-                _comparisonData.Add(new MemberComparison
-                    {
-                        Name = oldMember.Name,
-                        OldValues = oldMember.Metrics,
-                        NewValues = currentMember.Metrics
-                    });
-            }
-        }
-    }
-
-    private void CloseComparison()
-    {
-        _comparisonData.Clear();
-    }
-
-    private void NavigateHome()
+    
+    private void NavigateBack()
     {
         NavigationManager.NavigateTo("/");
     }
 
-    private string FormatMetricValue(string metricKey, double value)
+    private async Task SaveMetrics()
     {
-        return metricKey switch
+        _isSaving = true;
+        _saveError = null;
+        StateHasChanged();
+
+        if (_currentDepartmentMembers == null || string.IsNullOrEmpty(_selectedDepartment) || string.IsNullOrEmpty(_selectedPeriod))
         {
-            "M365Attach" or "GSP" or "PMAttach" => $"{value:F1}%",
-            "Revenue" => $"${value:N2}",
-            "ASP" => $"${value:F2}",
-            "Basket" => $"{value:F1}",
-            _ => value.ToString("F2")
-        };
-    }
+            _saveError = "Department and Period must be selected.";
+            // TODO: Show user error feedback (Toast notification)
+            _isSaving = false;
+            StateHasChanged();
+            return;
+        }
+        
+        Console.WriteLine($"Attempting to save metrics for {_selectedDepartment} - {_selectedPeriod}");
+        bool anyError = false;
 
-    private string GetTrendIndicator(double oldValue, double newValue)
-    {
-        if (newValue > oldValue)
-            return " ↑";
-        else if (newValue < oldValue)
-            return " ↓";
-        else
-            return " —";
-    }
+        // TODO: Wrap saving logic in a try/catch block for API errors
+        try 
+        {
+            foreach (var member in _currentDepartmentMembers)
+            {
+                if (_inputValues.TryGetValue(member.Id, out var memberInputs))
+                {
+                    bool memberUpdated = false;
+                    var metricsToUpdate = new Dictionary<string, object?>(); // Use object? for nullability
 
-    private string GetTrendClass(double oldValue, double newValue, string metric)
-    {
-        // For all metrics, higher is better
-        if (newValue > oldValue)
-            return "text-green-400";
-        else if (newValue < oldValue)
-            return "text-red-400";
-        else
-            return "text-gray-400";
-    }
+                    foreach(var kvp in memberInputs)
+                    {
+                        string metricKey = kvp.Key;
+                        string stringValue = kvp.Value;
 
-    public class WeeklyData
-    {
-        public string WeekId { get; set; } = string.Empty;
-        public DateTime WeekDate { get; set; }
-        public List<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
-    }
+                        object? parsedValue = null;
+                        bool parseError = false;
 
-    public class MemberComparison
+                        if (string.IsNullOrWhiteSpace(stringValue))
+                        {
+                            parsedValue = null; // Explicitly setting to null if input is empty
+                        }
+                        // Example: Use specific types based on metric key for better parsing
+                        else if (metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket" || metricKey == "5Star" || metricKey == "Accuracy" || metricKey == "Awk" || metricKey == "M365Attach" || metricKey == "GSP" || metricKey == "PMAttach")
+                        {
+                            if (double.TryParse(stringValue, out double doubleVal))
+                                parsedValue = doubleVal;
+                            else parseError = true;
+                        }
+                        else if (metricKey == "BP" || metricKey == "PM" || metricKey == "Picks" || metricKey == "Units")
+                        {
+                            if (int.TryParse(stringValue, out int intVal))
+                                parsedValue = intVal;
+                            else parseError = true;
+                        }
+                        else // Default or unknown metric - treat as string or log warning?
+                        {
+                            // parsedValue = stringValue; // If you want to allow saving strings
+                            Console.WriteLine($"Warning: Unknown metric type for '{metricKey}'. Cannot parse numeric value.");
+                            // Keep parsedValue = null; or handle as needed
+                        }
+
+                        if (parseError)
+                        {
+                            Console.WriteLine($"Warning: Could not parse '{stringValue}' as expected type for metric '{metricKey}' for member {member.Name}. Skipping update for this metric.");
+                            // TODO: Optionally provide feedback to the user about specific parsing errors
+                            anyError = true;
+                            continue; // Skip this metric if parsing fails
+                        }
+
+                        metricsToUpdate[metricKey] = parsedValue;
+                        memberUpdated = true; // Mark that we have potentially updated data
+                    }
+
+                    if (memberUpdated)
+                    {
+                        // Update the member's metrics dictionary in memory (for mock)
+                        foreach(var metricUpdate in metricsToUpdate)
+                        {
+                            member.Metrics[metricUpdate.Key] = metricUpdate.Value; // Update or add the metric
+                        }
+                        
+                        // TODO: Replace with API call: await ApiClient.SaveMemberMetrics(member.Id, _selectedPeriod, metricsToUpdate);
+                        // For mock, call the service which just simulates the update:
+                        await DataService.UpdateTeamMemberAsync(member); 
+                        Console.WriteLine($"Updated metrics for {member.Name} (in-memory)");
+                    }
+                }
+            }
+            
+            if (!anyError)
+            {
+                Console.WriteLine("Metrics save process completed (in-memory).");
+                // TODO: Show success feedback (Toast notification "Metrics Saved!")
+            }
+            else
+            {
+                 _saveError = "Some metric values could not be saved. Please check console warnings.";
+                 // TODO: Show warning feedback (Toast notification)
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR saving metrics: {ex.Message}");
+            _saveError = "An unexpected error occurred while saving metrics.";
+            // TODO: Show error feedback (Toast notification)
+            anyError = true;
+        }
+        finally
+        { 
+             _isSaving = false;
+             StateHasChanged();
+        }
+        
+        // Optionally: Clear inputs or reload data after save
+        // await LoadMembersAndInitializeInputs();
+    }
+    
+    // Helper to get metric display name
+    private string GetMetricDisplayName(string key)
     {
-        public string Name { get; set; } = string.Empty;
-        public Dictionary<string, double> OldValues { get; set; } = new Dictionary<string, double>();
-        public Dictionary<string, double> NewValues { get; set; } = new Dictionary<string, double>();
+        return TeamMember.GetMetricDisplayName(key); 
     }
 }
