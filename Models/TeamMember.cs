@@ -10,10 +10,10 @@ namespace GameScoreboard.Models
         public string Name { get; set; } = string.Empty;
         public string Department { get; set; } = "Unknown";
         public string AvatarUrl { get; set; } = string.Empty;
-        public Dictionary<string, object> Metrics { get; set; } = new Dictionary<string, object>();
+        public Dictionary<string, object?> Metrics { get; set; } = new Dictionary<string, object?>();
 
         // Dictionary to map internal metric keys to their user-friendly display names
-        private static readonly Dictionary<string, string> MetricDisplayNames = new()
+        private static readonly Dictionary<string, string> MetricDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             // Computers
             { "M365Attach", "M365 Attach %" },
@@ -31,11 +31,14 @@ namespace GameScoreboard.Models
             { "PickRate", "Pick Rate %" },
             { "PickQuantity", "Pick Quantity #" },
             { "Awk", "AWK (Mins)" }, // Awkward items time
-            { "MVP", "MVP" } // Selected MVP (string)
+            { "MVP", "MVP" }, // Selected MVP (string)
+            { "Picks", "Total Picks" },
+            { "Accuracy", "Pick Accuracy %" },
+            { "Units", "Units Picked" }
         };
 
         // Dictionary to map metric keys to potential character titles when excelling
-        private static readonly Dictionary<string, string> MetricTitles = new()
+        private static readonly Dictionary<string, string> MetricTitles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
              // Computers
             { "M365Attach", "Microsoft Maestro" },
@@ -53,9 +56,21 @@ namespace GameScoreboard.Models
             { "PickRate", "Picking Prodigy" },
             { "PickQuantity", "Quantity King/Queen" },
             { "Awk", "Logistics Legend" },
-            { "Pick$", "Value Voyager" } // Added for Pick$ which is likely warehouse Revenue
+            { "Pick$", "Value Voyager" }, // Added for Pick$ which is likely warehouse Revenue
             // MVP doesn't have a typical "best score" title, handled differently
         };
+
+        // --- New Leveling System Properties ---
+        public double TotalExperience { get; set; } = 0; // Persisted total accumulated XP
+
+        public int CurrentLevel => (int)(TotalExperience / 100) + 1; // Level starts at 1
+        
+        public double ExperienceTowardsNextLevel => TotalExperience % 100;
+        
+        public double ExperienceNeededForNextLevel => 100;
+
+        public double ProgressToNextLevelPercentage => (ExperienceTowardsNextLevel / ExperienceNeededForNextLevel) * 100;
+        // -------------------------------------
 
         // Helper to safely get metric value as double?
         public double? GetMetricDoubleValue(string metricKey)
@@ -222,9 +237,9 @@ namespace GameScoreboard.Models
         }
 
         // Get all available metrics as key-value pairs
-        public IEnumerable<KeyValuePair<string, object>> GetAllMetrics()
+        public Dictionary<string, object?> GetAllMetrics()
         {
-            return Metrics ?? new Dictionary<string, object>();
+            return new Dictionary<string, object?>(Metrics);
         }
     }
 }

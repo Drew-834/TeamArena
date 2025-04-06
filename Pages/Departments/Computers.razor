@@ -44,53 +44,73 @@
                         <div class="carousel-inner flex space-x-4 transition-transform duration-500 ease-in-out" @ref="carouselInner">
                         @foreach (var member in _teamMembers)
                         {
-                                    <div class="character-card cursor-pointer flex-shrink-0" style="width: 180px;" 
-                                 @onclick="() => NavigateToDetails(member.Id)">
-                                        <div class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg h-80 relative">
-                                            <!-- Background Avatar (translucent) -->
-                                            <div class="absolute inset-0 opacity-15 z-0">
-                                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
-                                        {
-                                                        <img src="@member.AvatarUrl" alt="" class="w-full h-full object-cover" />
-                                        }
-                                        else
-                                        {
-                                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-8xl font-bold text-gray-600">
-                                                @member.Name[0]
-                                                        </div>
-                                        }
+                                    @* Carousel Item - Character Card *@
+                                    <div class="character-card cursor-pointer flex-shrink-0 relative bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 m-2" 
+                                         style="width: 200px; height: 320px;" 
+                                         @onclick="() => NavigateToDetails(member.Id)"> @* Adjusted size slightly *@
+                                        
+                                        <!-- Background Avatar (translucent) -->
+                                        <div class="absolute inset-0 opacity-20 z-0">
+                                            @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                                            {
+                                                <img src="@member.AvatarUrl" alt="" class="w-full h-full object-cover" />
+                                            }
+                                            else
+                                            {
+                                                <div class="w-full h-full flex items-center justify-center bg-gray-700 text-8xl font-bold text-gray-600">
+                                                    @member.Name[0]
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Content (foreground) -->
+                                        <div class="relative z-10 p-3 flex flex-col h-full justify-between">
+                                            <div>
+                                                <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
+                                                 @{ 
+                                                     // Use the title generation logic from TeamMember model
+                                                     var title = member.GetChampionTitle(_teamMembers); 
+                                                 }
+                                                <p class="text-yellow-400 text-center text-sm mt-1">@title</p>
                                             </div>
 
-                                            <!-- Content (foreground) -->
-                                            <div class="p-3 relative z-10 flex flex-col h-full justify-between">
-                                                <div>
-                                                    <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
-                                                    <p class="text-yellow-400 text-center text-sm mt-1">@member.GetChampionTitle(_teamMembers)</p>
-                                                </div>
-
-                                        @{
-                                            // Get the metric where they're strongest compared to team
-                                            var strongestMetric = member.GetStrongestMetricRelativeToTeam(_teamAverages);
-                                            var metricValue = member.GetMetricValue(strongestMetric);
-                                            var metricName = TeamMember.GetMetricDisplayName(strongestMetric);
-                                            var isBest = member.IsBestInMetric(strongestMetric, _teamMembers);
-                                        }
-
-                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border @(isBest ? "border-yellow-500" : "border-gray-600") rounded-md p-3 text-center mt-auto mb-6">
-                                                    <div class="text-xs text-gray-400">Strongest Metric</div>
-                                                    <div class="text-sm font-semibold">@metricName</div>
-                                                    <div class="text-xl font-bold @(isBest ? "text-yellow-400" : "text-white")">
-                                                @FormatMetricValue(strongestMetric, metricValue)
-                                                @if (isBest)
-                                                {
-                                                                <span class="text-xs ml-1">★</span>
+                                            @* Strongest Area moved just above Leveling *@
+                                            <div class="pt-4">
+                                                 @{ 
+                                                    var strongest = member.GetStrongestMetricRelativeToTeam(_teamAverages);
+                                                    var metricValue = member.GetMetricValue(strongest);
+                                                    var metricName = !string.IsNullOrEmpty(strongest) ? TeamMember.GetMetricDisplayName(strongest) : "Overall";
+                                                    var isBest = member.IsBestInMetric(strongest, _teamMembers);
                                                 }
+                                                <div class="metric-highlight bg-gray-800 bg-opacity-80 border @(isBest ? "border-yellow-500" : "border-gray-600") rounded-md p-3 text-center">
+                                                    <div class="text-xs text-gray-400">Strongest Area</div>
+                                                    <div class="text-sm font-semibold">@metricName</div>
+                                                    <div class="text-lg font-bold @(isBest ? "text-yellow-400" : "text-white")">
+                                                        @if (!string.IsNullOrEmpty(strongest))
+                                                        {
+                                                             @FormatMetricValue(strongest, metricValue)
+                                                             @if (isBest)
+                                                             {
+                                                                <span class="text-xs ml-1">★</span>
+                                                             }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>Balanced</span>
+                                                        }
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                <div class="text-center text-xs text-gray-400 absolute bottom-2 left-0 right-0">
-                                                    Tap to view details
-                                                </div>
+                                            @* Leveling System Display at the bottom *@
+                                            <div>
+                                                 <div class="flex justify-between items-center text-sm mb-1 px-1">
+                                                     <span class="font-bold text-purple-400">Level @member.CurrentLevel</span>
+                                                     <span class="text-xs text-gray-400">@member.ExperienceTowardsNextLevel.ToString("F0") / @member.ExperienceNeededForNextLevel.ToString("F0") XP</span>
+                                                 </div>
+                                                 <div class="h-2 bg-gray-600 bg-opacity-50 rounded-full overflow-hidden mx-1">
+                                                     <div class="h-full bg-purple-500 rounded-full" style="width: @member.ProgressToNextLevelPercentage.ToString("F1")%;"></div>
+                                                 </div>
                                             </div>
                                         </div>
                                     </div>

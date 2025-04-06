@@ -1,0 +1,32 @@
+@page "/archived-trackers"
+@namespace GameScoreboard.Pages
+@inject NavigationManager NavigationManager
+
+<div class="bg-gray-900 min-h-screen text-white p-8">
+    <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+        &lt; Back to Weekly Tracker
+    </button>
+
+    <h1 class="text-4xl font-bold text-yellow-400 mb-8 text-center">Archived Metrics</h1>
+
+    <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-4xl mx-auto">
+        <h2 class="text-2xl font-semibold text-yellow-400 mb-4">Archived Data</h2>
+        
+        <p class="text-gray-400 mb-4">
+            This page will display historical metric data that is older than two weeks.
+            Functionality to filter by department and period will be added here.
+        </p>
+
+        <!-- Placeholder for future filters and data display -->
+        <div class="border border-dashed border-gray-600 rounded p-8 text-center text-gray-500">
+            Archived Data Grid/View Will Go Here
+        </div>
+    </div>
+</div>
+
+@code {
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/weeklytracker");
+    }
+} 

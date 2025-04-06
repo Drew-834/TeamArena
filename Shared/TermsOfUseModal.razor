@@ -1,0 +1,44 @@
+@using Microsoft.AspNetCore.Components
+
+@if (IsVisible)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-gray-700 max-w-2xl w-full mx-4 transform transition-transform duration-300 scale-100">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4">Terms of Use & Acceptance</h2>
+            
+            <div class="text-gray-300 text-sm space-y-3 max-h-60 overflow-y-auto pr-2 mb-6 border-t border-b border-gray-700 py-4">
+                <p>Welcome to Team Performance Arena.</p>
+                <p>
+                    <strong>Ownership:</strong> This application, including its concept, design, code, and underlying ideas ("The Product"), is the intellectual property of the original creator/owner. All rights reserved.
+                </p>
+                <p>
+                    <strong>Usage:</strong> This application is provided for internal team use only. You agree not to copy, modify, distribute, sell, reverse-engineer, or create derivative works from The Product without explicit written permission from the owner.
+                </p>
+                <p>
+                    <strong>Data:</strong> Any data entered into this application should be considered confidential company information. Ensure you have the necessary permissions to enter and view this data. The owner is not liable for data breaches or misuse resulting from user actions.
+                </p>
+                <p>
+                    <strong>Disclaimer:</strong> This application is provided "as is" without warranty of any kind. Use at your own risk. The owner is not liable for any damages arising from its use.
+                </p>
+                <p>
+                    <strong>Acceptance:</strong> By clicking "Accept", you acknowledge that you have read, understood, and agree to these terms.
+                </p>
+            </div>
+
+            <button @onclick="AcceptTerms" 
+                    class="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded font-semibold transition-colors">
+                Accept & Continue
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnAccepted { get; set; }
+
+    private async Task AcceptTerms()
+    {
+        await OnAccepted.InvokeAsync();
+    }
+} 

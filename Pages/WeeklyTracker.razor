@@ -14,108 +14,163 @@
     @if (!_isAuthenticated)
     {
         <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-500 @(_showPasswordModal ? "opacity-100" : "opacity-0 pointer-events-none")">
-            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-purple-500 transform transition-transform duration-500 @(_showPasswordModal ? "scale-100" : "scale-90")">
-                <h2 class="text-2xl font-bold text-purple-400 mb-4">Enter Admin Password</h2>
-                <input type="password" @bind="_enteredPassword" @onkeydown="HandlePasswordInputKeydown" 
-                       class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-purple-500 mb-4" 
-                       placeholder="Password" />
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-yellow-500 transform transition-transform duration-300 ease-out @(_showPasswordModal ? "scale-100 opacity-100" : "scale-95 opacity-0")">
+                <h2 class="text-2xl font-bold text-yellow-400 mb-4">Enter Admin Password</h2>
+                 <div class="mb-4">
+                     <label for="password-input" class="block text-sm font-medium text-gray-300 mb-1">Admin Password:</label>
+                     <input type="password" id="password-input" 
+                            @bind="PasswordInputValue" 
+                            @bind:event="oninput" 
+                            @onkeydown="HandlePasswordInputKeydown" 
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent placeholder-gray-500" 
+                            placeholder="Password" />
+                 </div>
                 @if (!string.IsNullOrEmpty(_passwordError))
                 {
                     <p class="text-red-500 text-sm mb-4">@_passwordError</p>
                 }
-                <button @onclick="CheckPassword" 
-                        class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded font-semibold transition-colors">
-                    Authenticate
-                </button>
+                 <button @onclick="CheckPassword" 
+                         class="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-500">
+                     Authenticate
+                 </button>
             </div>
         </div>
     }
     else
     {
-        <h1 class="text-4xl font-bold text-yellow-400 mb-8">Weekly Metrics Tracker</h1>
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- Main Content Area (Grid, Selection) -->
+            <div class="flex-grow md:w-3/4">
+                <h1 class="text-4xl font-bold text-yellow-400 mb-8">Weekly Metrics Tracker</h1>
 
-        <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-            &lt; Back to Home
-        </button>
+                <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+                    &lt; Back to Home
+                </button>
 
-        <!-- Department and Period Selection -->
-        <div class="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
-            <h2 class="text-xl font-semibold text-yellow-400 mb-3">Selection</h2>
-            <div class="flex space-x-4">
-                <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnDepartmentChanged">
-                    <option value="">Select Department...</option>
-                    @foreach (var department in _departments)
-                    {
-                        <option value="@department">@department</option>
-                    }
-                </select>
-                <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
-                    <option value="">Select Period...</option>
-                    @foreach (var period in _periods)
-                    {
-                        <option value="@period">@period</option>
-                    }
-                </select>
-            </div>
-        </div>
-
-        <!-- Data Input Grid -->
-        <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
-            <h2 class="text-xl font-semibold text-yellow-400 mb-3">Enter Metrics for @(_selectedDepartment ?? "Selected Department")</h2>
-            @if (_currentDepartmentMembers != null && _currentDepartmentMembers.Any() && !string.IsNullOrEmpty(_selectedDepartment) && _departmentMetrics.ContainsKey(_selectedDepartment))
-            {
-                <table class="w-full min-w-[800px] border-collapse">
-                    <thead>
-                        <tr class="bg-gray-700">
-                            <th class="p-3 text-left sticky left-0 bg-gray-700 z-10">Name</th>
-                            @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
+                <!-- Department and Period Selection -->
+                <div class="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Selection</h2>
+                    <div class="flex space-x-4">
+                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnDepartmentChanged">
+                            <option value="">Select Department...</option>
+                            @foreach (var department in _departments)
                             {
-                                <th class="p-3 text-center">@GetMetricDisplayName(metricKey)</th>
+                                <option value="@department">@department</option>
                             }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var member in _currentDepartmentMembers.OrderBy(m => m.Name))
-                        {
-                            <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
-                                <td class="p-3 font-medium sticky left-0 bg-gray-800 hover:bg-gray-700/50 z-10">@member.Name</td>
-                                @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
-                                {
-                                    <td>
-                                        @* TODO: Add input validation (e.g., number type for numeric metrics) *@
-                                        <input type="text" 
-                                               class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded focus:outline-none focus:border-yellow-500 focus:bg-gray-500 text-center" 
-                                               placeholder="-" 
-                                               @bind="_inputValues[member.Id][metricKey]" 
-                                               @bind:event="oninput" />
-                                    </td>
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else if (!string.IsNullOrEmpty(_selectedDepartment))
-            {
-                <p class="text-gray-500">No team members found for @_selectedDepartment or metrics not defined.</p>
-            }
-            else
-            {
-                <p class="text-gray-500">Select a department to display the input grid.</p>
-            }
-        </div>
+                        </select>
+                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
+                            <option value="">Select Period...</option>
+                            @foreach (var period in _periods)
+                            {
+                                <option value="@period">@period</option>
+                            }
+                        </select>
+                    </div>
+                </div>
 
-        <!-- Save Button -->
-        <div class="mt-6 text-right">
-             @* TODO: Add loading indicator while saving *@
-             @* TODO: Add confirmation before saving? *@
-            <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors" disabled="_isSaving">
-                @(_isSaving ? "Saving..." : "Save Metrics")
-            </button>
-             @if (!string.IsNullOrEmpty(_saveError))
-             {
-                 <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
-             }
+                <!-- Data Input Grid -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Enter Metrics for @(_selectedDepartment ?? "Selected Department")</h2>
+                    @if (_currentDepartmentMembers != null && _currentDepartmentMembers.Any() && !string.IsNullOrEmpty(_selectedDepartment) && _departmentMetrics.ContainsKey(_selectedDepartment))
+                    {
+                        <table class="w-full min-w-[800px] border-collapse">
+                            <!-- Table Head -->
+                            <thead>
+                                <tr class="bg-gray-700">
+                                    <th class="p-3 text-left sticky left-0 bg-gray-700 z-10">Name</th>
+                                    @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
+                                    {
+                                        <th class="p-3 text-center">@GetMetricDisplayName(metricKey)</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <!-- Table Body -->
+                            <tbody>
+                                @foreach (var member in _currentDepartmentMembers.OrderBy(m => m.Name))
+                                {
+                                    <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                                        <td class="p-3 font-medium sticky left-0 bg-gray-800 hover:bg-gray-700/50 z-10">@member.Name</td>
+                                        @foreach (var metricKey in _departmentMetrics[_selectedDepartment])
+                                        {
+                                            <td>
+                                                <input type="text"
+                                                       class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded focus:outline-none focus:border-yellow-500 focus:bg-gray-500 text-center"
+                                                       placeholder="-"
+                                                       @bind="_inputValues[member.Id][metricKey]"
+                                                       @bind:event="oninput" />
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else if (!string.IsNullOrEmpty(_selectedDepartment))
+                    {
+                        <p class="text-gray-500">No team members found for @_selectedDepartment or metrics not defined.</p>
+                    }
+                    else
+                    {
+                        <p class="text-gray-500">Select a department to display the input grid.</p>
+                    }
+                </div>
+
+                <!-- Save Button -->
+                <div class="mt-6 text-right">
+                    <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors" disabled="_isSaving">
+                        @(_isSaving ? "Saving..." : "Save Metrics")
+                    </button>
+                    @if (!string.IsNullOrEmpty(_saveError))
+                    {
+                        <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Right Side Panel (Rankings & Archive Link) -->
+            <div class="md:w-1/4 bg-gray-800 rounded-lg border border-gray-700 p-6 self-start sticky top-8">
+                <h2 class="text-2xl font-semibold text-yellow-400 mb-4 border-b border-gray-700 pb-2">Rankings & Tools</h2>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-yellow-300 mb-3">Department Rankings</h3>
+                    @if (_departmentRankings == null || !_departmentRankings.Any())
+                    {
+                        <p class="text-gray-500 italic">Calculating ranks...</p>
+                        @* Could add a spinner here *@
+                    }
+                    else
+                    {
+                        <div class="space-y-4">
+                            @foreach (var kvp in _departmentRankings.OrderBy(kv => kv.Key)) // Order departments alphabetically
+                            {
+                                <div>
+                                    <h4 class="font-semibold text-gray-300 mb-1">@kvp.Key</h4>
+                                    <ul class="space-y-1 text-sm">
+                                        @foreach (var rankedMember in kvp.Value.Take(5)) // Show top 5 per department
+                                        {
+                                            <li class="flex justify-between items-center @(rankedMember.Rank == 1 ? "text-yellow-400" : (rankedMember.Rank <= 3 ? "text-gray-200" : "text-gray-400"))">
+                                                <span>@rankedMember.Rank. @rankedMember.Name</span>
+                                                <span class="font-mono text-xs">@rankedMember.Score.ToString("F0")</span>
+                                            </li>
+                                        }
+                                        @if (kvp.Value.Count > 5)
+                                        {
+                                            <li class="text-gray-500 text-xs italic">... and @(kvp.Value.Count - 5) more</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-300 mb-3">Archive</h3>
+                     <button @onclick="NavigateToArchive" class="w-full text-center px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition-colors">
+                        View Archived Trackers
+                     </button>
+                </div>
+            </div>
         </div>
     }
 </div>
@@ -124,6 +179,7 @@
     private bool _isAuthenticated = false;
     private bool _showPasswordModal = false;
     private string _enteredPassword = string.Empty;
+    private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
     private const string CorrectPassword = "Admin321";
     private bool _isSaving = false; // For loading state on save button
@@ -135,6 +191,8 @@
     private string? _selectedPeriod;
     private List<TeamMember>? _currentDepartmentMembers;
     private Dictionary<int, Dictionary<string, string>> _inputValues = new Dictionary<int, Dictionary<string, string>>();
+    private List<TeamMember>? _allMembersForRanking; // Store all members for ranking
+    private Dictionary<string, List<RankedMember>>? _departmentRankings; // Store calculated rankings
 
     // Define known metrics per department (adjust as needed)
     private readonly Dictionary<string, List<string>> _departmentMetrics = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
@@ -146,20 +204,36 @@
         // TODO: Consider loading metric definitions from a configuration or backend source
     };
 
+    // Property for binding, clears error on input
+    private string PasswordInputValue
+    {
+        get => _passwordInput;
+        set
+        {
+            _passwordInput = value;
+            if (!string.IsNullOrEmpty(_passwordError))
+            {
+                _passwordError = string.Empty;
+            }
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        var allMembers = await DataService.GetTeamMembersAsync();
-        _departments = allMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList(); // Added OrderBy
+        _allMembersForRanking = await DataService.GetTeamMembersAsync();
+        _departments = _allMembersForRanking.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList(); 
         _periods = GenerateBiweeklyPeriods(6);
+        CalculateAllRankings(); // Calculate initial rankings
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !_isAuthenticated)
         {
-            await Task.Delay(100);
+            await Task.Delay(50); // Shorter delay maybe
             _showPasswordModal = true;
             await InvokeAsync(StateHasChanged);
+            // Optionally focus the password input field here using JS interop
         }
     }
 
@@ -167,15 +241,54 @@
     {
         var periods = new List<string>();
         var today = DateTime.Today;
-        var currentMonth = new DateTime(today.Year, today.Month, 1);
+        var cutoffDate = today.AddDays(-14); // Only show periods ending within the last 14 days or in the future
 
-        for (int i = 0; i < monthsToGoBack; i++)
+        for (int i = monthsToGoBack; i >= -1; i--) // Include current/next month slightly
         {
-            var month = currentMonth.AddMonths(-i);
-            periods.Add($"EOM-{month:MMM yyyy}"); // EOM first for chronological order descending
-            periods.Add($"Mid-{month:MMM yyyy}");
+            var monthStart = new DateTime(today.Year, today.Month, 1).AddMonths(-i);
+            var midMonthDate = monthStart.AddDays(14); // Approx mid-month
+            var endOfMonthDate = monthStart.AddMonths(1).AddDays(-1);
+
+            // Format: Mid-MMM yyyy (ends around 15th)
+            string midPeriod = $"Mid-{monthStart:MMM yyyy}";
+            if (midMonthDate >= cutoffDate)
+            {
+                periods.Add(midPeriod);
+            }
+
+            // Format: EOM-MMM yyyy (ends at end of month)
+            string eomPeriod = $"EOM-{monthStart:MMM yyyy}";
+            if (endOfMonthDate >= cutoffDate)
+            { 
+                periods.Add(eomPeriod);
+            }
         }
-        return periods; // Returns newest first
+        // Return in descending order (newest first)
+        return periods.OrderByDescending(p => GetPeriodEndDate(p)).ToList(); 
+    }
+
+    // Helper to get an approximate end date for sorting/filtering
+    private DateTime GetPeriodEndDate(string period)
+    {
+        try
+        {
+            string[] parts = period.Split('-');
+            string monthYear = parts[1]; 
+            DateTime monthStartDate = DateTime.ParseExact("01-" + monthYear, "dd-MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            
+            if (parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase))
+            {
+                return monthStartDate.AddDays(14); // Approx mid-month end
+            }
+            else // EOM
+            {
+                return monthStartDate.AddMonths(1).AddDays(-1); // End of month
+            }
+        }
+        catch 
+        { 
+            return DateTime.MinValue; // Fallback for parsing errors
+        }
     }
 
     private async Task OnDepartmentChanged(ChangeEventArgs e)
@@ -198,7 +311,8 @@
         
         if (!string.IsNullOrEmpty(_selectedDepartment))
         {
-            _currentDepartmentMembers = await DataService.GetTeamMembersAsync(_selectedDepartment);
+            // Use the already loaded list for ranking, just filter for current view
+            _currentDepartmentMembers = _allMembersForRanking?.Where(m => m.Department.Equals(_selectedDepartment, StringComparison.OrdinalIgnoreCase)).ToList();
             
             // TODO: When persistence is added, load saved metric data for the selected department AND period here.
             // Example: var savedData = await ApiClient.GetMetricsForPeriod(_selectedDepartment, _selectedPeriod);
@@ -206,7 +320,7 @@
 
             InitializeInputValues(); // Initialize based on current members
         }
-        StateHasChanged();
+        StateHasChanged(); // Update UI
     }
 
     // Initialize the input dictionary
@@ -236,8 +350,11 @@
         }
     }
 
+    // Password Check Logic
     private void CheckPassword()
     {
+        _enteredPassword = _passwordInput; // Update the actual variable *before* checking
+
         if (_enteredPassword == CorrectPassword)
         {
             _passwordError = string.Empty;
@@ -247,22 +364,29 @@
         else
         {
             _passwordError = "Incorrect password.";
-            _enteredPassword = string.Empty;
+            _passwordInput = string.Empty; // Clear the input field visually on error
         }
-        StateHasChanged();
+        // Always trigger a UI update after checking
+        InvokeAsync(StateHasChanged);
     }
 
+    // Handle Enter key specifically
     private void HandlePasswordInputKeydown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            CheckPassword();
+            CheckPassword(); 
         }
     }
-    
+
     private void NavigateBack()
     {
         NavigationManager.NavigateTo("/");
+    }
+
+    private void NavigateToArchive()
+    {
+        NavigationManager.NavigateTo("/archived-trackers");
     }
 
     private async Task SaveMetrics()
@@ -274,7 +398,6 @@
         if (_currentDepartmentMembers == null || string.IsNullOrEmpty(_selectedDepartment) || string.IsNullOrEmpty(_selectedPeriod))
         {
             _saveError = "Department and Period must be selected.";
-            // TODO: Show user error feedback (Toast notification)
             _isSaving = false;
             StateHasChanged();
             return;
@@ -282,8 +405,8 @@
         
         Console.WriteLine($"Attempting to save metrics for {_selectedDepartment} - {_selectedPeriod}");
         bool anyError = false;
+        Dictionary<string, double> currentPeriodTeamAverages = CalculateCurrentPeriodTeamAverages(); // Calculate averages for scoring
 
-        // TODO: Wrap saving logic in a try/catch block for API errors
         try 
         {
             foreach (var member in _currentDepartmentMembers)
@@ -291,21 +414,22 @@
                 if (_inputValues.TryGetValue(member.Id, out var memberInputs))
                 {
                     bool memberUpdated = false;
-                    var metricsToUpdate = new Dictionary<string, object?>(); // Use object? for nullability
+                    var metricsToUpdate = new Dictionary<string, object?>(); 
+                    double currentPeriodPerformanceScoreTotal = 0;
+                    int currentPeriodMetricCount = 0;
 
                     foreach(var kvp in memberInputs)
                     {
                         string metricKey = kvp.Key;
                         string stringValue = kvp.Value;
-
                         object? parsedValue = null;
                         bool parseError = false;
 
                         if (string.IsNullOrWhiteSpace(stringValue))
                         {
-                            parsedValue = null; // Explicitly setting to null if input is empty
+                            parsedValue = null; 
                         }
-                        // Example: Use specific types based on metric key for better parsing
+                        // Use specific types based on metric key for better parsing
                         else if (metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket" || metricKey == "5Star" || metricKey == "Accuracy" || metricKey == "Awk" || metricKey == "M365Attach" || metricKey == "GSP" || metricKey == "PMAttach")
                         {
                             if (double.TryParse(stringValue, out double doubleVal))
@@ -318,23 +442,28 @@
                                 parsedValue = intVal;
                             else parseError = true;
                         }
-                        else // Default or unknown metric - treat as string or log warning?
+                        else 
                         {
-                            // parsedValue = stringValue; // If you want to allow saving strings
                             Console.WriteLine($"Warning: Unknown metric type for '{metricKey}'. Cannot parse numeric value.");
-                            // Keep parsedValue = null; or handle as needed
                         }
 
                         if (parseError)
                         {
                             Console.WriteLine($"Warning: Could not parse '{stringValue}' as expected type for metric '{metricKey}' for member {member.Name}. Skipping update for this metric.");
-                            // TODO: Optionally provide feedback to the user about specific parsing errors
                             anyError = true;
-                            continue; // Skip this metric if parsing fails
+                            continue; 
                         }
 
                         metricsToUpdate[metricKey] = parsedValue;
-                        memberUpdated = true; // Mark that we have potentially updated data
+                        memberUpdated = true;
+                        
+                        // Calculate performance score for this metric if numeric
+                        double? numericValue = GetDoubleValueFromString(stringValue, metricKey);
+                        if(numericValue.HasValue)
+                        {
+                            currentPeriodPerformanceScoreTotal += CalculatePerformanceScore(metricKey, numericValue.Value, currentPeriodTeamAverages);
+                            currentPeriodMetricCount++;
+                        }
                     }
 
                     if (memberUpdated)
@@ -342,16 +471,27 @@
                         // Update the member's metrics dictionary in memory (for mock)
                         foreach(var metricUpdate in metricsToUpdate)
                         {
-                            member.Metrics[metricUpdate.Key] = metricUpdate.Value; // Update or add the metric
+                            member.Metrics[metricUpdate.Key] = metricUpdate.Value; 
                         }
                         
-                        // TODO: Replace with API call: await ApiClient.SaveMemberMetrics(member.Id, _selectedPeriod, metricsToUpdate);
-                        // For mock, call the service which just simulates the update:
+                        // Calculate average score for the period and add to total experience
+                        if (currentPeriodMetricCount > 0)
+                        {
+                            double averagePeriodScore = currentPeriodPerformanceScoreTotal / currentPeriodMetricCount;
+                            // Add the average score (0-100 range) to the total experience
+                            member.TotalExperience += averagePeriodScore; 
+                             Console.WriteLine($"Added {averagePeriodScore:F2} XP to {member.Name}. New Total XP: {member.TotalExperience:F2}");
+                        }
+                        
+                        // TODO: Replace with API call: await ApiClient.SaveMemberMetricsAndExperience(member.Id, _selectedPeriod, metricsToUpdate, member.TotalExperience);
                         await DataService.UpdateTeamMemberAsync(member); 
-                        Console.WriteLine($"Updated metrics for {member.Name} (in-memory)");
+                        Console.WriteLine($"Updated metrics & XP for {member.Name} (in-memory)");
                     }
                 }
             }
+            
+            // After saving, recalculate rankings to reflect potential XP changes
+            CalculateAllRankings();
             
             if (!anyError)
             {
@@ -376,14 +516,249 @@
              _isSaving = false;
              StateHasChanged();
         }
-        
-        // Optionally: Clear inputs or reload data after save
-        // await LoadMembersAndInitializeInputs();
     }
     
+    // --- Helper Methods for Scoring --- 
+
+    // Calculates team averages for the *current input values* before saving
+    // Needed to score the current period accurately relative to peers in that period
+    private Dictionary<string, double> CalculateCurrentPeriodTeamAverages()
+    {
+        var averages = new Dictionary<string, double>();
+        if (_currentDepartmentMembers == null || string.IsNullOrEmpty(_selectedDepartment) || !_departmentMetrics.ContainsKey(_selectedDepartment))
+        {
+            return averages;
+        }
+
+        var metricsForDept = _departmentMetrics[_selectedDepartment];
+        
+        foreach (var metricKey in metricsForDept)
+        {
+            var values = new List<double>();
+            foreach (var member in _currentDepartmentMembers)
+            {
+                if (_inputValues.TryGetValue(member.Id, out var memberInputs) && memberInputs.TryGetValue(metricKey, out var stringValue))
+                {
+                     double? numericValue = GetDoubleValueFromString(stringValue, metricKey);
+                     if (numericValue.HasValue)
+                     {
+                         values.Add(numericValue.Value);
+                     }
+                }
+            }
+
+            if (values.Any())
+            {
+                averages[metricKey] = values.Average();
+            }
+        }
+        return averages;
+    }
+
+    // Calculates a 0-100 score for a single metric value relative to the team average for that period
+    // Updated to include specific goals and bonus multiplier
+    private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
+    {
+        // Define specific goals for certain metrics
+        double? goal = metricKey switch
+        {
+            "PMAttach" => 25.0,   // Goal is 25%
+            "M365Attach" => 30.0, // Goal is 30%
+            "GSP" => 20.0,        // Goal is 20%
+            _ => null             // No specific goal for other metrics
+        };
+
+        double baseScoreTarget = 100.0; // The value needed to achieve a base score of 100 (before bonus)
+        bool lowerIsBetter = metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase);
+
+        if (goal.HasValue && !lowerIsBetter) // Use goal if defined and higher is better
+        {
+            baseScoreTarget = goal.Value;
+        }
+        else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0) // Otherwise, use team average if available
+        {
+             baseScoreTarget = average; 
+        }
+        else if (!lowerIsBetter) // If no goal and no average, and higher is better, default target (prevents division by zero)
+        {
+             // If value is positive, they get score relative to itself (100), otherwise 0 or 50?
+             // Let's default to giving 50 if target is 0 and value is 0, 100 if value > 0
+             return numericValue > 0 ? 100 : 50;
+        }
+        // If lowerIsBetter and no average, how to score? Let's adapt the logic below.
+
+        double score;
+        double bonusMultiplier = 1.25;
+
+        if (lowerIsBetter)
+        {
+            // Special handling for lower is better (like Awk)
+            if (baseScoreTarget <= 0) // If average is 0 or less, any time is bad? Or perfect if 0?
+            {
+                 return numericValue <= 0 ? 100 : 0; // 100 if 0, 0 otherwise
+            }
+             if (numericValue <= 0) return 100; // Perfect score if 0
+            
+            // Score relative to average/target. Higher ratio (avg/value) is better.
+            double ratio = baseScoreTarget / numericValue;
+            score = ratio * 50; // Base score scaled to 50 at target
+            
+            // No bonus concept typically applied when lower is better, 
+            // but you could define one if needed. Score is capped later.
+        }
+        else // Higher is better
+        {
+            if (baseScoreTarget <= 0) // Should have been handled above, but as safety
+            {
+                 return numericValue > 0 ? 100 : 50;
+            }
+            
+            // Calculate base score relative to the target (goal or average)
+            double baseRatio = numericValue / baseScoreTarget;
+            score = baseRatio * 100; // Achieving the target gives a score of 100
+
+            // Apply bonus multiplier for exceeding the target
+            if (numericValue > baseScoreTarget)
+            {
+                double excessValue = numericValue - baseScoreTarget;
+                double excessRatio = excessValue / baseScoreTarget; // How much over target, relative to target
+                // Calculate bonus points: excessRatio * 100 gives base points for the excess,
+                // then apply the multiplier. Add this to the base 100 score.
+                double bonusPoints = (excessRatio * 100) * bonusMultiplier;
+                score = 100 + bonusPoints; 
+            }
+        }
+
+        // Cap score between 0 and a reasonable maximum (e.g., 200, or adjust based on multiplier)
+        // Let's cap around 150 to prevent extreme scores from bonus
+        return Math.Min(Math.Max(score, 0), 150); 
+    }
+
+    // Helper to parse input string to double? based on metric type context
+    private double? GetDoubleValueFromString(string? stringValue, string metricKey)
+    {
+        if (string.IsNullOrWhiteSpace(stringValue)) return null;
+
+        if (metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket" || metricKey == "5Star" || metricKey == "Accuracy" || metricKey == "Awk" || metricKey == "M365Attach" || metricKey == "GSP" || metricKey == "PMAttach")
+        {
+            if (double.TryParse(stringValue, out double doubleVal)) return doubleVal;
+        }
+        else if (metricKey == "BP" || metricKey == "PM" || metricKey == "Picks" || metricKey == "Units")
+        {
+            if (int.TryParse(stringValue, out int intVal)) return (double)intVal;
+        }
+        return null; // Parsing failed or unknown type
+    }
+    
+    // Helper to convert various object types to double? (used for scoring helper)
+     private double? GetDoubleValue(object? value)
+    {
+        if (value == null) return null;
+        if (value is double d) return d;
+        if (value is int i) return (double)i;
+        if (value is long l) return (double)l;
+        if (value is decimal dec) return (double)dec;
+        return null; 
+    }
+
+    // --- End Helper Methods --- 
+
     // Helper to get metric display name
     private string GetMetricDisplayName(string key)
     {
         return TeamMember.GetMetricDisplayName(key); 
+    }
+
+    // --- Ranking Calculation --- 
+    private void CalculateAllRankings()
+    {
+        if (_allMembersForRanking == null || !_allMembersForRanking.Any()) return;
+
+        _departmentRankings = new Dictionary<string, List<RankedMember>>();
+
+        var teamAveragesByDepartment = _allMembersForRanking
+            .GroupBy(m => m.Department)
+            .ToDictionary(
+                g => g.Key,
+                g => CalculateAveragesForGroup(g.ToList())
+            );
+
+        foreach (var department in _departments)
+        {
+            var membersInDept = _allMembersForRanking.Where(m => m.Department.Equals(department, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (!membersInDept.Any()) continue;
+
+            var deptAverages = teamAveragesByDepartment.GetValueOrDefault(department) ?? new Dictionary<string, double>();
+            
+            var rankedList = membersInDept.Select(member => new RankedMember
+                {
+                    Id = member.Id,
+                    Name = member.Name,
+                    Department = member.Department,
+                    Score = CalculateOverallScoreForMember(member, deptAverages)
+                })
+                .OrderByDescending(rm => rm.Score)
+                .Select((rm, index) => { rm.Rank = index + 1; return rm; })
+                .ToList();
+
+            _departmentRankings[department] = rankedList;
+        }
+        InvokeAsync(StateHasChanged); // Update the UI with rankings
+    }
+
+    private Dictionary<string, double> CalculateAveragesForGroup(List<TeamMember> members)
+    {
+        var averages = new Dictionary<string, double>();
+        if (!members.Any()) return averages;
+
+        var allMetricKeys = members.SelectMany(m => m.Metrics.Keys).Distinct();
+        foreach (var key in allMetricKeys)
+        {
+            var values = members
+                .Select(m => m.GetMetricDoubleValue(key))
+                .Where(v => v.HasValue)
+                .Select(v => v.Value)
+                .ToList();
+            if (values.Any()) averages[key] = values.Average();
+        }
+        return averages;
+    }
+
+    private double CalculateOverallScoreForMember(TeamMember member, Dictionary<string, double> departmentAverages)
+    {
+        if (!member.Metrics.Any()) return 0;
+        
+        // Calculate average score across *defined metrics for that department*
+        if (!_departmentMetrics.TryGetValue(member.Department, out var relevantMetrics))
+        {
+            relevantMetrics = member.Metrics.Keys.ToList(); // Fallback if dept metrics undefined
+        }
+        
+        double totalScore = 0;
+        int metricCount = 0;
+        foreach(var metricKey in relevantMetrics)
+        {
+            if (member.Metrics.TryGetValue(metricKey, out var value))
+            {
+                 double? numericValue = GetDoubleValue(value);
+                 if (numericValue.HasValue)
+                 {
+                     totalScore += CalculatePerformanceScore(metricKey, numericValue.Value, departmentAverages); 
+                     metricCount++;
+                 }
+            }
+        }
+        
+        return metricCount > 0 ? totalScore / metricCount : 0; // Return average score
+    }
+
+    // Helper class for storing ranked members
+    private class RankedMember
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Department { get; set; } = string.Empty;
+        public double Score { get; set; }
+        public int Rank { get; set; }
     }
 }

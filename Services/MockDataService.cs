@@ -1,4 +1,4 @@
-﻿using GameScoreboard.Models;
+using GameScoreboard.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -162,7 +162,7 @@ namespace GameScoreboard.Services
                     Id = 9,
                     Name = "Felipe",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/avatar4.png",
+                    AvatarUrl = "images/avatars/matthew1.png",
                     Metrics = new Dictionary<string, object>
                     {
                         { "M365Attach", 0.0 },
@@ -224,8 +224,8 @@ namespace GameScoreboard.Services
                     Id = 13,
                     Name = "Linda",
                     Department = "Front",
-                    AvatarUrl = "images/avatars/avatar3.png",
-                    Metrics = new Dictionary<string, object>
+                    AvatarUrl = "images/avatars/kla1.png",
+                    Metrics = new Dictionary<string, object?>
                     {
                         { "GSP", 25.0 },
                         { "BP", 120 },
@@ -238,8 +238,8 @@ namespace GameScoreboard.Services
                     Id = 14,
                     Name = "David",
                     Department = "Front",
-                    AvatarUrl = "images/avatars/avatar5.png",
-                    Metrics = new Dictionary<string, object>
+                    AvatarUrl = "images/avatars/jon1.png",
+                    Metrics = new Dictionary<string, object?>
                     {
                         { "GSP", 22.1 },
                         { "BP", 95 },

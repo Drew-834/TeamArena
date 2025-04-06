@@ -43,16 +43,6 @@
                     }
                 </div>
                 
-                <!-- Radar chart in background -->
-                <div class="absolute top-0 right-0 w-1/2 h-full opacity-40 z-0 flex items-center justify-center">
-                    <RadarChart 
-                        TeamMember="@_teamMember" 
-                        TeamAverages="@_teamAverages" 
-                        MetricMaxValues="@_metricMaxValues"
-                        Width="300px"
-                        Height="300px" />
-                </div>
-                
                 <div class="p-6 flex flex-col md:flex-row relative z-10">
                     <!-- Metrics Section - Left Side -->
                     <div class="md:w-3/5 pr-8">
@@ -121,7 +111,12 @@
                                         <div class="mt-1 flex justify-between text-xs">
                                             <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
                                             <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, metric.Value).ToString("F0")</span>
-                                            <span>Max: @FormatMetricValue(metric.Key, GetMetricMaxValue(metric.Key))</span>
+                                            <span>Max: 
+                                                @{
+                                                    var displayMax = GetDisplayMaxValue(metric.Key);
+                                                }
+                                                @FormatMetricValue(metric.Key, displayMax)
+                                            </span>
                                         </div>
                                     </div>
                                 }
@@ -178,15 +173,15 @@
                             </div>
                         </div>
                          <!-- Radar chart moved to right side -->
-                        <div class="flex justify-center items-center h-64 bg-gray-800 bg-opacity-40 p-4 rounded-lg border border-gray-700">
+                        <div class="flex justify-center items-center h-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700">
                              @if(_teamMember.Metrics.Keys.Count(k => _teamMember.GetMetricDoubleValue(k).HasValue) > 2) // Need at least 3 numeric points for radar
                              {
                                 <RadarChart 
                                     TeamMember="@_teamMember" 
                                     TeamAverages="@_teamAverages" 
                                     AllTeamMembers="@_allTeamMembers"
-                                    Width="280px"
-                                    Height="280px" />
+                                    Width="320px"
+                                    Height="320px" />
                              }
                              else
                              {
@@ -208,14 +203,6 @@
     private List<TeamMember> _allTeamMembers = new List<TeamMember>();
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
     private ElementReference detailsContainer;
-    private Dictionary<string, double> _metricMaxValues = new Dictionary<string, double> {
-               { "M365Attach", 30 },
-               { "GSP", 20 },
-               { "Revenue", 20000 },
-               { "ASP", 800 },
-               { "Basket", 160 },
-               { "PMAttach", 25 }
-    };
     
     protected override async Task OnInitializedAsync()
     {
@@ -234,10 +221,7 @@
         {
             try
             {
-                // Add a delay to ensure the DOM is fully rendered
                 await Task.Delay(300);
-                
-                // Try to scroll to the element
                 await JSRuntime.InvokeVoidAsync("scrollToCenter", detailsContainer);
             }
             catch (Exception ex)
@@ -356,16 +340,6 @@
         return $"{percentage:F1}%";
     }
     
-    private double GetMetricMaxValue(string metricKey)
-    {
-        return _allTeamMembers
-            .Where(m => m.Department == _teamMember.Department)
-            .Select(m => m.GetMetricDoubleValue(metricKey))
-            .Where(v => v.HasValue)
-            .DefaultIfEmpty(0)
-            .Max() ?? 0;
-    }
-    
     private double GetMetricMinValue(string metricKey)
     {
         return _allTeamMembers
@@ -376,28 +350,89 @@
             .Min() ?? 0;
     }
     
-    private double GetPerformanceScore(string metricKey, object? value)
+    // Updated Performance Score calculation to include goals and bonus multiplier
+    private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
     {
-        double? numericValue = _teamMember.GetMetricDoubleValue(metricKey);
-        if (!numericValue.HasValue) return 50;
+        // Define specific goals for certain metrics
+        double? goal = metricKey switch
+        {
+            "PMAttach" => 25.0,   // Goal is 25%
+            "M365Attach" => 30.0, // Goal is 30%
+            "GSP" => 20.0,        // Goal is 20%
+            _ => null             // No specific goal for other metrics
+        };
 
-        double average = GetTeamAverage(metricKey);
-        if (average == 0) return numericValue > 0 ? 100 : 50;
-
+        double baseScoreTarget = 100.0; // The value needed to achieve a base score of 100 (before bonus)
         bool lowerIsBetter = metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase);
 
-        double score;
-        if (lowerIsBetter)
+        if (goal.HasValue && !lowerIsBetter) // Use goal if defined and higher is better
         {
-            if (numericValue.Value == 0) return 100;
-            score = (average / numericValue.Value) * 50;
+            baseScoreTarget = goal.Value;
         }
-        else
+        else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0) // Otherwise, use team average if available
         {
-            score = (numericValue.Value / average) * 50;
+             baseScoreTarget = average; 
+        }
+        else if (!lowerIsBetter) // If no goal and no average, and higher is better, default target (prevents division by zero)
+        {
+             return numericValue > 0 ? 100 : 50;
         }
 
-        return Math.Min(Math.Max(score, 0), 100);
+        double score;
+        double bonusMultiplier = 1.25;
+
+        if (lowerIsBetter)
+        {
+            if (baseScoreTarget <= 0) 
+            {
+                 return numericValue <= 0 ? 100 : 0; 
+            }
+             if (numericValue <= 0) return 100; 
+            
+            double ratio = baseScoreTarget / numericValue;
+            score = ratio * 50; 
+        }
+        else // Higher is better
+        {
+            if (baseScoreTarget <= 0) 
+            {
+                 return numericValue > 0 ? 100 : 50;
+            }
+            
+            double baseRatio = numericValue / baseScoreTarget;
+            score = baseRatio * 100; // Achieving the target gives a score of 100
+
+            if (numericValue > baseScoreTarget)
+            {
+                double excessValue = numericValue - baseScoreTarget;
+                double excessRatio = excessValue / baseScoreTarget; 
+                double bonusPoints = (excessRatio * 100) * bonusMultiplier;
+                score = 100 + bonusPoints; 
+            }
+        }
+
+        return Math.Min(Math.Max(score, 0), 150); // Cap score
+    }
+    
+    // Overload GetPerformanceScore to fetch the current value
+    private double GetPerformanceScore(string metricKey, object? currentValue)
+    {
+        double? numericValue = GetDoubleValue(currentValue); // Use helper to convert object?
+        if (!numericValue.HasValue) return 50; // Default score if not numeric
+        
+        // Use the existing _teamAverages calculated in OnInitializedAsync
+        return CalculatePerformanceScore(metricKey, numericValue.Value, _teamAverages);
+    }
+    
+    // Helper to convert various object types to double?
+    private double? GetDoubleValue(object? value)
+    {
+        if (value == null) return null;
+        if (value is double d) return d;
+        if (value is int i) return (double)i;
+        if (value is long l) return (double)l;
+        if (value is decimal dec) return (double)dec;
+        return null; 
     }
     
     private int GetOverallRank()
@@ -489,5 +524,38 @@
             "MVP" => value.ToString() ?? "N/A",
             _ => value.ToString() ?? "N/A"
         };
+    }
+    
+    // Helper method to determine the Max value to display (Goal or Actual Max)
+    private double? GetDisplayMaxValue(string metricKey)
+    {
+        // Check for specific goals first
+        double? goal = metricKey switch
+        {
+            "PMAttach" => 25.0,
+            "M365Attach" => 30.0,
+            "GSP" => 20.0,
+            _ => null
+        };
+
+        if (goal.HasValue && !metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase)) // Don't show goal for 'lower is better'
+        {
+            return goal.Value;
+        }
+        else
+        {
+            // Otherwise, return the actual max calculated from team members
+            return GetMetricMaxValue(metricKey);
+        }
+    }
+    
+    private double GetMetricMaxValue(string metricKey)
+    {
+        return _allTeamMembers
+            .Where(m => m.Department == _teamMember.Department)
+            .Select(m => m.GetMetricDoubleValue(metricKey))
+            .Where(v => v.HasValue)
+            .DefaultIfEmpty(0)
+            .Max() ?? 0;
     }
 }
