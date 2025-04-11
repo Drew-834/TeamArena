@@ -2,191 +2,196 @@
 @inject IJSRuntime JSRuntime
 
 <div class="radar-chart-container @CssClass" id="@ChartId">
-    <svg width="@Width" height="@Height" viewBox="0 0 250 250" class="radar-chart">
-        <!-- Radar Chart Background Grid -->
-        <g class="grid-lines">
-            @for (int i = 1; i <= 5; i++)
-            {
-                var points = GetPolygonPoints(i * 20);
+    @if (Labels != null && NormalizedData != null && Labels.Count > 2 && NormalizedData.Count == Labels.Count)
+    {
+        <svg width="@Width" height="@Height" viewBox="0 0 250 250" class="radar-chart">
+            <!-- Grid (scaled to 150 max) -->
+            <g class="grid-lines">
+                @for (int i = 1; i <= 5; i++)
+                {
+                    var points = GetPolygonPoints(i * 20); // 5 lines, up to 100%
                     <polygon points="@points" 
-                         fill="none" 
-                         stroke="#555555" 
-                         stroke-width="0.5" 
-                         stroke-opacity="0.7" />
-            }
-        </g>
+                             fill="none" 
+                             stroke="#555555" 
+                             stroke-width="0.5" 
+                             stroke-opacity="0.7" />
+                }
+            </g>
 
-        <!-- Axis Lines -->
-        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
-        {
-            var x2 = GetAxisEndX(i);
-            var y2 = GetAxisEndY(i);
+            <!-- Axis Lines -->
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                var x2 = GetAxisEndX(i);
+                var y2 = GetAxisEndY(i);
                 <line x1="125" y1="125" 
-                  x2="@x2" y2="@y2" 
-                  stroke="#666666" 
-                  stroke-width="0.7" 
-                  stroke-opacity="0.7" />
-        }
+                      x2="@x2" y2="@y2" 
+                      stroke="#666666" 
+                      stroke-width="0.7" 
+                      stroke-opacity="0.7" />
+            }
 
-        <!-- Metric Labels -->
-        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
-        {
-            var x = GetLabelX(i);
-            var y = GetLabelY(i);
-            var anchor = GetTextAnchor(i);
-            var baseline = GetDominantBaseline(i);
-            var metricName = GetMetricShortName(DisplayedMetricKeys[i]);
+            <!-- Metric Labels -->
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                var x = GetLabelX(i);
+                var y = GetLabelY(i);
+                var anchor = GetTextAnchor(i);
+                var baseline = GetDominantBaseline(i);
+                var metricName = GetMetricShortName(Labels[i]);
 
                 <g>
                     <text x="@x" 
-                      y="@y" 
-                      font-size="10" 
-                      fill="#a3a3a3" 
-                      text-anchor="@anchor" 
-                      dominant-baseline="@baseline">@metricName</text>
+                          y="@y" 
+                          font-size="10" 
+                          fill="#a3a3a3" 
+                          text-anchor="@anchor" 
+                          dominant-baseline="@baseline">@metricName</text>
                 </g>
-        }
+            }
 
-        <!-- Data Polygon -->
-        <polygon points="@GetDataPoints()" 
-                 fill="rgba(255, 193, 7, 0.2)" 
-                 stroke="#ffc107" 
-                 stroke-width="2" />
+            <!-- Data Polygon -->
+            <polygon points="@GetDataPoints()" 
+                     fill="rgba(255, 193, 7, 0.1)" 
+                     stroke="#ffc107" 
+                     stroke-width="2" />
 
-        <!-- Data Points -->
-        @for (int i = 0; i < DisplayedMetricKeys.Length; i++)
-        {
-            var cx = GetDataPointX(i);
-            var cy = GetDataPointY(i);
+            <!-- Data Points -->
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                var cx = GetDataPointX(i);
+                var cy = GetDataPointY(i);
                 <circle cx="@cx" 
-                    cy="@cy" 
-                    r="3" 
-                    fill="#ffc107" />
-        }
-    </svg>
+                        cy="@cy" 
+                        r="3" 
+                        fill="rgba(255, 193, 7, 0.4)" />
+            }
+        </svg>
+    }
+    else
+    {
+        <!-- Optional: Placeholder if data is insufficient -->
+        <div style="width:@Width; height:@Height; display:flex; align-items:center; justify-content:center; color:#555;">
+             <p>Chart data not available.</p>
+        </div>
+    }
 </div>
 
 @code {
-    [Parameter]
-    public string CssClass { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string Width { get; set; } = "250px";
+    [Parameter] public string Height { get; set; } = "250px";
 
-    [Parameter]
-    public string Width { get; set; } = "250px";
-
-    [Parameter]
-    public string Height { get; set; } = "250px";
-
-    [Parameter]
-    public TeamMember TeamMember { get; set; } = new TeamMember();
-
-    [Parameter]
-    public Dictionary<string, double> TeamAverages { get; set; } = new Dictionary<string, double>();
-
-    [Parameter]
-    public List<TeamMember> AllTeamMembers { get; set; } = new List<TeamMember>();
+    // New Parameters
+    [Parameter] public List<string>? Labels { get; set; }
+    [Parameter] public List<double>? NormalizedData { get; set; }
 
     private string ChartId = $"radar-chart-{Guid.NewGuid()}";
 
-    // Keep MetricKeys for defining chart axes, but filter dynamically
-    private string[] DisplayedMetricKeys = Array.Empty<string>();
-
-    protected override void OnParametersSet()
-    {
-        // Filter MetricKeys to only those numeric metrics present for the current TeamMember
-        if (TeamMember != null && TeamMember.Metrics != null)
-        {
-             DisplayedMetricKeys = TeamMember.Metrics.Keys
-                                     .Where(key => TeamMember.GetMetricDoubleValue(key).HasValue)
-                                     .ToArray();
-        }
-         else
-        {
-            DisplayedMetricKeys = Array.Empty<string>();
-        }
-        base.OnParametersSet();
-    }
+    // Scale Factor: Map 100% normalized score to radius 100.
+    // Scores > 100 will extend beyond the main grid.
+    private double RadiusScaleFactor => 100.0 / 100.0; // Now 1.0
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await JSRuntime.InvokeVoidAsync("console.log", "Radar chart rendered");
+            await JSRuntime.InvokeVoidAsync("console.log", "Radar chart component rendered");
         }
     }
 
-    private string GetPolygonPoints(int percentage)
-    {
-        var radius = percentage;
-        var points = new List<string>();
+    // --- SVG Calculation Helpers (Adjusted for new parameters and scaling) --- 
 
-        for (int i = 0; i < DisplayedMetricKeys.Length; i++)
+    private string GetPolygonPoints(int radius)
+    {
+        // Grid lines now represent 20, 40, 60, 80, 100 percent/score
+        if (Labels == null || !Labels.Any()) return "";
+        var points = new List<string>();
+        int count = Labels.Count;
+
+        for (int i = 0; i < count; i++)
         {
-            double angle = 2 * Math.PI * i / DisplayedMetricKeys.Length - Math.PI / 2;
+            double angle = 2 * Math.PI * i / count - Math.PI / 2;
             double x = 125 + radius * Math.Cos(angle);
             double y = 125 + radius * Math.Sin(angle);
-            points.Add($"{x},{y}");
+            points.Add($"{x.ToString("F2")},{y.ToString("F2")}");
         }
-
         return string.Join(" ", points);
     }
 
     private string GetDataPoints()
     {
+        if (Labels == null || NormalizedData == null || Labels.Count != NormalizedData.Count) return "";
         var points = new List<string>();
+        int count = Labels.Count;
 
-        for (int i = 0; i < DisplayedMetricKeys.Length; i++)
+        for (int i = 0; i < count; i++)
         {
             var x = GetDataPointX(i);
             var y = GetDataPointY(i);
-            points.Add($"{x},{y}");
+            points.Add($"{x.ToString("F2")},{y.ToString("F2")}");
         }
-
         return string.Join(" ", points);
     }
 
     private double GetDataPointX(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        double normalizedValue = GetNormalizedValue(DisplayedMetricKeys[index]);
-        double radius = normalizedValue * 100;
+        if (Labels == null || NormalizedData == null || index >= Labels.Count) return 125;
+        int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        double normalizedValue = NormalizedData[index]; 
+        // Use the scale factor directly, score is already capped at 100
+        double radius = normalizedValue * RadiusScaleFactor; 
         return 125 + radius * Math.Cos(angle);
     }
 
     private double GetDataPointY(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        double normalizedValue = GetNormalizedValue(DisplayedMetricKeys[index]);
-        double radius = normalizedValue * 100;
+        if (Labels == null || NormalizedData == null || index >= Labels.Count) return 125;
+        int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        double normalizedValue = NormalizedData[index]; 
+         // Use the scale factor directly, score is already capped at 100
+        double radius = normalizedValue * RadiusScaleFactor; 
         return 125 + radius * Math.Sin(angle);
     }
 
     private double GetAxisEndX(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        return 125 + 100 * Math.Cos(angle);
+         if (Labels == null || !Labels.Any()) return 125;
+         int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        return 125 + 100 * Math.Cos(angle); // Max radius of 100
     }
 
     private double GetAxisEndY(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        return 125 + 100 * Math.Sin(angle);
+         if (Labels == null || !Labels.Any()) return 125;
+         int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        return 125 + 100 * Math.Sin(angle); // Max radius of 100
     }
 
     private double GetLabelX(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        return 125 + 115 * Math.Cos(angle);
+         if (Labels == null || !Labels.Any()) return 125;
+         int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        return 125 + 115 * Math.Cos(angle); // Offset labels slightly outside grid
     }
 
     private double GetLabelY(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
-        return 125 + 115 * Math.Sin(angle);
+         if (Labels == null || !Labels.Any()) return 125;
+         int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
+        return 125 + 115 * Math.Sin(angle); // Offset labels slightly outside grid
     }
 
     private string GetTextAnchor(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
+        if (Labels == null || !Labels.Any()) return "middle";
+        int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
         double x = Math.Cos(angle);
 
         if (Math.Abs(x) < 0.3) return "middle";
@@ -195,42 +200,20 @@
 
     private string GetDominantBaseline(int index)
     {
-        double angle = 2 * Math.PI * index / DisplayedMetricKeys.Length - Math.PI / 2;
+        if (Labels == null || !Labels.Any()) return "middle";
+        int count = Labels.Count;
+        double angle = 2 * Math.PI * index / count - Math.PI / 2;
         double y = Math.Sin(angle);
 
         if (Math.Abs(y) < 0.3) return "middle";
         return y > 0 ? "hanging" : "auto";
     }
 
-    private double GetNormalizedValue(string metricKey)
+    private string GetMetricShortName(string metricName)
     {
-        if (TeamMember == null || AllTeamMembers == null || !AllTeamMembers.Any())
-            return 0;
-
-        double? value = TeamMember.GetMetricDoubleValue(metricKey);
-        if (!value.HasValue) return 0;
-
-        // Calculate Max value dynamically from all members in the same department
-        double maxInDept = AllTeamMembers
-            .Where(m => m.Department == TeamMember.Department)
-            .Select(m => m.GetMetricDoubleValue(metricKey))
-            .Where(v => v.HasValue)
-            .DefaultIfEmpty(0)
-            .Max() ?? 0;
-
-        if (maxInDept <= 0) return 0; // Avoid division by zero or negative max
-
-        // Normalize to a value between 0 and 1
-        return Math.Min(Math.Max(value.Value / maxInDept, 0), 1);
-    }
-
-    private string GetMetricShortName(string metricKey)
-    {
-         // Use the static method from TeamMember for consistency
-         var displayName = TeamMember.GetMetricDisplayName(metricKey);
          // Simple shortening logic (take first word or abbreviation)
-         if (displayName.Contains(" ")) return displayName.Split(' ')[0];
-         if (displayName.Length > 6) return displayName.Substring(0, 5) + "."; // Abbreviate long names
-         return displayName;
+         if (metricName.Contains(" ")) return metricName.Split(' ')[0];
+         if (metricName.Length > 6) return metricName.Substring(0, 4) + "."; // Shorten further
+         return metricName;
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using GameScoreboard.Data;
 
 namespace GameScoreboard.Services
 {
@@ -13,15 +14,20 @@ namespace GameScoreboard.Services
         Task AddTeamMemberAsync(TeamMember member);
         Task UpdateTeamMemberAsync(TeamMember member);
         Task DeleteTeamMemberAsync(int id);
+        Task SaveMetricRecordsForPeriodAsync(int memberId, string period, List<MetricRecord> records);
+        Task<List<MetricRecord>> GetMetricRecordsAsync(int? memberId = null, string? period = null);
     }
 
     public class MockDataService : IDataService
     {
         private readonly List<TeamMember> _teamMembers;
+        // Use a compound key (MemberId, Period) to store records distinctly
+        private readonly Dictionary<(int MemberId, string Period), List<MetricRecord>> _metricRecords = new();
 
         public MockDataService()
         {
             _teamMembers = InitializeMockData();
+            // Don't pre-populate _metricRecords from mock data, let SaveMetrics do it
         }
 
         private List<TeamMember> InitializeMockData()
@@ -35,14 +41,14 @@ namespace GameScoreboard.Services
                     Name = "Adam",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/adam1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 50.0 },
-                        { "GSP", 5.3 },
-                        { "Revenue", 25185.0 },
-                        { "ASP", 810.0 },
-                        { "Basket", 198.0 },
-                        { "PMAttach", 6.7 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "50.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.3" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "25185.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "810.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "198.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "6.7" }
                     }
                 },
                 new TeamMember
@@ -51,14 +57,14 @@ namespace GameScoreboard.Services
                     Name = "Ruben",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/ruben1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 42.9 },
-                        { "GSP", 22.0 },
-                        { "Revenue", 19456.0 },
-                        { "ASP", 738.0 },
-                        { "Basket", 170.0 },
-                        { "PMAttach", 9.5 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "42.9" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "22.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "19456.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "738.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "170.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "9.5" }
                     }
                 },
                 new TeamMember
@@ -67,14 +73,14 @@ namespace GameScoreboard.Services
                     Name = "Ishack",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/ishack2.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 21.7 },
-                        { "GSP", 3.0 },
-                        { "Revenue", 23740.0 },
-                        { "ASP", 762.0 },
-                        { "Basket", 241.0 },
-                        { "PMAttach", 13.0 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "21.7" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "3.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "23740.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "762.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "241.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "13.0" }
                     }
                 },
                 new TeamMember
@@ -83,14 +89,14 @@ namespace GameScoreboard.Services
                     Name = "Drew",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/drew1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 42.9 },
-                        { "GSP", 5.0 },
-                        { "Revenue", 21081.0 },
-                        { "ASP", 712.0 },
-                        { "Basket", 132.0 },
-                        { "PMAttach", 19.0 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "42.9" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "21081.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "712.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "132.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "19.0" }
                     }
                 },
                 new TeamMember
@@ -99,14 +105,14 @@ namespace GameScoreboard.Services
                     Name = "Vinny",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/vinny2.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 0.0 },
-                        { "GSP", 0.0 },
-                        { "Revenue", 9305.0 },
-                        { "ASP", 472.0 },
-                        { "Basket", 113.0 },
-                        { "PMAttach", 31.3 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "9305.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "472.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "113.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "31.3" }
                     }
                 },
                 new TeamMember
@@ -115,14 +121,14 @@ namespace GameScoreboard.Services
                     Name = "Matthew",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/matthew1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 16.7 },
-                        { "GSP", 0.0 },
-                        { "Revenue", 9296.0 },
-                        { "ASP", 527.0 },
-                        { "Basket", 125.0 },
-                        { "PMAttach", 50.0 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "16.7" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "9296.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "527.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "125.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "50.0" }
                     }
                 },
                 new TeamMember
@@ -131,14 +137,14 @@ namespace GameScoreboard.Services
                     Name = "Jonathan",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/jon1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 12.5 },
-                        { "GSP", 10.0 },
-                        { "Revenue", 8577.0 },
-                        { "ASP", 842.0 },
-                        { "Basket", 160.0 },
-                        { "PMAttach", 62.5 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "12.5" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "10.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "8577.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "842.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "160.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "62.5" }
                     }
                 },
                 new TeamMember
@@ -147,14 +153,14 @@ namespace GameScoreboard.Services
                     Name = "Gustavo G",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/gustavo1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 41.7 },
-                        { "GSP", 0.0 },
-                        { "Revenue", 7590.0 },
-                        { "ASP", 497.0 },
-                        { "Basket", 123.0 },
-                        { "PMAttach", 0.0 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "41.7" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7590.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "497.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "123.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "0.0" }
                     }
                 },
                 new TeamMember
@@ -163,14 +169,14 @@ namespace GameScoreboard.Services
                     Name = "Felipe",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/matthew1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 0.0 },
-                        { "GSP", 5.0 },
-                        { "Revenue", 7406.0 },
-                        { "ASP", 347.0 },
-                        { "Basket", 175.0 },
-                        { "PMAttach", 13.3 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7406.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "347.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "175.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "13.3" }
                     }
                 },
                 new TeamMember
@@ -179,14 +185,14 @@ namespace GameScoreboard.Services
                     Name = "Klarensky",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/kla1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "M365Attach", 0.0 },
-                        { "GSP", 0.0 },
-                        { "Revenue", 7926.0 },
-                        { "ASP", 361.0 },
-                        { "Basket", 54.0 },
-                        { "PMAttach", 0.0 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7926.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "361.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "54.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "0.0" }
                     }
                 },
                 // --- Store Department Members (Sample) ---
@@ -196,12 +202,12 @@ namespace GameScoreboard.Services
                     Name = "Sarah",
                     Department = "Store",
                     AvatarUrl = "images/avatars/avatar1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "Revenue", 150000.0 },
-                        { "5Star", 4.8 },
-                        { "GSP", 18.5 },
-                        { "Basket", 85.50 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "150000.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.8" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "18.5" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "85.50" }
                     }
                 },
                 new TeamMember
@@ -210,12 +216,12 @@ namespace GameScoreboard.Services
                     Name = "Mike",
                     Department = "Store",
                     AvatarUrl = "images/avatars/avatar2.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "Revenue", 120000.0 },
-                        { "5Star", 4.5 },
-                        { "GSP", 15.2 },
-                        { "Basket", 75.00 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "120000.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.5" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "15.2" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "75.00" }
                     }
                 },
                 // --- Front End Department Members (Sample) ---
@@ -225,12 +231,12 @@ namespace GameScoreboard.Services
                     Name = "Linda",
                     Department = "Front",
                     AvatarUrl = "images/avatars/kla1.png",
-                    Metrics = new Dictionary<string, object?>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "GSP", 25.0 },
-                        { "BP", 120 },
-                        { "PM", 85 },
-                        { "5Star", 4.9 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "25.0" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "BP", Value = "120" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PM", Value = "85" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.9" }
                     }
                 },
                 new TeamMember
@@ -239,12 +245,12 @@ namespace GameScoreboard.Services
                     Name = "David",
                     Department = "Front",
                     AvatarUrl = "images/avatars/jon1.png",
-                    Metrics = new Dictionary<string, object?>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "GSP", 22.1 },
-                        { "BP", 95 },
-                        { "PM", 70 },
-                        { "5Star", 4.7 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "22.1" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "BP", Value = "95" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "PM", Value = "70" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.7" }
                     }
                 },
                 // --- Warehouse Department Members (Sample) ---
@@ -254,12 +260,12 @@ namespace GameScoreboard.Services
                     Name = "Carlos",
                     Department = "Warehouse",
                     AvatarUrl = "images/avatars/ishack1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "Picks", 405 },
-                        { "Accuracy", 98.2 },
-                        { "Awk", 0.5 },
-                        { "Units", 1402 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Picks", Value = "405" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Accuracy", Value = "98.2" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Awk", Value = "0.5" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Units", Value = "1402" }
                     }
                 },
                 new TeamMember
@@ -268,31 +274,97 @@ namespace GameScoreboard.Services
                     Name = "Jessica",
                     Department = "Warehouse",
                     AvatarUrl = "images/avatars/vinny1.png",
-                    Metrics = new Dictionary<string, object>
+                    MetricRecords = new List<MetricRecord>
                     {
-                        { "Picks", 382 },
-                        { "Accuracy", 99.5 },
-                        { "Awk", 0.7 },
-                        { "Units", 1280 }
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Picks", Value = "382" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Accuracy", Value = "99.5" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Awk", Value = "0.7" },
+                        new MetricRecord { Period = "MockPeriod", MetricKey = "Units", Value = "1280" }
                     }
                 }
             };
         }
 
+        // Helper to find the most recent period string present in the saved records
+        private string? GetLatestPeriodWithData()
+        {
+            if (!_metricRecords.Any()) return null;
+            return _metricRecords.Keys
+                .Select(key => key.Period)
+                .Distinct()
+                .OrderByDescending(p => GetPeriodEndDateFromString(p))
+                .FirstOrDefault();
+        }
+
+        // Helper to parse period string 
+        private DateTime GetPeriodEndDateFromString(string period)
+        {
+            try
+            {
+                string[] parts = period.Split('-');
+                if (parts.Length != 2) return DateTime.MinValue;
+                string monthYear = parts[1]; 
+                DateTime monthStartDate = DateTime.ParseExact("01-" + monthYear, "dd-MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                
+                if (parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase))
+                {
+                    return monthStartDate.AddDays(14); // Approx mid-month end
+                }
+                else // EOM
+                {
+                    return monthStartDate.AddMonths(1).AddDays(-1); // End of month
+                }
+            }
+            catch { return DateTime.MinValue; }
+        }
+
         public Task<List<TeamMember>> GetTeamMembersAsync(string? department = null)
         {
-            List<TeamMember> filteredMembers;
-            if (string.IsNullOrEmpty(department))
+            Console.WriteLine($"GetTeamMembersAsync called with department: {department ?? "ALL"}");
+            var filteredMembersSource = _teamMembers;
+            if (!string.IsNullOrEmpty(department))
             {
-                filteredMembers = _teamMembers;
+                filteredMembersSource = _teamMembers.Where(m => m.Department.Equals(department, StringComparison.OrdinalIgnoreCase)).ToList();
             }
-            else
+
+            // Create a fresh list to return, copying members
+            var membersToReturn = filteredMembersSource.Select(m => new TeamMember 
+            { 
+                Id = m.Id, 
+                Name = m.Name, 
+                Department = m.Department, 
+                Role = m.Role,
+                AvatarUrl = m.AvatarUrl,
+                TotalExperience = m.TotalExperience,
+                MetricRecords = new List<MetricRecord>() // Initialize with empty list
+            }).ToList();
+
+            // --- Populate Latest Metric Records --- 
+            string? latestPeriod = GetLatestPeriodWithData();
+            Console.WriteLine($"GetTeamMembersAsync: Latest period with data is {latestPeriod ?? "None"}");
+
+            if (latestPeriod != null)
             {
-                filteredMembers = _teamMembers.Where(m => 
-                    m.Department.Equals(department, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                foreach (var member in membersToReturn) // Populate the copies
+                {
+                    if (_metricRecords.TryGetValue((member.Id, latestPeriod), out var records))
+                    {
+                        member.MetricRecords = records ?? new List<MetricRecord>();
+                        Console.WriteLine($"  Populated {member.MetricRecords.Count} records for {member.Name} for period {latestPeriod}");
+                    }
+                    else
+                    { 
+                        // Ensure list is empty if no records for the latest period
+                        member.MetricRecords = new List<MetricRecord>(); 
+                        Console.WriteLine($"  No records found for {member.Name} for period {latestPeriod}");
+                    }
+                }
             }
-            return Task.FromResult(filteredMembers);
+            // If latestPeriod is null, the MetricRecords remain empty as initialized.
+            // --- End Population ---
+            
+            Console.WriteLine($"GetTeamMembersAsync returning {membersToReturn.Count} members.");
+            return Task.FromResult(membersToReturn);
         }
 
         public Task<TeamMember?> GetTeamMemberByIdAsync(int id)
@@ -311,21 +383,23 @@ namespace GameScoreboard.Services
 
         public Task UpdateTeamMemberAsync(TeamMember member)
         {
-            var index = _teamMembers.FindIndex(m => m.Id == member.Id);
-            if (index != -1)
+            var existingMember = _teamMembers.FirstOrDefault(m => m.Id == member.Id);
+            if (existingMember != null)
             {
-                // In the mock service, the reference is already updated in memory
-                // by the WeeklyTracker page. This method is a placeholder.
-                 _teamMembers[index] = member; // Explicitly update the list reference if needed
-                 Console.WriteLine($"MockDataService: Updated member {member.Name} (ID: {member.Id}) in memory.");
+                // Update TotalExperience primarily
+                existingMember.TotalExperience = member.TotalExperience;
+                
+                // Update other basic info IF provided (less critical for this app)
+                // existingMember.Name = member.Name;
+                // existingMember.Department = member.Department;
+                // existingMember.Role = member.Role;
+                // existingMember.AvatarUrl = member.AvatarUrl;
+                Console.WriteLine($"MockDataService: Updated XP for member ID {member.Id} to {existingMember.TotalExperience:F2}");
             }
-            else
+            else 
             {
-                 Console.WriteLine($"MockDataService: Member with ID {member.Id} not found for update.");
-                 // Handle error or potentially add if not found?
+                Console.WriteLine($"MockDataService: Member ID {member.Id} not found for UpdateTeamMemberAsync.");
             }
-            // TODO: Replace this in-memory update simulation with a real API call
-            // Example: await _httpClient.PutAsJsonAsync($"/api/teammembers/{member.Id}", member);
             return Task.CompletedTask;
         }
 
@@ -334,6 +408,90 @@ namespace GameScoreboard.Services
             _teamMembers.RemoveAll(m => m.Id == id);
             return Task.CompletedTask;
             // TODO: Replace with API call for real persistence
+        }
+
+        public Task SaveMetricRecordsForPeriodAsync(int memberId, string period, List<MetricRecord> records)
+        {
+            // Use the compound key for storage
+            var key = (memberId, period);
+            _metricRecords[key] = records; // Stores/overwrites records for this specific member and period
+
+            // Corrected log to show total distinct periods stored or total records across all periods
+            Console.WriteLine($"MockDataService: Saved/Updated {records.Count} metric records for member ID {memberId} for period '{period}'. Total distinct period entries: {_metricRecords.Count}");
+
+            // --- REMOVED: Update MetricRecords on the TeamMember object in _teamMembers list --- 
+            /*
+            var memberToUpdate = _teamMembers.FirstOrDefault(m => m.Id == memberId);
+            if (memberToUpdate != null)
+            { 
+                // Ensure the collection is initialized if it's somehow null (shouldn't happen with current init)
+                memberToUpdate.MetricRecords ??= new List<MetricRecord>(); 
+                
+                // Cast to List<T> to use RemoveAll and AddRange
+                if (memberToUpdate.MetricRecords is List<MetricRecord> metricList)
+                {
+                    // Remove any existing records for the same period from the TeamMember's list
+                    metricList.RemoveAll(r => r.Period == period);
+                    
+                    // Add the new records to the TeamMember's list
+                    metricList.AddRange(records);
+                    Console.WriteLine($"MockDataService: Synchronized MetricRecords collection on TeamMember object ID {memberId} for period '{period}'.");
+                }
+                else
+                {
+                     // Fallback if it's not a List<T> (less efficient)
+                    Console.WriteLine($"MockDataService: WARNING - MetricRecords collection is not a List<T>. Using slower update method for ID {memberId}.");
+                    var recordsToRemove = memberToUpdate.MetricRecords.Where(r => r.Period == period).ToList();
+                    foreach(var record in recordsToRemove) memberToUpdate.MetricRecords.Remove(record);
+                    foreach(var record in records) memberToUpdate.MetricRecords.Add(record);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"MockDataService: WARNING - Could not find TeamMember ID {memberId} in _teamMembers list to synchronize MetricRecords collection.");
+            }
+            */
+
+            return Task.CompletedTask;
+        }
+
+        public Task<List<MetricRecord>> GetMetricRecordsAsync(int? memberId = null, string? period = null)
+        {
+            // Start with all records from the dictionary values
+            IEnumerable<MetricRecord> query = _metricRecords.Values.SelectMany(list => list);
+
+            // --- Corrected Filtering Logic for Compound Key --- 
+            
+            if (memberId.HasValue && !string.IsNullOrEmpty(period))
+            {
+                // Filter by specific MemberId AND Period
+                query = _metricRecords
+                    .Where(kvp => kvp.Key.MemberId == memberId.Value && kvp.Key.Period.Equals(period, StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(kvp => kvp.Value);
+            }
+            else if (memberId.HasValue)
+            {
+                // Filter by MemberId only (all periods for that member)
+                 query = _metricRecords
+                    .Where(kvp => kvp.Key.MemberId == memberId.Value)
+                    .SelectMany(kvp => kvp.Value);
+            }
+            else if (!string.IsNullOrEmpty(period))
+            {
+                 // Filter by Period only (all members for that period)
+                 query = _metricRecords
+                    .Where(kvp => kvp.Key.Period.Equals(period, StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(kvp => kvp.Value);
+            }
+            // else: No filters provided, query remains all records
+
+            // Execute the query and return the result
+            var filteredRecords = query.ToList();
+            
+            // Logging for debugging
+            Console.WriteLine($"GetMetricRecordsAsync: memberId={memberId}, period={period}. Found {filteredRecords.Count} records.");
+
+            return Task.FromResult(filteredRecords);
         }
     }
 }

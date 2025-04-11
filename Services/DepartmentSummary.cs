@@ -24,7 +24,7 @@ namespace GameScoreboard.Models
             };
 
             // Dynamically get all unique metric keys present across all team members
-            var allMetricKeys = teamMembers.SelectMany(m => m.Metrics.Keys).Distinct().ToList();
+            var allMetricKeys = teamMembers.SelectMany(m => m.MetricRecords.Select(mr => mr.MetricKey)).Distinct().ToList();
 
             // Calculate averages, max, min, and performers for each *numeric* metric
             foreach (var key in allMetricKeys)

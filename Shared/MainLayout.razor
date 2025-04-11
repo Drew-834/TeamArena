@@ -18,7 +18,7 @@
         </div>
     }
 
-    <TermsOfUseModal IsVisible="_showTermsModal" OnAccepted="HandleTermsAccepted" />
+    <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
 
     @* Optional: Add a copyright footer *@
     <footer class="absolute bottom-0 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
@@ -29,53 +29,48 @@
 @code {
     private bool _termsAccepted = false;
     private bool _showTermsModal = false;
+    private bool _termsChecked = false; // Prevent checking multiple times during render
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_termsChecked)
         {
+            _termsChecked = true;
             try
             {
-                // Check localStorage to see if terms were already accepted in this browser
-                var accepted = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "termsAccepted");
-                if (accepted == "true")
+                // Check if terms have been accepted in this session
+                var accepted = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "termsAccepted");
+                
+                if (accepted != "true")
                 {
-                    _termsAccepted = true;
-                    _showTermsModal = false;
-                }
-                else
-                {
-                    _termsAccepted = false;
-                    // Delay showing modal slightly for better visual effect
-                    await Task.Delay(200);
                     _showTermsModal = true;
+                    StateHasChanged(); // Trigger UI update to show modal
                 }
             }
-            catch (Exception ex) // Handle potential JS interop errors
+            catch (Exception ex) 
             {
-                Console.WriteLine($"Error checking localStorage for terms acceptance: {ex.Message}");
-                // Default to showing the modal if localStorage access fails
-                 _termsAccepted = false;
-                 await Task.Delay(200);
-                 _showTermsModal = true;
+                // Handle potential JS interop errors (e.g., during prerendering)
+                Console.WriteLine($"Error checking session storage for terms acceptance: {ex.Message}");
+                // Decide fallback behavior - maybe show terms if check fails?
+                // _showTermsModal = true; 
+                // StateHasChanged();
             }
-            await InvokeAsync(StateHasChanged);
         }
     }
 
     private async Task HandleTermsAccepted()
     {
-        _termsAccepted = true;
         _showTermsModal = false;
+        _termsAccepted = true;
         try
         {
-            // Store acceptance in localStorage
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "termsAccepted", "true");
+            // Set the flag in sessionStorage
+            await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "termsAccepted", "true");
         }
-        catch (Exception ex)
+         catch (Exception ex) 
         {
-             Console.WriteLine($"Error setting localStorage for terms acceptance: {ex.Message}");
+            Console.WriteLine($"Error setting session storage for terms acceptance: {ex.Message}");
         }
-        StateHasChanged();
+        StateHasChanged(); // Trigger UI update to hide modal
     }
 }

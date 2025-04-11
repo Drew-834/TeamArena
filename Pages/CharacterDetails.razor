@@ -7,6 +7,7 @@
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
+@using GameScoreboard.Data
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -67,40 +68,34 @@
                             </div>
                         </div>
                         
-                        <h2 class="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-500 pb-2">Performance Metrics</h2>
+                        <h2 class="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-500 pb-2">Performance Metrics (@_latestPeriod)</h2>
                         
                         <div class="space-y-6">
-                            @foreach (var metric in _teamMember.GetAllMetrics().OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
+                            @foreach (var metric in _latestMetricsDict.OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
                             {
-                                @if (_teamMember.GetMetricDoubleValue(metric.Key).HasValue)
+                                var numericValue = GetMetricDoubleValue(metric.Key);
+                                
+                                @if (numericValue.HasValue)
                                 {
-                                    <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 @GetMetricBorderClass(metric.Key, metric.Value)">
+                                    <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 @GetMetricBorderClass(metric.Key, numericValue)">
                                         <div class="flex justify-between items-center mb-2">
                                             <div>
                                                 <div class="text-lg font-semibold flex items-center">
                                                     @TeamMember.GetMetricDisplayName(metric.Key)
-                                                    @if (IsTopPerformer(metric.Key))
-                                                    {
-                                                        <span class="ml-2 text-yellow-400 text-sm font-bold px-2 py-0.5 bg-yellow-900 bg-opacity-50 rounded-full">BEST</span>
-                                                    }
-                                                    @if (IsBottomPerformer(metric.Key))
-                                                    {
-                                                        <span class="ml-2 text-red-400 text-sm font-bold px-2 py-0.5 bg-red-900 bg-opacity-50 rounded-full">LOWEST</span>
-                                                    }
                                                 </div>
                                                 <div class="text-sm text-gray-400">
                                                     Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
                                                 </div>
                                             </div>
-                                            <div class="text-xl font-bold @GetMetricValueClass(metric.Key, metric.Value)">
-                                                @FormatMetricValue(metric.Key, metric.Value)
+                                            <div class="text-xl font-bold @GetMetricValueClass(metric.Key, numericValue)">
+                                                @FormatMetricValue(metric.Key, numericValue)
                                             </div>
                                         </div>
                                         
                                         <!-- Metric Bar with Avg Marker -->
                                         <div class="mt-2 bg-gray-800 rounded-full h-4 overflow-hidden relative">
-                                            <div class="@GetMetricBarClass(metric.Key, metric.Value) h-full rounded-full" 
-                                                 style="width: @GetMetricBarWidth(metric.Key, metric.Value)"></div>
+                                            <div class="@GetMetricBarClass(metric.Key, numericValue) h-full rounded-full" 
+                                                 style="width: @GetMetricBarWidth(metric.Key, numericValue)"></div>
                                             
                                             <!-- Team Average Marker -->
                                             <div class="absolute top-0 bottom-0 w-0.5 bg-white opacity-70"
@@ -110,7 +105,7 @@
                                         <!-- Performance Score -->
                                         <div class="mt-1 flex justify-between text-xs">
                                             <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                            <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, metric.Value).ToString("F0")</span>
+                                            <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
                                             <span>Max: 
                                                 @{
                                                     var displayMax = GetDisplayMaxValue(metric.Key);
@@ -122,7 +117,7 @@
                                 }
                                 else
                                 {
-                                    if(metric.Key == "MVP")
+                                    if(metric.Key.Equals("MVP", StringComparison.OrdinalIgnoreCase) && metric.Value != null)
                                     {
                                         <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 border-gray-600">
                                              <div class="flex justify-between items-center">
@@ -174,18 +169,22 @@
                         </div>
                          <!-- Radar chart moved to right side -->
                         <div class="flex justify-center items-center h-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700">
-                             @if(_teamMember.Metrics.Keys.Count(k => _teamMember.GetMetricDoubleValue(k).HasValue) > 2) // Need at least 3 numeric points for radar
+                             @if(_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2) 
                              {
+                                // Extract labels and data from the pre-generated object
+                                var labels = (List<string>?)_radarChartData.GetType().GetProperty("labels")?.GetValue(_radarChartData);
+                                var datasets = (List<object>?)_radarChartData.GetType().GetProperty("datasets")?.GetValue(_radarChartData);
+                                var data = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
+                                
                                 <RadarChart 
-                                    TeamMember="@_teamMember" 
-                                    TeamAverages="@_teamAverages" 
-                                    AllTeamMembers="@_allTeamMembers"
+                                    Labels="labels" 
+                                    NormalizedData="data"
                                     Width="320px"
                                     Height="320px" />
                              }
                              else
                              {
-                                 <p class="text-gray-500 text-center">Not enough numeric data points for Radar Chart.</p>
+                                 <p class="text-gray-500 text-center">Not enough numeric data points for Radar Chart for period @_latestPeriod.</p>
                              }
                          </div>
                     </div>
@@ -199,22 +198,169 @@
     [Parameter]
     public int Id { get; set; }
     
-    private TeamMember _teamMember = new TeamMember();
+    private TeamMember? _teamMember; 
     private List<TeamMember> _allTeamMembers = new List<TeamMember>();
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
     private ElementReference detailsContainer;
     
+    // New fields for period-specific data
+    private string? _latestPeriod = null;
+    private List<MetricRecord> _latestMetricRecords = new List<MetricRecord>();
+    private Dictionary<string, object?> _latestMetricsDict = new Dictionary<string, object?>();
+    
+    // Stores all records for the latest period for the current member's department
+    private List<MetricRecord> _allLatestPeriodDeptRecords = new(); 
+    
+    // Field to hold the generated data for the radar chart
+    private object? _radarChartData = null; 
+    
     protected override async Task OnInitializedAsync()
     {
-        _allTeamMembers = await DataService.GetTeamMembersAsync();
-        var foundMember = _allTeamMembers.FirstOrDefault(m => m.Id == Id);
-        if (foundMember != null)
+        // 1. Fetch the basic team member info (includes TotalExperience)
+        _teamMember = await DataService.GetTeamMemberByIdAsync(Id);
+        
+        if (_teamMember != null)
         {
-            _teamMember = foundMember;
+            // 2. Fetch all metric records for this member across all periods
+            var allMemberRecords = await DataService.GetMetricRecordsAsync(memberId: Id);
+
+            // 3. Determine the latest period
+            // (Requires a helper to parse/compare period strings, assuming format like "EOM-MMM yyyy")
+            _latestPeriod = GetLatestPeriod(allMemberRecords.Select(r => r.Period).Distinct());
+
+            if (_latestPeriod != null)
+            {
+                 // 4. Filter records for the latest period
+                _latestMetricRecords = allMemberRecords.Where(r => r.Period == _latestPeriod).ToList();
+                // 5. Create a dictionary for easier lookup in UI (similar to old GetAllMetrics)
+                _latestMetricsDict = CreateMetricsDictionary(_latestMetricRecords);
+                
+                // Calculate radar chart data AFTER metrics dict is populated
+                _radarChartData = GenerateRadarChartData(); 
+            }
+            else
+            {
+                 _latestMetricRecords.Clear();
+                 _latestMetricsDict.Clear();
+                 _radarChartData = null; // Clear chart data if no period data
+            }
+
+            // 6. Fetch all team members for context (ranking, averages)
+            _allTeamMembers = await DataService.GetTeamMembersAsync(); 
+            // 7. Recalculate averages based on the LATEST period data for the relevant department
+            await CalculateTeamAveragesForLatestPeriod(); 
         }
-        CalculateTeamAverages();
+        
+        StateHasChanged();
+    }
+
+    // --- Helper methods for Period and Metric Dictionary --- 
+
+    private string? GetLatestPeriod(IEnumerable<string?> periodStrings)
+    {
+        // Simple implementation: assumes "EOM-MMM yyyy" or "Mid-MMM yyyy"
+        // Parses the end date and returns the period string corresponding to the max end date.
+        return periodStrings
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Select(p => new { Period = p, EndDate = GetPeriodEndDate(p!) })
+            .OrderByDescending(x => x.EndDate)
+            .FirstOrDefault()?.Period;
+    }
+
+    // (Assumes GetPeriodEndDate helper exists, similar to WeeklyTracker's)
+    private DateTime GetPeriodEndDate(string period)
+    {
+        try
+        {
+            string[] parts = period.Split('-');
+            if (parts.Length < 2) return DateTime.MinValue;
+            string monthYear = parts[1]; 
+            // Adjust format to match expected input (e.g., "MMM yyyy")
+            DateTime monthStartDate = DateTime.ParseExact("01-" + monthYear, "dd-MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            
+            if (parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase))
+            {
+                return monthStartDate.AddDays(14); // Approx mid-month end
+            }
+            else // EOM
+            {
+                return monthStartDate.AddMonths(1).AddDays(-1); // End of month
+            }
+        }
+        catch 
+        { 
+            Console.WriteLine($"Warning: Could not parse period end date for '{period}'");
+            return DateTime.MinValue; // Fallback for parsing errors
+        }
     }
     
+    private Dictionary<string, object?> CreateMetricsDictionary(List<MetricRecord> records)
+    {
+        var metricsDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in records)
+        {
+            object? displayValue = record.Value; // Default to string
+            if (record.Value != null)
+            { 
+                // Use the robust GetDoubleValue helper to handle various formats ($, %, etc.)
+                var parsedDouble = GetDoubleValue(record.Value); 
+                if (parsedDouble.HasValue)
+                {
+                    displayValue = parsedDouble.Value; // Store as double if parse succeeds
+                }
+                // If GetDoubleValue returns null, we keep the original string value
+            }
+            metricsDict[record.MetricKey] = displayValue; 
+        }
+        return metricsDict;
+    }
+    
+    // --- Modified Average Calculation ---
+    
+    // Calculates averages using only data from the determined _latestPeriod
+    private async Task CalculateTeamAveragesForLatestPeriod()
+    {
+        if (!_allTeamMembers.Any() || _teamMember == null || _latestPeriod == null) 
+        {
+            _teamAverages = new Dictionary<string, double>();
+            return;
+        }
+
+        _teamAverages = new Dictionary<string, double>();
+        var relevantMembers = _allTeamMembers.Where(m => m.Department == _teamMember.Department).ToList();
+        var memberIds = relevantMembers.Select(m => m.Id).ToList();
+
+        // Fetch all relevant records for the latest period for all members in the department
+        // Use Task.WhenAll for potentially better performance
+        var fetchTasks = memberIds.Select(id => DataService.GetMetricRecordsAsync(memberId: id, period: _latestPeriod)).ToList();
+        var results = await Task.WhenAll(fetchTasks);
+        var allLatestPeriodRecords = results.SelectMany(list => list).ToList(); // Flatten the results
+
+        // Store fetched records for use in Min/Max calculations later
+        _allLatestPeriodDeptRecords = allLatestPeriodRecords; 
+
+        // Get unique metric keys present in this period for this department
+        var metricKeysInPeriod = allLatestPeriodRecords.Select(r => r.MetricKey).Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in metricKeysInPeriod)
+        {
+            var values = allLatestPeriodRecords
+                .Where(r => r.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase) && r.Value != null)
+                .Select(r => GetDoubleValue(r.Value)) // Use helper to attempt conversion
+                .Where(v => v.HasValue)                
+                .Select(v => v!.Value)                 
+                .ToList();
+
+            if (values.Any())
+            {
+                _teamAverages[key] = values.Average();
+            }
+        }
+    }
+
+    // TODO: Update UI loop and helper methods (IsBestInMetric, IsWorstInMetric, GetMetricDoubleValue etc.)
+    // to use _latestMetricsDict or _latestMetricRecords instead of _teamMember.MetricRecords
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && _teamMember != null)
@@ -231,90 +377,136 @@
         }
     }
     
-    private void CalculateTeamAverages()
-    {
-        if (!_allTeamMembers.Any()) return;
-
-        _teamAverages = new Dictionary<string, double>();
-        // Get all unique metric keys across all members
-        var allMetricKeys = _allTeamMembers.SelectMany(m => m.Metrics.Keys).Distinct();
-
-        foreach (var key in allMetricKeys)
-        {
-            var values = _allTeamMembers
-                .Select(m => m.GetMetricDoubleValue(key)) // Use helper
-                .Where(v => v.HasValue)                // Filter out nulls (non-numeric)
-                .Select(v => v.Value)                  // Get the double value
-                .ToList();
-
-            if (values.Any())
-            {
-                _teamAverages[key] = values.Average();
-            }
-            // else: metric was non-numeric or absent, skip average calculation
-        }
-    }
+    // private void CalculateTeamAverages() // Original method removed/replaced
+    // { ... } 
     
     private void NavigateBack()
     {
         NavigationManager.NavigateTo($"/departments/{_teamMember?.Department?.ToLower() ?? "computers"}"); // Navigate back to the member's department
     }
     
+    // --- TODO: Update Helper methods to use period-specific data --- 
+
+    // Example: Update GetMetricDoubleValue to potentially read from _latestMetricsDict first
+     private double? GetMetricDoubleValue(string key)
+     {
+         if (_latestMetricsDict.TryGetValue(key, out var objValue) && objValue is double dVal)
+         { 
+             return dVal;
+         }
+         if (_latestMetricsDict.TryGetValue(key, out objValue) && objValue is string sVal && double.TryParse(sVal, out dVal))
+         {
+             return dVal;
+         }
+         return null; 
+     }
+
     private bool IsTopPerformer(string metricKey)
     {
-        return _teamMember?.IsBestInMetric(metricKey, _allTeamMembers) ?? false;
+        double? memberValue = GetMetricDoubleValue(metricKey);
+        if (!memberValue.HasValue) return false;
+
+        double? maxScore = _allLatestPeriodDeptRecords
+                             .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+                             .Select(r => GetDoubleValue(r.Value))
+                             .Where(v => v.HasValue)
+                             .Select(v => v!.Value)
+                             .DefaultIfEmpty(double.MinValue)
+                             .Max();
+                             
+        return maxScore != double.MinValue && memberValue.Value >= maxScore;
     }
     
     private bool IsBottomPerformer(string metricKey)
     {
-        return _teamMember?.IsWorstInMetric(metricKey, _allTeamMembers) ?? false;
+        double? memberValue = GetMetricDoubleValue(metricKey);
+        if (!memberValue.HasValue) return false;
+        
+        bool lowerIsBetter = metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase); 
+
+        var scores = _allLatestPeriodDeptRecords
+                     .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+                     .Select(r => GetDoubleValue(r.Value))
+                     .Where(v => v.HasValue)
+                     .Select(v => v!.Value)
+                     .ToList();
+
+        if (!scores.Any()) return false;
+
+        double extremeScore = lowerIsBetter ? scores.Max() : scores.Min();
+        
+        return lowerIsBetter ? memberValue.Value >= extremeScore : memberValue.Value <= extremeScore;
     }
     
     private double GetTeamAverage(string metricKey)
     {
-        return _teamAverages.TryGetValue(metricKey, out var avg) ? avg : 0;
+        // Correctly return the pre-calculated average from the dictionary
+        return _teamAverages.TryGetValue(metricKey, out var avg) ? avg : 0.0; 
     }
     
+    // Other helpers like GetMetricBarClass, GetMetricValueClass, GetMetricBarWidth,
+    // GetAverageMarkerPosition, GetMetricMinValue, GetMetricMaxValue, 
+    // GetOverallRank, GetTopCategories, GetImprovedCategories, GetTotalPerformanceScore
+    // will need to be reviewed and potentially updated to use _latestMetricRecords 
+    // or the calculated _teamAverages based on the latest period.
+    // For example, GetOverallRank might still use TotalExperience from _teamMember.
+    // GetMetricMinValue/MaxValue should calculate based on the fetched allLatestPeriodRecords.
+
+    // GetPerformanceScore helper probably remains okay as it takes currentValue as input.
+    
+    // Formatting helpers (FormatMetricValue, GetFormattedMetricName) are likely fine.
+
     private string GetMetricBarClass(string metricKey, object? value)
     {
+        double? numericValue = GetDoubleValue(value); // Convert current value
+        double teamAverage = GetTeamAverage(metricKey); // Get numeric average
+
         if (IsTopPerformer(metricKey))
             return "bg-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "bg-red-400";
-        else if (value is double dValue && dValue > GetTeamAverage(metricKey))
-            return "bg-blue-500";
+        // Compare the numeric value against the numeric average
+        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage) 
+            return "bg-blue-500"; // Above average
         else
-            return "bg-blue-400";
+            return "bg-blue-400"; // At or below average (or average is 0)
     }
     
     private string GetMetricBorderClass(string metricKey, object? value)
     {
+        double? numericValue = GetDoubleValue(value);
+        double teamAverage = GetTeamAverage(metricKey);
+
         if (IsTopPerformer(metricKey))
             return "border-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "border-red-400";
-        else if (value is double dValue && dValue > GetTeamAverage(metricKey))
+        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage)
             return "border-blue-500";
         else
-            return "border-gray-600";
+            return "border-gray-600"; // Default/neutral border
     }
     
     private string GetMetricValueClass(string metricKey, object? value)
     {
+        double? numericValue = GetDoubleValue(value);
+        double teamAverage = GetTeamAverage(metricKey);
+
         if (IsTopPerformer(metricKey))
             return "text-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "text-red-400";
-        else if (value is double dValue && dValue > GetTeamAverage(metricKey))
+        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage)
             return "text-blue-400";
         else
-            return "text-white";
+            return "text-white"; // Default text color
     }
     
     private string GetMetricBarWidth(string metricKey, object? value)
     {
+        if (_teamMember == null) return "0%"; // Added null check for _teamMember (Fixes CS8602)
         if (value == null) return "0%";
-        double? numericValue = _teamMember.GetMetricDoubleValue(metricKey);
+        double? numericValue = GetDoubleValue(value);
         if (!numericValue.HasValue) return "0%";
 
         double max = GetMetricMaxValue(metricKey);
@@ -342,12 +534,13 @@
     
     private double GetMetricMinValue(string metricKey)
     {
-        return _allTeamMembers
-            .Where(m => m.Department == _teamMember.Department)
-            .Select(m => m.GetMetricDoubleValue(metricKey))
-            .Where(v => v.HasValue)
-            .DefaultIfEmpty(0)
-            .Min() ?? 0;
+        return _allLatestPeriodDeptRecords
+                .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+                .Select(r => GetDoubleValue(r.Value))
+                .Where(v => v.HasValue)
+                .Select(v => v!.Value)
+                .DefaultIfEmpty(0)
+                .Min();
     }
     
     // Updated Performance Score calculation to include goals and bonus multiplier
@@ -425,6 +618,7 @@
     }
     
     // Helper to convert various object types to double?
+    // Updated to handle string parsing after removing common symbols
     private double? GetDoubleValue(object? value)
     {
         if (value == null) return null;
@@ -432,6 +626,21 @@
         if (value is int i) return (double)i;
         if (value is long l) return (double)l;
         if (value is decimal dec) return (double)dec;
+        
+        if (value is string sVal)
+        {
+            // Clean the string: remove $, %, commas, whitespace
+            sVal = sVal.Replace("$", "")
+                       .Replace("%", "")
+                       .Replace(",", "")
+                       .Trim();
+                       
+            if (double.TryParse(sVal, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedDouble))
+            { 
+                return parsedDouble;
+            }
+        }
+        
         return null; 
     }
     
@@ -440,27 +649,21 @@
         if (_teamMember == null || !_allTeamMembers.Any()) return 1;
 
         var departmentMembers = _allTeamMembers.Where(m => m.Department == _teamMember.Department).ToList();
-        var scores = departmentMembers.Select(m => new 
-            {
-                 MemberId = m.Id,
-                 // Handle empty metrics, calculate average score
-                 Score = m.Metrics.Any() ? 
-                         m.Metrics.Keys.Average(key => GetPerformanceScore(key, m.GetMetricValue(key))) : 
-                         0.0 // Default score if member has no metrics
-            })
-             .OrderByDescending(s => s.Score)
+        var scores = departmentMembers 
+             .OrderByDescending(m => m.TotalExperience)
              .ToList();
 
-        var rank = scores.FindIndex(s => s.MemberId == _teamMember.Id) + 1;
+        var rank = scores.FindIndex(m => m.Id == _teamMember.Id) + 1;
         return rank > 0 ? rank : departmentMembers.Count;
     }
     
     private string GetTopCategories(int count = 2)
     {
-        if (_teamMember == null) return "N/A";
+        if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
-        var topMetrics = _teamMember.Metrics
-            .Select(kv => new { Key = kv.Key, Score = GetPerformanceScore(kv.Key, kv.Value) })
+        var topMetrics = _latestMetricsDict
+            .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
+            .Select(kvp => new { Key = kvp.Key, Score = GetPerformanceScore(kvp.Key, kvp.Value) })
             .OrderByDescending(m => m.Score)
             .Take(count)
             .Select(m => TeamMember.GetMetricDisplayName(m.Key).Split(' ')[0])
@@ -471,10 +674,11 @@
     
     private string GetImprovedCategories(int count = 2)
     {
-        if (_teamMember == null) return "N/A";
+        if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
-        var bottomMetrics = _teamMember.Metrics
-           .Select(kv => new { Key = kv.Key, Score = GetPerformanceScore(kv.Key, kv.Value) })
+        var bottomMetrics = _latestMetricsDict
+           .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
+           .Select(kvp => new { Key = kvp.Key, Score = GetPerformanceScore(kvp.Key, kvp.Value) })
            .OrderBy(m => m.Score)
            .Take(count)
            .Select(m => TeamMember.GetMetricDisplayName(m.Key).Split(' ')[0])
@@ -485,9 +689,17 @@
     
     private double GetTotalPerformanceScore()
     {
-        if (_teamMember == null || !_teamMember.Metrics.Any()) return 0;
+        if (_teamMember == null || !_latestMetricsDict.Any())
+             return 0;
 
-        return _teamMember.Metrics.Average(kv => GetPerformanceScore(kv.Key, kv.Value));
+        var numericScores = _latestMetricsDict
+             .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
+             .Select(kvp => GetPerformanceScore(kvp.Key, kvp.Value))
+             .ToList();
+             
+        if (!numericScores.Any()) return 0;
+
+        return numericScores.Average();
     }
     
     private string GetFormattedMetricName(string metricKey)
@@ -551,11 +763,94 @@
     
     private double GetMetricMaxValue(string metricKey)
     {
-        return _allTeamMembers
-            .Where(m => m.Department == _teamMember.Department)
-            .Select(m => m.GetMetricDoubleValue(metricKey))
-            .Where(v => v.HasValue)
-            .DefaultIfEmpty(0)
-            .Max() ?? 0;
+        if (_teamMember == null) return 0; // Added null check for _teamMember (Fixes CS8602)
+        return _allLatestPeriodDeptRecords
+                .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+                .Select(r => GetDoubleValue(r.Value))
+                .Where(v => v.HasValue)
+                .Select(v => v!.Value)
+                .DefaultIfEmpty(0)
+                .Max();
+    }
+
+    // Get metric goal (copied from DepartmentOverview/WeeklyTracker)
+    private double? GetMetricGoal(string metricKey)
+    {
+         // Ensure goals are defined for all metrics used in the radar chart
+         return metricKey switch
+         {
+             "PMAttach" => 25.0,    // Example goal
+             "M365Attach" => 30.0,  // Example goal
+             "GSP" => 20.0,         // Example goal
+             "Revenue" => 75000.0,  // Example goal (adjust as needed)
+             "ASP" => 650.0,        // Example goal (adjust as needed)
+             "Basket" => 150.0,     // Example goal (adjust as needed)
+             _ => null // No specific goal defined
+         };
+    }
+
+    private object GenerateRadarChartData()
+    {
+        if (_latestMetricsDict == null || !_latestMetricsDict.Any())
+        { 
+            return new { labels = new List<string>(), datasets = new List<object>() };
+        }
+
+        var labels = new List<string>();
+        var normalizedData = new List<double>();
+
+        // Define the order and keys for the radar chart explicitly
+        var radarMetrics = new List<string> { "Revenue", "ASP", "Basket", "M365Attach", "PMAttach", "GSP" };
+
+        foreach (var key in radarMetrics)
+        {
+            if (_latestMetricsDict.TryGetValue(key, out var rawValueObj))
+            {
+                double? rawValue = GetDoubleValue(rawValueObj);
+                // Use GOAL as the target for normalization again
+                double? goal = GetMetricGoal(key);
+                double normalizedScore = 0;
+
+                if (rawValue.HasValue && goal.HasValue && goal.Value > 0)
+                {
+                    // Calculate score as percentage of GOAL, cap at 100%
+                    normalizedScore = Math.Min((rawValue.Value / goal.Value) * 100.0, 100.0); 
+                }
+                else if (rawValue.HasValue && rawValue.Value > 0 && (!goal.HasValue || goal.Value <= 0)){
+                    // Handle cases with no goal or zero goal.
+                    // Assign a moderate score, maybe 50? Or base on average?
+                    // Let's stick to 50 for now if no goal is set.
+                    normalizedScore = 50.0; 
+                }
+                // If rawValue is null/zero, score remains 0.
+                
+                labels.Add(TeamMember.GetMetricDisplayName(key)); 
+                normalizedData.Add(Math.Clamp(normalizedScore, 0, 100)); 
+            }
+             else
+             {
+                 // Handle missing metric data for the chart if necessary
+                 labels.Add(TeamMember.GetMetricDisplayName(key));
+                 normalizedData.Add(0);
+             }
+        }
+
+        var datasets = new List<object>
+        {
+            new {
+                label = $"{_teamMember?.Name ?? "Member"} Performance (% of Goal)", // Label updated
+                data = normalizedData,
+                fill = true,
+                backgroundColor = "rgba(255, 215, 0, 0.1)", // Decreased opacity (0.2 -> 0.1)
+                borderColor = "rgb(255, 215, 0)", // Solid yellow
+                pointBackgroundColor = "rgb(255, 215, 0)",
+                pointBorderColor = "#fff",
+                pointHoverBackgroundColor = "#fff",
+                pointHoverBorderColor = "rgb(255, 215, 0)"
+            }
+        };
+        
+        Console.WriteLine("Radar chart data generated with normalized scores.");
+        return new { labels, datasets };
     }
 }

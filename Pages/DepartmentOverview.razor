@@ -1,0 +1,436 @@
+@page "/departments/{DepartmentName}"
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@using GameScoreboard.Data
+@using Microsoft.AspNetCore.Components
+@using System.Globalization // Add for CultureInfo
+
+@inject IDataService DataService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager // Inject NavigationManager
+@inject AppState AppState
+@implements IDisposable
+
+<div class="bg-gray-900 min-h-screen text-white p-8">
+    <button @onclick="NavigateHome" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+        &lt; Back to Home
+    </button>
+
+    <h1 class="text-4xl font-bold text-yellow-400 mb-8 text-center">@DepartmentName Performance Overview</h1>
+    <h2 class="text-xl text-center text-gray-400 mb-8">Latest Data: @(_latestPeriod ?? "No Data Available")</h2>
+
+    @if (_isLoading)
+    {
+        <p class="text-center text-gray-500">Loading...</p>
+    }
+    else if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod))
+    {
+         <p class="text-center text-gray-500">No metric data available for the latest period in this department.</p>
+    }
+    else
+    {
+        <!-- Department Metric Summaries -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            @foreach (var metricKey in GetDisplayableMetricKeys()) // Use helper to get keys
+            {
+                 var avgData = _departmentAverages.GetValueOrDefault(metricKey);
+                 var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
+                 var lowPerformer = _lowPerformerNames.GetValueOrDefault(metricKey);
+                 var goal = GetMetricGoal(metricKey); // Helper to get goal
+                 
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">@TeamMember.GetMetricDisplayName(metricKey)</h3>
+                    <div class="flex justify-between items-baseline mb-3">
+                        @{ var statusColor = GetAverageStatusColor(avgData.Average, goal); }
+                        <span class="text-3xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
+                        @if (goal.HasValue)
+                        {
+                            <span class="text-sm text-gray-400">Goal: @FormatMetricValue(goal.Value, metricKey)</span>
+                        }
+                        else if (avgData.Average > 0)
+                        {
+                             <span class="text-sm text-gray-400">Avg: @FormatMetricValue(avgData.Average, metricKey)</span>
+                        }
+                    </div>
+                    <div class="text-xs text-gray-400 mb-1">Low: @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+                    <div class="text-xs text-gray-400 mb-3">Best: @(highPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_highPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+                    
+                    @* --- Progress Bar Moved Here --- *@
+                    @if (goal.HasValue && goal.Value > 0)
+                    {
+                         double progress = goal.Value > 0 ? (avgData.Average / goal.Value) * 100 : 0;
+                         progress = Math.Clamp(progress, 0, 100);
+                         <div class="w-full bg-gray-600 rounded-full h-2.5 dark:bg-gray-700 mb-1">
+                             <div class="bg-blue-500 h-2.5 rounded-full" style="width: @(progress.ToString("F0", CultureInfo.InvariantCulture))%"></div>
+                         </div>
+                         <div class="text-xs text-right text-gray-400">@progress.ToString("F0")% of goal</div>
+                    }
+                    @* --- End Progress Bar --- *@
+                </div>
+            }
+        </div>
+
+        <!-- Character Cards -->
+        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Team Members</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            @foreach (var member in _teamMembers.OrderByDescending(m => m.TotalExperience))
+            {
+                var strongestAreaInfo = GetStrongestAreaForMember(member);
+                bool isDeptBest = strongestAreaInfo.HasValue && _highPerformerNames.TryGetValue(strongestAreaInfo.Value.MetricKey, out var best) && best?.Contains(member.Name) == true;
+                string cardBorder = isDeptBest ? "border-yellow-500" : "border-gray-700"; // Keep dynamic border
+                string valueColor = isDeptBest ? "text-yellow-400" : "text-white"; // Keep dynamic color
+
+                // --- Reverted Card Structure --- 
+                <div @key="member.Id" class="character-card cursor-pointer flex-shrink-0 relative bg-gray-800 border-2 @cardBorder rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 m-2" 
+                     style="width: 200px; height: 320px;" 
+                     @onclick="() => NavigateToMember(member.Id)">
+                    <div class="absolute inset-0 opacity-20 z-0">
+                        <img src="@(member.AvatarUrl ?? "images/avatars/default.png")" alt="@member.Name" class="w-full h-full object-cover" />
+                    </div>
+                    
+                    <div class="relative z-10 p-3 flex flex-col h-full justify-between">
+                        <div>
+                            <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
+                            <p class="text-yellow-400 text-center text-sm mt-1">@member.Role</p>
+                        </div>
+
+                        <div class="pt-4">
+                             <div class="metric-highlight bg-gray-800 bg-opacity-80 border border-gray-600 rounded-md p-3 text-center">
+                                <div class="text-xs text-gray-400">Strongest Area</div>
+                                @if (strongestAreaInfo != null)
+                                {
+                                    <div class="text-sm font-semibold @valueColor">@TeamMember.GetMetricDisplayName(strongestAreaInfo.Value.MetricKey)</div>
+                                    <div class="text-lg font-bold @valueColor">
+                                        @FormatMetricValue(strongestAreaInfo.Value.Value, strongestAreaInfo.Value.MetricKey)
+                                        @if(isDeptBest) { <span class="text-xs ml-1">★</span> }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-sm text-gray-500">N/A</div>
+                                }
+                             </div>
+                        </div>
+
+                        <div>
+                             <div class="flex justify-between items-center text-sm mb-1 px-1">
+                                 @{ 
+                                     // Simplified Level Display (can be enhanced later)
+                                     int level = (int)(member.TotalExperience / 100) + 1;
+                                     double xpInLevel = member.TotalExperience % 100;
+                                     double xpForNext = 100;
+                                     double progressPercent = (xpInLevel / xpForNext) * 100;
+                                 }
+                                <span class="font-bold text-purple-400">Level @level</span>
+                                <span class="text-xs text-gray-400">@xpInLevel.ToString("F0") / @xpForNext.ToString("F0") XP</span>
+                             </div>
+                             <div class="h-2 bg-gray-600 bg-opacity-50 rounded-full overflow-hidden mx-1">
+                                 <div class="h-full bg-purple-500 rounded-full" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+                // --- End Reverted Card Structure --- 
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string DepartmentName { get; set; } = string.Empty;
+    private bool _isLoading = true;
+    private List<TeamMember> _teamMembers = new();
+    private string? _latestPeriod;
+    
+    // Dictionaries to hold calculated summary data
+    private Dictionary<string, (double Average, double Min, double Max)> _departmentAverages = new();
+    // Store lists of names for ties
+    private Dictionary<string, List<string>> _highPerformerNames = new(); 
+    private Dictionary<string, List<string>> _lowPerformerNames = new();
+    // Store the actual high/low values separately
+    private Dictionary<string, double> _highPerformerValues = new(); 
+    private Dictionary<string, double> _lowPerformerValues = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine($"DepartmentOverview: Initializing for {DepartmentName}");
+        AppState.OnMetricsUpdatedAsync += HandleMetricsUpdated; // Subscribe to event
+        await LoadDepartmentData();
+        Console.WriteLine("DepartmentOverview: Initialization complete.");
+    }
+    
+    private async Task HandleMetricsUpdated()
+    {
+        Console.WriteLine("DepartmentOverview: Received Metrics Updated notification. Reloading data...");
+        await InvokeAsync(async () => 
+        {
+             _isLoading = true;
+             StateHasChanged(); // Show loading indicator
+             try
+             {
+                 await LoadDepartmentData(); // Reload data
+             }
+             finally
+             {
+                // _isLoading should be set to false inside LoadDepartmentData
+                StateHasChanged(); // Update UI with new data or loading state
+             }
+        });
+        Console.WriteLine("DepartmentOverview: Data reloaded after update notification.");
+    }
+    
+    private async Task LoadDepartmentData()
+    {
+        _isLoading = true;
+        _latestPeriod = null;
+        _departmentAverages.Clear();
+        _highPerformerNames.Clear();
+        _lowPerformerNames.Clear();
+        _highPerformerValues.Clear();
+        _lowPerformerValues.Clear();
+        _teamMembers.Clear();
+        
+        if (string.IsNullOrEmpty(DepartmentName))
+        {
+             Console.WriteLine("DepartmentOverview: DepartmentName is null or empty.");
+             _isLoading = false;
+             return;
+        }
+        
+        try
+        {
+            _teamMembers = await DataService.GetTeamMembersAsync(DepartmentName);
+            Console.WriteLine($"DepartmentOverview: LoadDepartmentData fetched {_teamMembers?.Count ?? 0} members for {DepartmentName}.");
+            
+            if (_teamMembers != null && _teamMembers.Any())
+            {
+                // Determine the latest period from the fetched data 
+                _latestPeriod = _teamMembers
+                                    .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
+                                    .Select(r => r.Period)
+                                    .FirstOrDefault(); // Assuming GetTeamMembersAsync populates latest
+                
+                Console.WriteLine($"DepartmentOverview: LoadDepartmentData determined latest period as '{_latestPeriod ?? "None"}'");
+
+                if (!string.IsNullOrEmpty(_latestPeriod))
+                {
+                     Console.WriteLine("DepartmentOverview: Attempting to calculate summaries...");
+                     CalculateDepartmentMetricsSummary(); 
+                     Console.WriteLine($"DepartmentOverview: Summary calculation finished. Averages count: {_departmentAverages.Count}");
+                }
+                else {
+                     Console.WriteLine("DepartmentOverview: Skipping summary calculation as _latestPeriod is null/empty.");
+                }
+            }
+            else {
+                 Console.WriteLine("DepartmentOverview: No team members found, skipping summary calculation.");
+            }
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Error loading department data: {ex.Message}");
+        }
+        finally
+        {
+             _isLoading = false;
+             Console.WriteLine($"DepartmentOverview: LoadDepartmentData finished. isLoading: {_isLoading}, latestPeriod: {_latestPeriod}");
+        }
+    }
+
+    // Calculates Averages, Highs, Lows for the _latestPeriod
+    private void CalculateDepartmentMetricsSummary()
+    { 
+        Console.WriteLine("CalculateDepartmentMetricsSummary starting...");
+        if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod))
+        { 
+             Console.WriteLine("CalculateDepartmentMetricsSummary: Exiting early due to null/empty members or period.");
+            return;
+        }
+        
+        _departmentAverages.Clear();
+        _highPerformerNames.Clear();
+        _lowPerformerNames.Clear();
+        _highPerformerValues.Clear();
+        _lowPerformerValues.Clear();
+
+        var relevantMetrics = _teamMembers
+            .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
+            .Where(r => r.Period == _latestPeriod)
+            .ToList();
+            
+        var metricKeys = relevantMetrics.Select(r => r.MetricKey).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        foreach (var key in metricKeys)
+        {
+            var valuesForMetric = relevantMetrics
+                .Where(r => r.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase))
+                .Select(r => (Member: _teamMembers.FirstOrDefault(m => m.Id == r.TeamMemberId), Value: GetDoubleValue(r.Value)))
+                .Where(pair => pair.Value.HasValue && pair.Member != null)
+                .Select(pair => (Name: pair.Member!.Name, Value: pair.Value!.Value))
+                .ToList();
+
+            if (valuesForMetric.Any())
+            {
+                 double avg = valuesForMetric.Average(v => v.Value);
+                 double minVal = valuesForMetric.Min(v => v.Value);
+                 double maxVal = valuesForMetric.Max(v => v.Value);
+                 _departmentAverages[key] = (avg, minVal, maxVal);
+                 
+                 // Find all members tied for best/worst
+                 var bestPerformers = valuesForMetric.Where(v => v.Value == maxVal).Select(v => v.Name).ToList();
+                 var worstPerformers = valuesForMetric.Where(v => v.Value == minVal).Select(v => v.Name).ToList();
+                 
+                 // Store the lists of names and the corresponding value
+                 _highPerformerNames[key] = bestPerformers;
+                 _lowPerformerNames[key] = worstPerformers;
+                 _highPerformerValues[key] = maxVal;
+                 _lowPerformerValues[key] = minVal;
+            }
+        }
+        Console.WriteLine($"CalculateDepartmentMetricsSummary: Calculated summaries for {metricKeys.Count} keys for period {_latestPeriod}. Example High: {(_highPerformerNames.FirstOrDefault().Value?.FirstOrDefault() ?? "N/A")}");
+    }
+    
+    // Find the metric where the member performs best relative to defined goals or department average
+    private (string MetricKey, double Value)? GetStrongestAreaForMember(TeamMember member)
+    {
+        if (member == null || member.MetricRecords == null || !member.MetricRecords.Any()) return null;
+
+        string? bestMetricOverall = null;
+        double bestNormalizedScore = double.MinValue;
+        double bestRawValue = 0;
+
+        // Check if this member is the absolute best in any category first
+        foreach(var kvp in _highPerformerNames)
+        {
+            string metricKey = kvp.Key;
+            List<string> names = kvp.Value;
+            if (names != null && names.Contains(member.Name))
+            {
+                // If they are the absolute best (or tied for best), return that metric
+                // We need the actual value they achieved for this metric
+                var memberRecordValue = member.MetricRecords
+                                            .FirstOrDefault(r => r.Period == _latestPeriod && r.MetricKey == metricKey)?
+                                            .Value;
+                double? memberNumericValue = GetDoubleValue(memberRecordValue);
+                
+                if(memberNumericValue.HasValue) {
+                     // Prioritize showing an absolute best, even if relative score is lower than another metric
+                     return (metricKey, memberNumericValue.Value);
+                 }
+            }
+        }
+
+        // If not the absolute best in anything, find their relative best based on normalized score
+        foreach (var record in member.MetricRecords.Where(r => r.Period == _latestPeriod))
+        {
+            double? numericValue = GetDoubleValue(record.Value);
+            if (!numericValue.HasValue) continue;
+
+            double? goal = GetMetricGoal(record.MetricKey);
+            double target = goal ?? (_departmentAverages.TryGetValue(record.MetricKey, out var avgData) ? avgData.Average : 0);
+            double normalizedScore = 0;
+
+            if (target > 0)
+            {
+                normalizedScore = (numericValue.Value / target) * 100.0;
+            }
+            else if (numericValue.Value > 0)
+            {
+                normalizedScore = 150.0; // Assign a high score if avg/goal is 0 but value exists
+            }
+
+            if (normalizedScore > bestNormalizedScore)
+            {
+                bestNormalizedScore = normalizedScore;
+                bestMetricOverall = record.MetricKey;
+                bestRawValue = numericValue.Value;
+            }
+        }
+
+        return bestMetricOverall != null ? (bestMetricOverall, bestRawValue) : null;
+    }
+    
+    // Get metric goal (similar to WeeklyTracker logic)
+    private double? GetMetricGoal(string metricKey)
+    {
+         return metricKey switch
+         {
+             "PMAttach" => 25.0,
+             "M365Attach" => 30.0,
+             "GSP" => 20.0,
+             "Revenue" => 75000.0, // Placeholder - Update with correct goal
+             "ASP" => 600.0,      // Placeholder - Update with correct goal
+             "Basket" => 150.0,    // Placeholder - Update with correct goal
+             _ => null
+         };
+    }
+
+    // Get relevant metric keys for display (based on calculated averages)
+    private IEnumerable<string> GetDisplayableMetricKeys()
+    { 
+        // Order them logically if needed
+        return _departmentAverages.Keys.OrderBy(k => TeamMember.GetMetricDisplayName(k)); 
+    }
+    
+    // Format metric value for display (basic version)
+    private string FormatMetricValue(double value, string metricKey)
+    { 
+         bool isPercentage = metricKey.Contains("Attach", StringComparison.OrdinalIgnoreCase) || metricKey == "GSP";
+         bool isCurrency = metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket";
+         
+         if (isPercentage) return value.ToString("F1", CultureInfo.InvariantCulture) + "%";
+         if (isCurrency) return value.ToString("C2", CultureInfo.GetCultureInfo("en-US"));
+         return value.ToString("N0", CultureInfo.InvariantCulture); // Default to number with commas
+    }
+    
+    // Helper to convert object value to double? (Handles string parsing)
+    private double? GetDoubleValue(object? value)
+    { 
+        // (Assuming the robust version from CharacterDetails is available or copied here)
+        if (value == null) return null;
+        if (value is double d) return d;
+        if (value is int i) return (double)i;
+        if (value is long l) return (double)l;
+        if (value is decimal dec) return (double)dec;
+        
+        if (value is string sVal)
+        { 
+            sVal = sVal.Replace("$", "").Replace("%", "").Replace(",", "").Trim();
+            if (double.TryParse(sVal, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedDouble))
+            { 
+                return parsedDouble;
+            }
+        }
+        return null; 
+    }
+
+    // Method to handle navigation back home
+    private void NavigateHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void NavigateToMember(int memberId)
+    {
+        NavigationManager.NavigateTo($"/character/{memberId}");
+    }
+
+    // Helper to determine status color based on average vs goal
+    private string GetAverageStatusColor(double average, double? goal)
+    {
+        if (!goal.HasValue || goal.Value <= 0) return "text-white"; // No goal or invalid goal
+
+        double percentageOfGoal = (average / goal.Value) * 100;
+
+        if (percentageOfGoal >= 100) return "text-yellow-400";
+        if (percentageOfGoal >= 75) return "text-green-400";
+        if (percentageOfGoal >= 50) return "text-blue-400";
+        return "text-red-400";
+    }
+
+    public void Dispose()
+    {
+        AppState.OnMetricsUpdatedAsync -= HandleMetricsUpdated;
+        GC.SuppressFinalize(this);
+    }
+} 

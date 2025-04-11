@@ -1,16 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using GameScoreboard.Data; // Added for MetricRecord
 
 namespace GameScoreboard.Models
 {
     public class TeamMember
     {
+        [Key] // Ensure EF Core recognizes this as the primary key
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Department { get; set; } = "Unknown";
-        public string AvatarUrl { get; set; } = string.Empty;
-        public Dictionary<string, object?> Metrics { get; set; } = new Dictionary<string, object?>();
+        
+        [Required]
+        public required string Name { get; set; }
+        
+        [Required]
+        public required string Department { get; set; }
+        
+        public string? Role { get; set; } // Optional role/title
+        
+        public string? AvatarUrl { get; set; } // Optional URL for profile picture
+        
+        public double TotalExperience { get; set; } = 0; // Initialize XP to 0
+
+        // Navigation property for related metric records
+        public ICollection<MetricRecord> MetricRecords { get; set; } = new List<MetricRecord>();
 
         // Dictionary to map internal metric keys to their user-friendly display names
         private static readonly Dictionary<string, string> MetricDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -61,8 +76,6 @@ namespace GameScoreboard.Models
         };
 
         // --- New Leveling System Properties ---
-        public double TotalExperience { get; set; } = 0; // Persisted total accumulated XP
-
         public int CurrentLevel => (int)(TotalExperience / 100) + 1; // Level starts at 1
         
         public double ExperienceTowardsNextLevel => TotalExperience % 100;
@@ -73,47 +86,60 @@ namespace GameScoreboard.Models
         // -------------------------------------
 
         // Helper to safely get metric value as double?
-        public double? GetMetricDoubleValue(string metricKey)
+        public double? GetMetricDoubleValue(string key)
         {
-            if (Metrics.TryGetValue(metricKey, out var value))
+            // Placeholder - Needs refactoring
+            var record = MetricRecords.FirstOrDefault(mr => mr.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase));
+            if (record?.Value != null && double.TryParse(record.Value, out double val))
             {
-                if (value is double d) return d;
-                if (value is int i) return (double)i;
-                if (value is decimal dec) return (double)dec;
-                if (value is long l) return (double)l;
-                // Could add more numeric types or try parsing if stored as string
+                return val;
             }
-            return null; // Return null if key not found or value is not convertible to double
+            return null; 
         }
 
-        // Helper to get metric value as object?
-        public object? GetMetricValue(string metricKey)
+        public string GetMetricStringValue(string key)
+        { 
+            // Placeholder - Needs refactoring
+             var record = MetricRecords.FirstOrDefault(mr => mr.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase));
+            return record?.Value ?? "N/A";
+        }
+
+        public object? GetMetricValue(string key)
         {
-            return Metrics.TryGetValue(metricKey, out var value) ? value : null;
+            // Placeholder - Needs refactoring
+             var record = MetricRecords.FirstOrDefault(mr => mr.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase));
+             // Attempt to parse, but might just return string for simplicity now
+             if (record?.Value != null)
+             {
+                 if (double.TryParse(record.Value, out double dVal)) return dVal;
+                 if (int.TryParse(record.Value, out int iVal)) return iVal;
+                 return record.Value; // Return as string if not numeric
+             }
+            return null;
         }
 
         // Get the strongest *numeric* metric relative to team averages
         public string GetStrongestMetricRelativeToTeam(Dictionary<string, double> teamAverages)
         {
-            if (Metrics == null || !Metrics.Any() || teamAverages == null || !teamAverages.Any())
+            if (MetricRecords == null || !MetricRecords.Any() || teamAverages == null || !teamAverages.Any())
                 return string.Empty; // Or a default metric key if appropriate
 
             var relativeStrengths = new Dictionary<string, double>();
 
-            foreach (var metric in Metrics)
+            foreach (var record in MetricRecords)
             {
-                double? metricValue = GetMetricDoubleValue(metric.Key);
+                double? metricValue = GetMetricDoubleValue(record.MetricKey);
                 if (metricValue.HasValue) // Only consider numeric metrics
                 {
-                    if (teamAverages.TryGetValue(metric.Key, out var avgValue) && avgValue != 0)
+                    if (teamAverages.TryGetValue(record.MetricKey, out var avgValue) && avgValue != 0)
                     {
                         // Calculate relative strength (handle potential division by zero)
-                        relativeStrengths[metric.Key] = (metricValue.Value / avgValue) * 100;
+                        relativeStrengths[record.MetricKey] = (metricValue.Value / avgValue) * 100;
                     }
                     else
                     {
                         // If no average or average is 0, use the value itself (or handle differently)
-                        relativeStrengths[metric.Key] = metricValue.Value;
+                        relativeStrengths[record.MetricKey] = metricValue.Value;
                     }
                 }
             }
@@ -126,20 +152,32 @@ namespace GameScoreboard.Models
         }
 
         // Get the display name for a metric
-        public static string GetMetricDisplayName(string metricKey)
+        public static string GetMetricDisplayName(string key)
         {
-            // Handle specific cases like Pick$ using the generic Revenue display name
-             if (metricKey == "Pick$") return "Pick Revenue $";
-
-            return MetricDisplayNames.TryGetValue(metricKey, out var displayName)
-                ? displayName
-                : metricKey; // Return the key itself if no display name is found
+            // This helper can likely remain as is
+             return key switch
+            {
+                "M365Attach" => "M365 Attach %",
+                "GSP" => "GSP Attach %",
+                "PMAttach" => "PM Attach %",
+                "Revenue" => "Revenue",
+                "ASP" => "ASP",
+                "Basket" => "Avg Basket",
+                "5Star" => "5-Star",
+                "BP" => "BP Count",
+                "PM" => "PM Count",
+                "Picks" => "Picks Qty",
+                "Accuracy" => "Pick Acc %",
+                "Awk" => "Awkward Qty", 
+                "Units" => "Units Picked",
+                _ => key // Default to key if not found
+            };
         }
 
         // Get the title based on the metric where this member is team champion (numeric metrics only for score comparison)
         public string GetChampionTitle(List<TeamMember> allMembers)
         {
-            if (allMembers == null || !allMembers.Any() || Metrics == null || !Metrics.Any())
+            if (allMembers == null || !allMembers.Any() || MetricRecords == null || !MetricRecords.Any())
                 return "Team Member";
 
             var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
@@ -148,17 +186,17 @@ namespace GameScoreboard.Models
             string? bestOverallMetric = null;
             double highestScore = double.MinValue;
 
-            foreach (var metricKey in Metrics.Keys)
+            foreach (var record in MetricRecords)
             {
                  // Only consider metrics that have titles defined (usually performance-based)
-                if (!MetricTitles.ContainsKey(metricKey)) continue;
+                if (!MetricTitles.ContainsKey(record.MetricKey)) continue;
 
-                double? memberScore = GetMetricDoubleValue(metricKey);
+                double? memberScore = GetMetricDoubleValue(record.MetricKey);
                 if (!memberScore.HasValue) continue; // Skip non-numeric metrics
 
                 // Find the best score for this numeric metric among relevant team members
                 double? bestScoreNullable = relevantMembers
-                                            .Select(m => m.GetMetricDoubleValue(metricKey))
+                                            .Select(m => m.GetMetricDoubleValue(record.MetricKey))
                                             .Where(v => v.HasValue)
                                             .DefaultIfEmpty(null) // Handle case where no one has the metric
                                             .Max();
@@ -176,7 +214,7 @@ namespace GameScoreboard.Models
                     if (memberScore.Value > highestScore)
                     {
                          highestScore = memberScore.Value;
-                         bestOverallMetric = metricKey;
+                         bestOverallMetric = record.MetricKey;
                     }
                     // If scores are equal, maybe prioritize based on a predefined list or keep the first one found
                 }
@@ -195,9 +233,14 @@ namespace GameScoreboard.Models
         // Determine if this member is the best in a specific *numeric* metric
         public bool IsBestInMetric(string metricKey, List<TeamMember> allMembers)
         {
-            if (allMembers == null || !allMembers.Any() || !Metrics.ContainsKey(metricKey))
+            // Check for null/empty list first to address CS8604 before LINQ
+            if (allMembers == null || !allMembers.Any())
+                return false;
+            // Corrected check for metric key existence (Fixes CS1503)
+            if (MetricRecords == null || !MetricRecords.Any(mr => mr.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
+            // Now safe to use LINQ on allMembers
             var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
              if (!relevantMembers.Any()) return false;
 
@@ -217,11 +260,16 @@ namespace GameScoreboard.Models
         // Determine if this member is the worst in a specific *numeric* metric
         public bool IsWorstInMetric(string metricKey, List<TeamMember> allMembers)
         {
-             if (allMembers == null || !allMembers.Any() || !Metrics.ContainsKey(metricKey))
+            // Check for null/empty list first to address CS8604 before LINQ
+            if (allMembers == null || !allMembers.Any())
+                 return false;
+            // Corrected check for metric key existence (Fixes CS1503)
+            if (MetricRecords == null || !MetricRecords.Any(mr => mr.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
+            // Now safe to use LINQ on allMembers
             var relevantMembers = allMembers.Where(m => m.Department == this.Department).ToList();
-             if (!relevantMembers.Any()) return false;
+            if (!relevantMembers.Any()) return false; // Should not happen if member is in allMembers, but safe check
 
             double? memberScore = GetMetricDoubleValue(metricKey);
             if (!memberScore.HasValue) return false; // Cannot be worst if not numeric
@@ -236,10 +284,32 @@ namespace GameScoreboard.Models
              return worstScore.HasValue && memberScore.Value <= worstScore.Value;
         }
 
-        // Get all available metrics as key-value pairs
+        // Gets all metrics for the member as a dictionary
         public Dictionary<string, object?> GetAllMetrics()
         {
-            return new Dictionary<string, object?>(Metrics);
+            // Corrected implementation to return correct type (Fixes CS0029)
+            var metricsDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            if (MetricRecords != null)
+            {
+                foreach (var record in MetricRecords)
+                {
+                    // Attempt parsing directly from the record in the loop
+                    object? displayValue = record.Value; // Default to string
+                    if (record.Value != null)
+                    {
+                        if (double.TryParse(record.Value, out double dVal))
+                        {
+                            displayValue = dVal;
+                        }
+                        else if (int.TryParse(record.Value, out int iVal))
+                        {
+                             displayValue = iVal;
+                        }
+                    }
+                    metricsDict[record.MetricKey] = displayValue; 
+                }
+            }
+            return metricsDict;
         }
     }
 }

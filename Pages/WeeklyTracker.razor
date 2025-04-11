@@ -2,27 +2,31 @@
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
+@using GameScoreboard.Data
 @using System.Text.Json
+@using System.IO
+
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject AppState AppState
 
 @* TODO: Inject a Toast Notification service for user feedback *@
-
+// Remove both EPPlus and ClosedXML - they won't work well in Blazor WASM
 <div class="bg-gray-900 min-h-screen text-white p-8">
     
     @if (!_isAuthenticated)
     {
         <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-500 @(_showPasswordModal ? "opacity-100" : "opacity-0 pointer-events-none")">
-            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-yellow-500 transform transition-transform duration-300 ease-out @(_showPasswordModal ? "scale-100 opacity-100" : "scale-95 opacity-0")">
-                <h2 class="text-2xl font-bold text-yellow-400 mb-4">Enter Admin Password</h2>
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-purple-500 transform transition-transform duration-300 ease-out @(_showPasswordModal ? "scale-100 opacity-100" : "scale-95 opacity-0")">
+                <h2 class="text-2xl font-bold text-purple-400 mb-4">Enter Admin Password</h2>
                  <div class="mb-4">
                      <label for="password-input" class="block text-sm font-medium text-gray-300 mb-1">Admin Password:</label>
                      <input type="password" id="password-input" 
                             @bind="PasswordInputValue" 
                             @bind:event="oninput" 
                             @onkeydown="HandlePasswordInputKeydown" 
-                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent placeholder-gray-500" 
+                            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500" 
                             placeholder="Password" />
                  </div>
                 @if (!string.IsNullOrEmpty(_passwordError))
@@ -30,7 +34,7 @@
                     <p class="text-red-500 text-sm mb-4">@_passwordError</p>
                 }
                  <button @onclick="CheckPassword" 
-                         class="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-gray-900 rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-yellow-500">
+                         class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500">
                      Authenticate
                  </button>
             </div>
@@ -65,6 +69,32 @@
                                 <option value="@period">@period</option>
                             }
                         </select>
+                    </div>
+                    
+                    <!-- Excel Upload -->
+                    <div class="mt-4">
+                         <label for="excel-upload" class="block text-sm font-medium text-gray-300 mb-1">Upload Excel Tracker:</label>
+                         <InputFile id="excel-upload" OnChange="@HandleFileSelected" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-yellow-500 file:text-gray-900 hover:file:bg-yellow-400 cursor-pointer"/>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_uploadStatusMessage))
+                    {
+                        <p class="mt-2 text-sm @(_uploadSuccess ? "text-green-400" : "text-red-400")">@_uploadStatusMessage</p>
+                    }
+                    
+                    <!-- Paste Area -->
+                    <div class="mt-4">
+                         <label for="paste-area" class="block text-sm font-medium text-gray-300 mb-1">Or Paste Excel Data:</label>
+                         <textarea id="paste-area" 
+                                   @bind="_pastedData" 
+                                   @bind:event="oninput" 
+                                   rows="6" 
+                                   class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent placeholder-gray-500" 
+                                   placeholder="Paste rows/columns from Excel here..."></textarea>
+                    </div>
+                    <div class="mt-2 text-right">
+                         <button @onclick="HandlePastedData" class="px-4 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold text-sm transition-colors">
+                             Process Pasted Data
+                         </button>
                     </div>
                 </div>
 
@@ -117,9 +147,20 @@
 
                 <!-- Save Button -->
                 <div class="mt-6 text-right">
-                    <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors" disabled="_isSaving">
+                    <button @onclick="() => SaveMetrics()" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors">
                         @(_isSaving ? "Saving..." : "Save Metrics")
                     </button>
+                    <button @onclick="ClearInputs" class="mt-2 text-sm text-gray-400 hover:text-gray-200 underline focus:outline-none">
+                        Clear Inputs
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(_saveSuccessMessage))
+                    {
+                        <div class="mt-3 p-2 bg-green-800 border border-green-600 text-green-200 rounded text-sm">
+                            @_saveSuccessMessage
+                        </div>
+                    }
+
                     @if (!string.IsNullOrEmpty(_saveError))
                     {
                         <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
@@ -184,6 +225,10 @@
     private const string CorrectPassword = "Admin321";
     private bool _isSaving = false; // For loading state on save button
     private string? _saveError = null;
+    private string? _uploadStatusMessage = null;
+    private bool _uploadSuccess = false;
+    private string _pastedData = string.Empty;
+    private string? _saveSuccessMessage = null; // Add field for success message
 
     private List<string> _departments = new List<string>();
     private List<string> _periods = new List<string>();
@@ -202,6 +247,18 @@
         { "Front", new List<string> { "GSP", "BP", "PM", "5Star" } },
         { "Warehouse", new List<string> { "Picks", "Accuracy", "Awk", "Units" } }
         // TODO: Consider loading metric definitions from a configuration or backend source
+    };
+    
+    // Mapping from Internal Key -> Expected CSV Header Name
+    // TODO: Expand this mapping for Store, Front, and Warehouse departments when their CSV formats are known
+    private readonly Dictionary<string, string> _internalKeyToCsvHeaderMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "M365Attach", "M365 Attach" },
+        { "GSP", "Total Warranty Attach" }, 
+        { "Revenue", "Category Direct $" }, 
+        { "ASP", "ASP" },
+        { "Basket", "Basket RPT" },        
+        { "PMAttach", "PM Attach" } 
     };
 
     // Property for binding, clears error on input
@@ -233,7 +290,6 @@
             await Task.Delay(50); // Shorter delay maybe
             _showPasswordModal = true;
             await InvokeAsync(StateHasChanged);
-            // Optionally focus the password input field here using JS interop
         }
     }
 
@@ -291,19 +347,19 @@
         }
     }
 
-    private async Task OnDepartmentChanged(ChangeEventArgs e)
+    private void OnDepartmentChanged(ChangeEventArgs e)
     {
         _selectedDepartment = e.Value?.ToString();
-        await LoadMembersAndInitializeInputs();
+        LoadMembersAndInitializeInputs();
     }
     
-    private async Task OnPeriodChanged(ChangeEventArgs e)
+    private void OnPeriodChanged(ChangeEventArgs e)
     {
         _selectedPeriod = e.Value?.ToString();
-        await LoadMembersAndInitializeInputs(); // Reload to potentially fetch period-specific data in future
+        LoadMembersAndInitializeInputs();
     }
 
-    private async Task LoadMembersAndInitializeInputs()
+    private void LoadMembersAndInitializeInputs()
     {
         _currentDepartmentMembers = null;
         _inputValues.Clear();
@@ -391,9 +447,11 @@
 
     private async Task SaveMetrics()
     {
+        Console.WriteLine("!!! SaveMetrics METHOD ENTERED. _isSaving = " + _isSaving + " !!!");
+        if (_isSaving) return;
         _isSaving = true;
         _saveError = null;
-        StateHasChanged();
+        _saveSuccessMessage = null;
 
         if (_currentDepartmentMembers == null || string.IsNullOrEmpty(_selectedDepartment) || string.IsNullOrEmpty(_selectedPeriod))
         {
@@ -403,118 +461,153 @@
             return;
         }
         
-        Console.WriteLine($"Attempting to save metrics for {_selectedDepartment} - {_selectedPeriod}");
-        bool anyError = false;
-        Dictionary<string, double> currentPeriodTeamAverages = CalculateCurrentPeriodTeamAverages(); // Calculate averages for scoring
+        List<Task> updateTasks = new List<Task>();
+        Dictionary<string, double> currentPeriodTeamAverages = CalculateCurrentPeriodTeamAverages();
+        bool anyInputErrors = false; // Track if any parsing errors occurred across all members
 
+        Console.WriteLine($"--- Starting SaveMetrics for {_selectedDepartment} - {_selectedPeriod} ---");
         try 
         {
-            foreach (var member in _currentDepartmentMembers)
+            // Iterate through the members currently displayed in the grid
+            foreach (var member in _currentDepartmentMembers) // Correct: Iterate over _currentDepartmentMembers
             {
+                // Get the input values entered for this member from the dictionary
                 if (_inputValues.TryGetValue(member.Id, out var memberInputs))
                 {
-                    bool memberUpdated = false;
-                    var metricsToUpdate = new Dictionary<string, object?>(); 
+                    var newRecordsForPeriod = new List<MetricRecord>();
                     double currentPeriodPerformanceScoreTotal = 0;
                     int currentPeriodMetricCount = 0;
+                    bool memberHadInputError = false;
 
-                    foreach(var kvp in memberInputs)
+                    Console.WriteLine($"Processing inputs for member: {member.Name} (ID: {member.Id})");
+
+                    // Iterate through the metrics expected for this department
+                    if (_departmentMetrics.TryGetValue(_selectedDepartment, out var metricsForDept))
                     {
-                        string metricKey = kvp.Key;
-                        string stringValue = kvp.Value;
-                        object? parsedValue = null;
-                        bool parseError = false;
+                        foreach (var metricKey in metricsForDept)
+                        {
+                            // Get the specific value entered for this metric from the member's input dictionary
+                            string stringValue = memberInputs.GetValueOrDefault(metricKey, string.Empty)?.Trim() ?? string.Empty;
 
-                        if (string.IsNullOrWhiteSpace(stringValue))
-                        {
-                            parsedValue = null; 
-                        }
-                        // Use specific types based on metric key for better parsing
-                        else if (metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket" || metricKey == "5Star" || metricKey == "Accuracy" || metricKey == "Awk" || metricKey == "M365Attach" || metricKey == "GSP" || metricKey == "PMAttach")
-                        {
-                            if (double.TryParse(stringValue, out double doubleVal))
-                                parsedValue = doubleVal;
-                            else parseError = true;
-                        }
-                        else if (metricKey == "BP" || metricKey == "PM" || metricKey == "Picks" || metricKey == "Units")
-                        {
-                            if (int.TryParse(stringValue, out int intVal))
-                                parsedValue = intVal;
-                            else parseError = true;
-                        }
-                        else 
-                        {
-                            Console.WriteLine($"Warning: Unknown metric type for '{metricKey}'. Cannot parse numeric value.");
-                        }
+                            Console.WriteLine($"  Metric: {metricKey}, Input Value: '{stringValue}'");
 
-                        if (parseError)
-                        {
-                            Console.WriteLine($"Warning: Could not parse '{stringValue}' as expected type for metric '{metricKey}' for member {member.Name}. Skipping update for this metric.");
-                            anyError = true;
-                            continue; 
-                        }
+                            // Attempt to parse for XP calculation and validation
+                            double? numericValue = GetDoubleValueFromString(stringValue, metricKey);
 
-                        metricsToUpdate[metricKey] = parsedValue;
-                        memberUpdated = true;
-                        
-                        // Calculate performance score for this metric if numeric
-                        double? numericValue = GetDoubleValueFromString(stringValue, metricKey);
-                        if(numericValue.HasValue)
+                            if (!string.IsNullOrEmpty(stringValue) && !numericValue.HasValue)
+                            {
+                                Console.WriteLine($"    WARNING: Could not parse non-empty input '{stringValue}' for metric '{metricKey}'. Skipping record & score.");
+                                anyInputErrors = true;
+                                memberHadInputError = true;
+                                continue; // Skip this specific metric for this member
+                            }
+
+                            // Create MetricRecord with the raw string value
+                            newRecordsForPeriod.Add(new MetricRecord
+                            {
+                                TeamMemberId = member.Id,
+                                Period = _selectedPeriod,
+                                MetricKey = metricKey,
+                                Value = stringValue
+                            });
+
+                            // Calculate performance score using the parsed numeric value
+                            if (numericValue.HasValue)
                         {
                             currentPeriodPerformanceScoreTotal += CalculatePerformanceScore(metricKey, numericValue.Value, currentPeriodTeamAverages);
                             currentPeriodMetricCount++;
-                        }
+                                Console.WriteLine($"    Parsed as {numericValue.Value}. Score added.");
+                            }
+                        } // End loop through expected metrics
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  WARNING: No metrics defined for department '{_selectedDepartment}'. Cannot process inputs for {member.Name}.");
+                        memberHadInputError = true; // Treat as error if department definition is missing
                     }
 
-                    if (memberUpdated)
+                    // Only proceed if no parsing errors occurred for this member
+                    if (!memberHadInputError)
                     {
-                        // Update the member's metrics dictionary in memory (for mock)
-                        foreach(var metricUpdate in metricsToUpdate)
-                        {
-                            member.Metrics[metricUpdate.Key] = metricUpdate.Value; 
-                        }
-                        
-                        // Calculate average score for the period and add to total experience
+                        // 1. Save Metric Records
+                        updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod, newRecordsForPeriod));
+                        Console.WriteLine($"  Queueing {newRecordsForPeriod.Count} metric records save for period '{_selectedPeriod}'.");
+
+                        // 2. Calculate and Update Experience
                         if (currentPeriodMetricCount > 0)
                         {
                             double averagePeriodScore = currentPeriodPerformanceScoreTotal / currentPeriodMetricCount;
-                            // Add the average score (0-100 range) to the total experience
                             member.TotalExperience += averagePeriodScore; 
-                             Console.WriteLine($"Added {averagePeriodScore:F2} XP to {member.Name}. New Total XP: {member.TotalExperience:F2}");
+                            Console.WriteLine($"  Calculated {averagePeriodScore:F2} XP. New Total XP: {member.TotalExperience:F2}");
+                            // 3. Update TeamMember (for XP)
+                            updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
+                            Console.WriteLine($"  Queueing XP update.");
                         }
-                        
-                        // TODO: Replace with API call: await ApiClient.SaveMemberMetricsAndExperience(member.Id, _selectedPeriod, metricsToUpdate, member.TotalExperience);
-                        await DataService.UpdateTeamMemberAsync(member); 
-                        Console.WriteLine($"Updated metrics & XP for {member.Name} (in-memory)");
+                        else
+                        {
+                            Console.WriteLine($"  No numeric metrics found/parsed. No XP awarded.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  Skipping save & XP update for {member.Name} due to input errors.");
+                    }
+                } // End if member found in _inputValues
+                else
+                {
+                    Console.WriteLine($"WARNING: No input values found in dictionary for member {member.Name} (ID: {member.Id}). Skipping save.");
+                }
+            } // End loop through members
+            
+            // Wait for all database updates to complete
+            await Task.WhenAll(updateTasks);
+            Console.WriteLine("--- Update tasks completed ---");
+            
+            // --- Update _allMembersForRanking with latest XP --- 
+            if (_allMembersForRanking != null && _currentDepartmentMembers != null)
+            {
+                foreach(var updatedMember in _currentDepartmentMembers)
+                {
+                    var memberInGlobalList = _allMembersForRanking.FirstOrDefault(m => m.Id == updatedMember.Id);
+                    if (memberInGlobalList != null)
+                    {
+                        memberInGlobalList.TotalExperience = updatedMember.TotalExperience;
                     }
                 }
+                Console.WriteLine("Synchronized TotalExperience in _allMembersForRanking.");
             }
+            // --- End Update --- 
             
-            // After saving, recalculate rankings to reflect potential XP changes
-            CalculateAllRankings();
+            // Recalculate rankings based on potentially updated XP in the current list
+            Console.WriteLine("Recalculating rankings...");
+            CalculateAllRankings(); // Correct method call
             
-            if (!anyError)
-            {
-                Console.WriteLine("Metrics save process completed (in-memory).");
-                // TODO: Show success feedback (Toast notification "Metrics Saved!")
+            // Notify that metrics were updated
+            await AppState.NotifyMetricsUpdatedAsync();
+
+            // Display appropriate message based on parsing errors
+             if (anyInputErrors)
+             {
+                 _saveError = "Metrics saved, but some values could not be parsed. Check console logs.";
+                 _saveSuccessMessage = null;
             }
             else
             {
-                 _saveError = "Some metric values could not be saved. Please check console warnings.";
-                 // TODO: Show warning feedback (Toast notification)
+                 _saveSuccessMessage = "Metrics saved successfully!";
+                 _saveError = null; 
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ERROR saving metrics: {ex.Message}");
-            _saveError = "An unexpected error occurred while saving metrics.";
-            // TODO: Show error feedback (Toast notification)
-            anyError = true;
+            Console.WriteLine($"Error in SaveMetrics: {ex}");
+            _saveError = $"An error occurred while saving: {ex.Message}";
+            _saveSuccessMessage = null;
         }
         finally
         { 
-             _isSaving = false;
-             StateHasChanged();
+            _isSaving = false; // Ensure saving flag is reset
+            StateHasChanged(); // Update UI with messages/button state
+            Console.WriteLine("--- SaveMetrics Finished ---");
         }
     }
     
@@ -639,15 +732,35 @@
     {
         if (string.IsNullOrWhiteSpace(stringValue)) return null;
 
-        if (metricKey == "Revenue" || metricKey == "ASP" || metricKey == "Basket" || metricKey == "5Star" || metricKey == "Accuracy" || metricKey == "Awk" || metricKey == "M365Attach" || metricKey == "GSP" || metricKey == "PMAttach")
+        // --- Add logic to handle percentage signs ---
+        stringValue = stringValue.Trim(); // Ensure no leading/trailing whitespace
+        bool isPercentage = stringValue.EndsWith('%');
+        if (isPercentage)
         {
-            if (double.TryParse(stringValue, out double doubleVal)) return doubleVal;
+            // Remove the '%' sign before parsing
+            stringValue = stringValue.TrimEnd('%').Trim(); 
         }
-        else if (metricKey == "BP" || metricKey == "PM" || metricKey == "Picks" || metricKey == "Units")
+        // --- End percentage handling ---
+
+        // Now attempt parsing the cleaned string as double
+        // Use InvariantCulture to handle decimal points consistently
+        if (double.TryParse(stringValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedValue))
         {
-            if (int.TryParse(stringValue, out int intVal)) return (double)intVal;
+            // Assuming scoring uses the number directly (e.g., 21.1 for 21.1%):
+            return parsedValue; 
         }
-        return null; // Parsing failed or unknown type
+        
+        // Try parsing as int for specifically integer-based metrics if double failed (e.g., if input was just "120")
+        // Note: double.TryParse above should handle integers too, but this is an extra check.
+        if (metricKey == "BP" || metricKey == "PM" || metricKey == "Picks" || metricKey == "Units")
+        {
+            if (int.TryParse(stringValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out int intVal)) 
+            {
+                return (double)intVal;
+            }
+        }
+
+        return null; // Parsing failed
     }
     
     // Helper to convert various object types to double? (used for scoring helper)
@@ -673,92 +786,388 @@
     private void CalculateAllRankings()
     {
         if (_allMembersForRanking == null || !_allMembersForRanking.Any()) return;
+        Console.WriteLine($"Calculating rankings based on TotalExperience for {_allMembersForRanking.Count} members."); 
 
         _departmentRankings = new Dictionary<string, List<RankedMember>>();
 
-        var teamAveragesByDepartment = _allMembersForRanking
-            .GroupBy(m => m.Department)
-            .ToDictionary(
-                g => g.Key,
-                g => CalculateAveragesForGroup(g.ToList())
-            );
-
         foreach (var department in _departments)
         {
-            var membersInDept = _allMembersForRanking.Where(m => m.Department.Equals(department, StringComparison.OrdinalIgnoreCase)).ToList();
+            var membersInDept = _allMembersForRanking
+                                .Where(m => m.Department.Equals(department, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
             if (!membersInDept.Any()) continue;
 
-            var deptAverages = teamAveragesByDepartment.GetValueOrDefault(department) ?? new Dictionary<string, double>();
+            Console.WriteLine($"  Processing department: {department} ({membersInDept.Count} members)");
             
-            var rankedList = membersInDept.Select(member => new RankedMember
+            var rankedList = membersInDept
+                .Select(member => new RankedMember
                 {
                     Id = member.Id,
-                    Name = member.Name,
+                    Name = member.Name ?? "Unknown", 
                     Department = member.Department,
-                    Score = CalculateOverallScoreForMember(member, deptAverages)
+                    Score = member.TotalExperience // Rank directly based on TotalExperience
                 })
                 .OrderByDescending(rm => rm.Score)
                 .Select((rm, index) => { rm.Rank = index + 1; return rm; })
                 .ToList();
 
+            Console.WriteLine($"    Ranked list for {department}:");
+            foreach(var rankedMember in rankedList.Take(5)) // Log top 5
+            {
+                 Console.WriteLine($"      Rank {rankedMember.Rank}: {rankedMember.Name} (Score/XP: {rankedMember.Score:F2})");
+            }
+
             _departmentRankings[department] = rankedList;
         }
+         Console.WriteLine("Ranking calculation complete. Triggering UI update.");
         InvokeAsync(StateHasChanged); // Update the UI with rankings
     }
 
-    private Dictionary<string, double> CalculateAveragesForGroup(List<TeamMember> members)
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        var averages = new Dictionary<string, double>();
-        if (!members.Any()) return averages;
+        _uploadStatusMessage = "Processing file...";
+        _uploadSuccess = false;
+        StateHasChanged();
 
-        var allMetricKeys = members.SelectMany(m => m.Metrics.Keys).Distinct();
-        foreach (var key in allMetricKeys)
+        if (string.IsNullOrEmpty(_selectedDepartment) || string.IsNullOrEmpty(_selectedPeriod))
         {
-            var values = members
-                .Select(m => m.GetMetricDoubleValue(key))
-                .Where(v => v.HasValue)
-                .Select(v => v.Value)
-                .ToList();
-            if (values.Any()) averages[key] = values.Average();
+            _uploadStatusMessage = "Please select a department and period first.";
+            return;
         }
-        return averages;
+
+        var file = e.File;
+        if (file == null)
+        {
+            _uploadStatusMessage = "No file selected.";
+            return;
+        }
+        
+        // Basic validation (optional: add size check)
+        if (!file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) && !file.Name.EndsWith(".xls", StringComparison.OrdinalIgnoreCase) && 
+            !file.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            _uploadStatusMessage = "Invalid file type. Please upload an Excel (.xlsx, .xls) or CSV file.";
+            return;
+        }
+
+        try
+        {
+            // Let the user know we're processing
+            _uploadStatusMessage = "Reading file... This might take a moment for larger files.";
+            StateHasChanged();
+            
+            // Read the file as a base64 string
+            byte[] fileData;
+            using (var ms = new MemoryStream())
+            {
+                await file.OpenReadStream().CopyToAsync(ms);
+                fileData = ms.ToArray();
+            }
+            
+            // For CSV files, we can process directly
+            if (file.Name.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var content = System.Text.Encoding.UTF8.GetString(fileData);
+                _pastedData = content;
+                HandlePastedData();
+                return;
+            }
+            
+            // For Excel files, ask the user to try CSV format instead
+            _uploadStatusMessage = "For Excel files, please save as CSV format first or use the paste area below. " +
+                                  "In Excel: File > Save As > CSV (Comma delimited)";
+            _uploadSuccess = false;
+        }
+        catch (Exception ex)
+        {
+            _uploadStatusMessage = $"Error processing file: {ex.Message}";
+            _uploadSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
-    private double CalculateOverallScoreForMember(TeamMember member, Dictionary<string, double> departmentAverages)
+    private void HandlePastedData()
     {
-        if (!member.Metrics.Any()) return 0;
-        
-        // Calculate average score across *defined metrics for that department*
-        if (!_departmentMetrics.TryGetValue(member.Department, out var relevantMetrics))
+        _uploadStatusMessage = "Processing pasted data...";
+        _uploadSuccess = false;
+        StateHasChanged();
+
+        if (string.IsNullOrEmpty(_selectedDepartment) || string.IsNullOrEmpty(_selectedPeriod))
         {
-            relevantMetrics = member.Metrics.Keys.ToList(); // Fallback if dept metrics undefined
+            _uploadStatusMessage = "Please select a department and period first.";
+            return;
         }
-        
-        double totalScore = 0;
-        int metricCount = 0;
-        foreach(var metricKey in relevantMetrics)
+
+        if (string.IsNullOrWhiteSpace(_pastedData))
         {
-            if (member.Metrics.TryGetValue(metricKey, out var value))
+            _uploadStatusMessage = "Paste area is empty.";
+            return;
+        }
+
+        try
+        {
+            var lines = _pastedData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length <= 1)
             {
-                 double? numericValue = GetDoubleValue(value);
-                 if (numericValue.HasValue)
-                 {
-                     totalScore += CalculatePerformanceScore(metricKey, numericValue.Value, departmentAverages); 
-                     metricCount++;
-                 }
+                _uploadStatusMessage = "Pasted data needs at least a header row and one data row.";
+                return;
+            }
+
+            // --- Process Header Row --- 
+            // Detect delimiter: Check for comma first (CSV), then tab (Pasted Excel)
+            char delimiter = ','; // Default to comma for CSV
+            var headerCells = lines[0].Split(delimiter);
+            if (headerCells.Length <= 1) // If comma didn't split much, try tab
+            {
+                delimiter = '\t';
+                headerCells = lines[0].Split(delimiter);
+                if (headerCells.Length <= 1) // If neither worked, something is wrong
+                {
+                     _uploadStatusMessage = "Could not detect columns (comma or tab separated). Invalid format?";
+                     return;
+                }
+            }
+            
+            var headers = new Dictionary<int, string>();
+            int nameColumn = -1;
+            for (int i = 0; i < headerCells.Length; i++)
+            {
+                var headerText = headerCells[i]?.Trim();
+                if (!string.IsNullOrEmpty(headerText))
+                {
+                    headers.Add(i, headerText);
+                    if (headerText.Equals("Employee", StringComparison.OrdinalIgnoreCase))
+                    {
+                        nameColumn = i;
+                    }
+                }
+            }
+
+            if (nameColumn == -1)
+            {
+                _uploadStatusMessage = "Could not find an 'Employee' column in the pasted data/CSV.";
+                return;
+            }
+            
+            // --- Find Metric Columns ---
+            var departmentMetrics = _departmentMetrics[_selectedDepartment];
+            // This dictionary maps the INTERNAL metric key to the 0-BASED column index in the CSV/pasted data
+            var metricColumns = new Dictionary<string, int>();
+
+            // We already have the 'headers' dictionary: Dictionary<int ColumnIndex0Based, string HeaderText>
+
+            Console.WriteLine("--- Starting Metric Column Mapping ---");
+            Console.WriteLine($"Headers found (Index -> Text): {System.Text.Json.JsonSerializer.Serialize(headers)}"); // Log the headers we found
+
+            foreach (var internalMetricKey in departmentMetrics)
+            {
+                Console.WriteLine($"Processing internal metric: '{internalMetricKey}'");
+                // Find the expected CSV header name for this internal key using the map
+                if (_internalKeyToCsvHeaderMap.TryGetValue(internalMetricKey, out var expectedCsvHeader))
+                {
+                    Console.WriteLine($"  Mapped to expected CSV header: '{expectedCsvHeader}'");
+                    // Now, search the actual headers found in the file to get the 0-based index
+                    bool foundMatch = false;
+                    foreach (var headerPair in headers) // headerPair is KeyValuePair<int Index0Based, string HeaderText>
+                    {
+                        if (headerPair.Value.Equals(expectedCsvHeader, StringComparison.OrdinalIgnoreCase))
+                        {
+                            int colIndex = headerPair.Key; // This is the 0-based index
+                            // Ensure we don't accidentally map the 'Employee' column index if names collide
+                            if (colIndex != nameColumn)
+                            {
+                                metricColumns.Add(internalMetricKey, colIndex);
+                                Console.WriteLine($"    MATCH FOUND: Storing '{internalMetricKey}' -> Index {colIndex}");
+                                foundMatch = true;
+                                break; // Found the header for this metric, move to the next metric
+                            }
+                            else
+                            {
+                                Console.WriteLine($"    Skipping potential match at index {colIndex} because it's the Employee column.");
+                            }
+                        }
+                    }
+
+                    if (!foundMatch)
+                    {
+                        // Expected CSV header from map was not found in the actual CSV file headers
+                        Console.WriteLine($"    NO MATCH: Expected CSV header '{expectedCsvHeader}' for metric '{internalMetricKey}' not found in uploaded data headers.");
+                    }
+                }
+                else
+                {
+                    // This internal metric key doesn't have a mapping defined in _internalKeyToCsvHeaderMap
+                    Console.WriteLine($"  NO MAPPING: No CSV header mapping defined for internal metric key '{internalMetricKey}'.");
+                }
+            }
+            Console.WriteLine($"--- Finished Metric Column Mapping ---");
+            Console.WriteLine($"Resulting metricColumns (InternalKey -> Index): {System.Text.Json.JsonSerializer.Serialize(metricColumns)}"); // Log the final map
+
+
+            if (!metricColumns.Any())
+            {
+                // Updated message slightly
+                _uploadStatusMessage = $"Found 'Employee' column, but could not map any required metric columns ({string.Join(", ", departmentMetrics)}) based on expected CSV headers.";
+                Console.WriteLine(_uploadStatusMessage); // Log why we failed
+                return;
+            }
+
+            // --- Process Data Rows ---
+            int updatedCount = 0;
+            var membersInDept = _currentDepartmentMembers ?? new List<TeamMember>();
+            var assignedMemberIds = new HashSet<int>(); // Keep track of app members already assigned data in this run
+
+            Console.WriteLine($"--- Starting Row Processing ({lines.Length - 1} data rows) ---");
+
+            for (int i = 1; i < lines.Length; i++) // Start from line 1 (skip header)
+            {
+                var cells = lines[i].Split(delimiter);
+                if (cells.Length <= nameColumn) { Console.WriteLine($"Skipping row {i + 1}: Not enough columns based on delimiter '{delimiter}'."); continue; }
+
+                var fullCsvName = cells[nameColumn]?.Trim();
+                if (string.IsNullOrEmpty(fullCsvName)) { Console.WriteLine($"Skipping row {i + 1}: Employee name is empty."); continue; }
+
+                // --- Refined Name Matching V4 ---
+                TeamMember? matchedMember = null;
+                var csvNameParts = fullCsvName.Split(new[] { ' ' }, 2);
+                var csvFirstName = csvNameParts[0];
+                var csvLastName = csvNameParts.Length > 1 ? csvNameParts[1] : "";
+
+                // --- Special Case/Alias Mapping ---
+                if (fullCsvName.Equals("Vinicius Domingues", StringComparison.OrdinalIgnoreCase))
+                {
+                    matchedMember = membersInDept.FirstOrDefault(m => m.Name != null && m.Name.Equals("Vinny", StringComparison.OrdinalIgnoreCase));
+                    if (matchedMember != null)
+                    {
+                        Console.WriteLine($"Match FOUND via special case for CSV '{fullCsvName}' -> App '{matchedMember.Name}'");
+                    }
+                }
+                // Add other aliases here if needed
+                // --- End Special Case ---
+
+                // 1. Try for an exact full name match (if not already matched by special case)
+                if (matchedMember == null)
+                {
+                    matchedMember = membersInDept.FirstOrDefault(m =>
+                        m.Name != null &&
+                        m.Name.Equals(fullCsvName, StringComparison.OrdinalIgnoreCase));
+                    if (matchedMember != null)
+                    {
+                        Console.WriteLine($"Match FOUND via exact name for CSV '{fullCsvName}' -> App '{matchedMember.Name}'");
+                    }
+                }
+
+                // 2. If still no match, try the first name + last name contains logic (Fallback)
+                if (matchedMember == null)
+                {
+                    var potentialMatches = new List<TeamMember>();
+                    foreach (var potentialMember in membersInDept)
+                    {
+                        if (potentialMember.Name == null) continue;
+                        var appNameParts = potentialMember.Name.Split(new[] { ' ' }, 2);
+                        var appFirstName = appNameParts[0];
+                        var appLastName = appNameParts.Length > 1 ? appNameParts[1] : "";
+
+                        if (appFirstName.Equals(csvFirstName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (string.IsNullOrEmpty(appLastName) || (!string.IsNullOrEmpty(csvLastName) && csvLastName.Contains(appLastName, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                potentialMatches.Add(potentialMember);
+                            }
+                        }
+                    }
+
+                    if (potentialMatches.Count == 1)
+                    {
+                        matchedMember = potentialMatches[0];
+                        Console.WriteLine($"Match FOUND via fallback logic for CSV '{fullCsvName}' -> App '{matchedMember.Name}'");
+                    }
+                    else if (potentialMatches.Count > 1)
+                    {
+                        Console.WriteLine($"Ambiguous Match Warning (Fallback): CSV name '{fullCsvName}' potentially matched multiple members: [{string.Join(", ", potentialMatches.Select(p => p.Name))}]. Skipping row {i + 1}.");
+                        // matchedMember remains null
+                    }
+                }
+
+                // --- Final Check and Overwrite Prevention ---
+                if (matchedMember == null)
+                {
+                    Console.WriteLine($"No unique match found for CSV name: '{fullCsvName}'. Skipping row {i + 1}.");
+                    continue;
+                }
+
+                // Check if this app member already got data assigned in this run
+                if (assignedMemberIds.Contains(matchedMember.Id))
+                {
+                    Console.WriteLine($"Conflict: App member '{matchedMember.Name}' (ID: {matchedMember.Id}) has already been assigned data in this run. Skipping CSV row for '{fullCsvName}'.");
+                    continue; // Skip this CSV row to prevent overwrite
+                }
+                // --- End Final Check ---
+
+                // --- Process Metrics for Matched Member ---
+                Console.WriteLine($"Processing metrics for matched member: '{matchedMember.Name}' (ID: {matchedMember.Id}) from CSV row {i + 1}");
+                assignedMemberIds.Add(matchedMember.Id); // Mark this member as assigned FOR THIS RUN
+
+                if (!_inputValues.ContainsKey(matchedMember.Id))
+                {
+                    _inputValues[matchedMember.Id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+                
+                foreach (var kvp in metricColumns) // metricColumns maps InternalKey -> CSV_Index
+                {
+                    var internalMetricKey = kvp.Key;
+                    var colIndex = kvp.Value;       // 0-based index in CSV data
+
+                    if (colIndex >= 0 && colIndex < cells.Length) // Ensure colIndex is valid and cell exists
+                    {
+                        var cellValue = cells[colIndex]?.Trim();
+                        _inputValues[matchedMember.Id][internalMetricKey] = cellValue ?? string.Empty;
+                        // Console.WriteLine($"  Updating {internalMetricKey} with value '{cellValue}' from column index {colIndex}"); // Optional: Deeper logging
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  WARNING: Invalid column index {colIndex} calculated for metric {internalMetricKey}. Cannot get value for row {i + 1}.");
+                    }
+                }
+                updatedCount++;
+            } // End row loop
+            Console.WriteLine($"--- Finished Row Processing ---");
+
+            if (updatedCount > 0)
+            {
+                _uploadStatusMessage = $"Successfully processed pasted data. Updated metrics for {updatedCount} member(s).";
+                _uploadSuccess = true;
+                 _pastedData = string.Empty; // Clear paste area on success
+            }
+            else
+            {
+                _uploadStatusMessage = "Processed pasted data, but found no matching member names.";
+                _uploadSuccess = false;
             }
         }
-        
-        return metricCount > 0 ? totalScore / metricCount : 0; // Return average score
+        catch (Exception ex)
+        {
+            _uploadStatusMessage = $"Error processing pasted data: {ex.Message}";
+            _uploadSuccess = false;
+             // Log the full exception for debugging
+            Console.WriteLine($"Error in HandlePastedData: {ex}");
+        }
+        finally
+        {
+             // --- Use InvokeAsync ---
+            InvokeAsync(StateHasChanged);
+             // ----------------------
+        }
     }
 
-    // Helper class for storing ranked members
-    private class RankedMember
+    private void ClearInputs()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Department { get; set; } = string.Empty;
-        public double Score { get; set; }
-        public int Rank { get; set; }
+        _inputValues.Clear();
+        _saveError = null;
+        _saveSuccessMessage = null;
+        StateHasChanged();
     }
 }

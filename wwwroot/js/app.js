@@ -169,3 +169,14 @@ window.scrollCarouselToPage = (innerElement, pageIndex, itemsPerPage) => {
     innerElement.classList.add('transition-transform');
     innerElement.style.transform = `translateX(${translate}px)`;
 };
+
+// Function to scroll an element's container to center the element
+window.scrollToCenter = (element) => {
+    if (!element) return;
+    // Use scrollIntoView with options for smooth centering
+    element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center'
+    });
+};
