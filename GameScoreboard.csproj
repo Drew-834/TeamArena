@@ -7,6 +7,13 @@
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
   </PropertyGroup>
 
+  <!-- Exclude server project files from client build -->
+  <ItemGroup>
+    <Compile Remove="GameScoreboard.Server\**\*.cs" />
+    <Content Remove="GameScoreboard.Server\**\*.*" />
+    <None Remove="GameScoreboard.Server\**\*.*" />
+  </ItemGroup>
+
   <!-- Ensure all static web assets are copied to the publish output -->
   <ItemGroup>
     <Content Update="wwwroot\**\*.*">

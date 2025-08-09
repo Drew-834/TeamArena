@@ -21,7 +21,7 @@
     <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
 
     @* Optional: Add a copyright footer *@
-    <footer class="absolute bottom-0 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
+    <footer class="absolute bottom-20 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
         &copy; @DateTime.Now.Year Drew Carrillo. All Rights Reserved.
     </footer>
 </div>
