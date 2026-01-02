@@ -3,35 +3,22 @@
 
 <div class="relative min-h-screen bg-gray-900">
     
-    @* Render the body only if terms are accepted *@
-    @if (_termsAccepted)
-    {
-        <main class="@(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
-            @Body
-        </main>
-    }
-    else
-    {
-        @* Optional: Show a loading indicator or placeholder while checking acceptance *@
-        <div class="flex items-center justify-center h-screen">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
-        </div>
-    }
+    @* Always render the body - blur it if modal is showing *@
+    <main class="@(_showTermsModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
+        @Body
+    </main>
 
     <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
 
-    @* Optional: Add a copyright footer *@
-    <footer class="absolute bottom-20 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
+    @* Copyright footer *@
+    <footer class="absolute bottom-2 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
         &copy; @DateTime.Now.Year Drew Carrillo. All Rights Reserved.
     </footer>
 </div>
 
 @code {
-    // BUG B12: Brief flash of loading spinner before terms check completes
-    // Consider pre-rendering or using a different initial state
-    private bool _termsAccepted = false;
     private bool _showTermsModal = false;
-    private bool _termsChecked = false; // Prevent checking multiple times during render
+    private bool _termsChecked = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -46,16 +33,15 @@
                 if (accepted != "true")
                 {
                     _showTermsModal = true;
-                    StateHasChanged(); // Trigger UI update to show modal
+                    StateHasChanged();
                 }
             }
             catch (Exception ex) 
             {
-                // Handle potential JS interop errors (e.g., during prerendering)
-                Console.WriteLine($"Error checking session storage for terms acceptance: {ex.Message}");
-                // Decide fallback behavior - maybe show terms if check fails?
-                // _showTermsModal = true; 
-                // StateHasChanged();
+                Console.WriteLine($"Error checking session storage: {ex.Message}");
+                // On error, show terms modal to be safe
+                _showTermsModal = true;
+                StateHasChanged();
             }
         }
     }
@@ -63,16 +49,14 @@
     private async Task HandleTermsAccepted()
     {
         _showTermsModal = false;
-        _termsAccepted = true;
         try
         {
-            // Set the flag in sessionStorage
             await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "termsAccepted", "true");
         }
-         catch (Exception ex) 
+        catch (Exception ex) 
         {
-            Console.WriteLine($"Error setting session storage for terms acceptance: {ex.Message}");
+            Console.WriteLine($"Error setting session storage: {ex.Message}");
         }
-        StateHasChanged(); // Trigger UI update to hide modal
+        StateHasChanged();
     }
 }
