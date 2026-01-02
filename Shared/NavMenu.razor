@@ -1,4 +1,7 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@* BUG B13: This NavMenu references unused routes (/counter, /fetchdata) 
+   from the default Blazor template. Consider removing or updating.
+   TODO T09: Remove unused template remnants *@
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">GameScoreboard</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">

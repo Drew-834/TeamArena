@@ -81,11 +81,12 @@
                 string valueColor = isDeptBest ? "text-yellow-400" : "text-white"; // Keep dynamic color
 
                 // --- Reverted Card Structure --- 
+                @* BUG B06: Fallback to "default.png" but file may not exist in wwwroot/images/avatars/ *@
                 <div @key="member.Id" class="character-card cursor-pointer flex-shrink-0 relative bg-gray-800 border-2 @cardBorder rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 m-2" 
                      style="width: 200px; height: 320px;" 
                      @onclick="() => NavigateToMember(member.Id)">
                     <div class="absolute inset-0 opacity-20 z-0">
-                        <img src="@(member.AvatarUrl ?? "images/avatars/default.png")" alt="@member.Name" class="w-full h-full object-cover" />
+                        <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="@member.Name" class="w-full h-full object-cover" />
                     </div>
                     
                     <div class="relative z-10 p-3 flex flex-col h-full justify-between">

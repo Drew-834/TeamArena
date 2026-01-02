@@ -108,6 +108,7 @@ function dragEnd() {
 
     // Snap to closest slide
     const containerWidth = currentCarousel.offsetWidth;
+    // BUG B11: Magic numbers - slide width should match CSS or be configurable
     const slideWidth = 180 + 16; // card width + margin
     const maxSlides = currentInner.children.length;
     const maxTranslate = 0;

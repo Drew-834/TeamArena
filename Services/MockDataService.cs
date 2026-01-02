@@ -7,6 +7,13 @@ using GameScoreboard.Data;
 
 namespace GameScoreboard.Services
 {
+    // BUG B01: CRITICAL - All data is stored in-memory only!
+    // Data is lost when the page is refreshed or browser is closed.
+    // TODO T01: Implement real persistence using:
+    //   - IndexedDB (via Blazored.LocalStorage or js interop)
+    //   - Backend API with database
+    //   - Or browser LocalStorage for simple cases
+    
     public interface IDataService
     {
         Task<List<TeamMember>> GetTeamMembersAsync(string? department = null);
@@ -27,259 +34,390 @@ namespace GameScoreboard.Services
         public MockDataService()
         {
             _teamMembers = InitializeMockData();
-            // Don't pre-populate _metricRecords from mock data, let SaveMetrics do it
+            // Pre-populate _metricRecords from the initialized mock data
+            PrePopulateMetricRecords();
+        }
+        
+        private void PrePopulateMetricRecords()
+        {
+            foreach (var member in _teamMembers)
+            {
+                if (member.MetricRecords != null && member.MetricRecords.Any())
+                {
+                    // Get the period from the first record (they should all be the same)
+                    var period = member.MetricRecords.First().Period;
+                    var key = (member.Id, period);
+                    _metricRecords[key] = member.MetricRecords.ToList();
+                }
+            }
+            Console.WriteLine($"MockDataService: Pre-populated {_metricRecords.Count} metric record sets from initial data.");
         }
 
         private List<TeamMember> InitializeMockData()
         {
+            // EOM-Dec 2025 data loaded from actual metrics spreadsheet
+            const string currentPeriod = "EOM-Dec 2025";
+            
             return new List<TeamMember>
             {
-                // --- Computer Department Members ---
+                // --- Computer Department Members (EOM-Dec 2025 Data) ---
                 new TeamMember
                 {
                     Id = 1,
-                    Name = "Adam",
+                    Name = "Adam Flores",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "50.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.3" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "25185.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "810.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "198.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "6.7" }
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "Revenue", Value = "139298" },
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "ASP", Value = "651" },
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "Basket", Value = "108" },
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "M365Attach", Value = "11.3" },
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "PMAttach", Value = "12.5" },
+                        new MetricRecord { TeamMemberId = 1, Period = currentPeriod, MetricKey = "GSP", Value = "8.0" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 2,
-                    Name = "Ruben",
+                    Name = "Ishack Ishack",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/ruben1.png",
+                    AvatarUrl = "images/avatars/ishack2.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "42.9" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "22.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "19456.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "738.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "170.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "9.5" }
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "Revenue", Value = "143703" },
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "ASP", Value = "709" },
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "Basket", Value = "151" },
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "M365Attach", Value = "15.7" },
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "PMAttach", Value = "43.3" },
+                        new MetricRecord { TeamMemberId = 2, Period = currentPeriod, MetricKey = "GSP", Value = "5.6" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 3,
-                    Name = "Ishack",
+                    Name = "Gustavo Iciarte",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/ishack2.png",
+                    AvatarUrl = "images/avatars/gustavo1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "21.7" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "3.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "23740.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "762.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "241.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "13.0" }
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "Revenue", Value = "112648" },
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "ASP", Value = "538" },
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "Basket", Value = "133" },
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "M365Attach", Value = "21.9" },
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "PMAttach", Value = "22.5" },
+                        new MetricRecord { TeamMemberId = 3, Period = currentPeriod, MetricKey = "GSP", Value = "3.2" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 4,
-                    Name = "Drew",
+                    Name = "Drew Carrillo",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/drew1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "42.9" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "21081.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "712.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "132.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "19.0" }
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "Revenue", Value = "81072" },
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "ASP", Value = "629" },
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "Basket", Value = "191" },
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "M365Attach", Value = "57.9" },
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "PMAttach", Value = "54.7" },
+                        new MetricRecord { TeamMemberId = 4, Period = currentPeriod, MetricKey = "GSP", Value = "6.1" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 5,
-                    Name = "Vinny",
+                    Name = "Vinicius Domingues",
                     Department = "Computers",
                     AvatarUrl = "images/avatars/vinny2.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "9305.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "472.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "113.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "31.3" }
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "Revenue", Value = "97410" },
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "ASP", Value = "638" },
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "Basket", Value = "167" },
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "M365Attach", Value = "14.5" },
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "PMAttach", Value = "14.5" },
+                        new MetricRecord { TeamMemberId = 5, Period = currentPeriod, MetricKey = "GSP", Value = "5.8" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 6,
-                    Name = "Matthew",
+                    Name = "Adrian Rambaran",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/matthew1.png",
+                    AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "16.7" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "9296.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "527.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "125.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "50.0" }
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "Revenue", Value = "94869" },
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "ASP", Value = "592" },
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "Basket", Value = "155" },
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "M365Attach", Value = "6.8" },
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "PMAttach", Value = "22.6" },
+                        new MetricRecord { TeamMemberId = 6, Period = currentPeriod, MetricKey = "GSP", Value = "7.6" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 7,
-                    Name = "Jonathan",
+                    Name = "Paola Garcia Parra",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/jon1.png",
+                    AvatarUrl = "images/avatars/kla1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "12.5" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "10.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "8577.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "842.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "160.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "62.5" }
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "Revenue", Value = "94277" },
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "ASP", Value = "572" },
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "Basket", Value = "157" },
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "M365Attach", Value = "7.7" },
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "PMAttach", Value = "9.4" },
+                        new MetricRecord { TeamMemberId = 7, Period = currentPeriod, MetricKey = "GSP", Value = "2.1" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 8,
-                    Name = "Gustavo G",
+                    Name = "Ruben Torres B.",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/gustavo1.png",
+                    AvatarUrl = "images/avatars/ruben1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "41.7" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7590.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "497.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "123.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "0.0" }
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "Revenue", Value = "93822" },
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "ASP", Value = "842" },
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "Basket", Value = "140" },
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "M365Attach", Value = "24.7" },
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "PMAttach", Value = "38.8" },
+                        new MetricRecord { TeamMemberId = 8, Period = currentPeriod, MetricKey = "GSP", Value = "5.4" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 9,
-                    Name = "Felipe",
+                    Name = "Chitnanjan Lall",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/matthew1.png",
+                    AvatarUrl = "images/avatars/jon1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "5.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7406.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "347.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "175.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "13.3" }
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "Revenue", Value = "88237" },
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "ASP", Value = "654" },
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "Basket", Value = "128" },
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "M365Attach", Value = "7.7" },
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "PMAttach", Value = "11.0" },
+                        new MetricRecord { TeamMemberId = 9, Period = currentPeriod, MetricKey = "GSP", Value = "10.6" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 10,
-                    Name = "Klarensky",
+                    Name = "Gabriel Vargas",
                     Department = "Computers",
-                    AvatarUrl = "images/avatars/kla1.png",
+                    AvatarUrl = "images/avatars/matthew1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "M365Attach", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "0.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "7926.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "ASP", Value = "361.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "54.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PMAttach", Value = "0.0" }
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "Revenue", Value = "55286" },
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "ASP", Value = "560" },
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "Basket", Value = "162" },
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "M365Attach", Value = "13.0" },
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "PMAttach", Value = "35.1" },
+                        new MetricRecord { TeamMemberId = 10, Period = currentPeriod, MetricKey = "GSP", Value = "2.2" }
                     }
                 },
-                // --- Store Department Members (Sample) ---
                 new TeamMember
                 {
                     Id = 11,
-                    Name = "Sarah",
-                    Department = "Store",
-                    AvatarUrl = "images/avatars/avatar1.png",
+                    Name = "Robert Velazquez",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/jon1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "150000.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.8" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "18.5" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "85.50" }
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "Revenue", Value = "61919" },
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "ASP", Value = "518" },
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "Basket", Value = "158" },
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "M365Attach", Value = "11.7" },
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "PMAttach", Value = "5.2" },
+                        new MetricRecord { TeamMemberId = 11, Period = currentPeriod, MetricKey = "GSP", Value = "6.4" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 12,
-                    Name = "Mike",
-                    Department = "Store",
-                    AvatarUrl = "images/avatars/avatar2.png",
-                    MetricRecords = new List<MetricRecord>
-                    {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Revenue", Value = "120000.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.5" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "15.2" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Basket", Value = "75.00" }
-                    }
-                },
-                // --- Front End Department Members (Sample) ---
-                new TeamMember
-                {
-                    Id = 13,
-                    Name = "Linda",
-                    Department = "Front",
+                    Name = "Clara Cominato",
+                    Department = "Computers",
                     AvatarUrl = "images/avatars/kla1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "25.0" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "BP", Value = "120" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PM", Value = "85" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.9" }
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "Revenue", Value = "70887" },
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "ASP", Value = "572" },
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "Basket", Value = "190" },
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "M365Attach", Value = "8.7" },
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "PMAttach", Value = "8.7" },
+                        new MetricRecord { TeamMemberId = 12, Period = currentPeriod, MetricKey = "GSP", Value = "15.0" }
+                    }
+                },
+                new TeamMember
+                {
+                    Id = 13,
+                    Name = "Soph Glorioso",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "Revenue", Value = "54450" },
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "ASP", Value = "406" },
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "Basket", Value = "303" },
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "M365Attach", Value = "1.5" },
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "PMAttach", Value = "12.3" },
+                        new MetricRecord { TeamMemberId = 13, Period = currentPeriod, MetricKey = "GSP", Value = "2.5" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 14,
-                    Name = "David",
-                    Department = "Front",
-                    AvatarUrl = "images/avatars/jon1.png",
+                    Name = "Matthew Fernandez",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/matthew1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "GSP", Value = "22.1" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "BP", Value = "95" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "PM", Value = "70" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "5Star", Value = "4.7" }
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "Revenue", Value = "54923" },
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "ASP", Value = "449" },
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "Basket", Value = "383" },
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "M365Attach", Value = "7.0" },
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "PMAttach", Value = "19.7" },
+                        new MetricRecord { TeamMemberId = 14, Period = currentPeriod, MetricKey = "GSP", Value = "6.6" }
                     }
                 },
-                // --- Warehouse Department Members (Sample) ---
                 new TeamMember
                 {
                     Id = 15,
-                    Name = "Carlos",
-                    Department = "Warehouse",
-                    AvatarUrl = "images/avatars/ishack1.png",
+                    Name = "Nicholas Oti",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Picks", Value = "405" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Accuracy", Value = "98.2" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Awk", Value = "0.5" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Units", Value = "1402" }
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "Revenue", Value = "26416" },
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "ASP", Value = "722" },
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "Basket", Value = "132" },
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "M365Attach", Value = "35.7" },
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "PMAttach", Value = "35.7" },
+                        new MetricRecord { TeamMemberId = 15, Period = currentPeriod, MetricKey = "GSP", Value = "0.0" }
                     }
                 },
                 new TeamMember
                 {
                     Id = 16,
-                    Name = "Jessica",
-                    Department = "Warehouse",
-                    AvatarUrl = "images/avatars/vinny1.png",
+                    Name = "Anthony Furtney",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/gustavo1.png",
                     MetricRecords = new List<MetricRecord>
                     {
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Picks", Value = "382" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Accuracy", Value = "99.5" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Awk", Value = "0.7" },
-                        new MetricRecord { Period = "MockPeriod", MetricKey = "Units", Value = "1280" }
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "Revenue", Value = "26996" },
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "ASP", Value = "570" },
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "Basket", Value = "105" },
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "M365Attach", Value = "9.1" },
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "PMAttach", Value = "15.2" },
+                        new MetricRecord { TeamMemberId = 16, Period = currentPeriod, MetricKey = "GSP", Value = "0.0" }
+                    }
+                },
+                new TeamMember
+                {
+                    Id = 17,
+                    Name = "Vinicius Scramin",
+                    Department = "Computers",
+                    AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "Revenue", Value = "46895" },
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "ASP", Value = "406" },
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "Basket", Value = "131" },
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "M365Attach", Value = "1.9" },
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "PMAttach", Value = "0.0" },
+                        new MetricRecord { TeamMemberId = 17, Period = currentPeriod, MetricKey = "GSP", Value = "1.9" }
+                    }
+                },
+                // --- Store Department Members (Sample - keeping for other departments) ---
+                new TeamMember
+                {
+                    Id = 18,
+                    Name = "Sarah",
+                    Department = "Store",
+                    AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 18, Period = currentPeriod, MetricKey = "Revenue", Value = "150000.0" },
+                        new MetricRecord { TeamMemberId = 18, Period = currentPeriod, MetricKey = "5Star", Value = "4.8" },
+                        new MetricRecord { TeamMemberId = 18, Period = currentPeriod, MetricKey = "GSP", Value = "18.5" },
+                        new MetricRecord { TeamMemberId = 18, Period = currentPeriod, MetricKey = "Basket", Value = "85.50" }
+                    }
+                },
+                new TeamMember
+                {
+                    Id = 19,
+                    Name = "Mike",
+                    Department = "Store",
+                    AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 19, Period = currentPeriod, MetricKey = "Revenue", Value = "120000.0" },
+                        new MetricRecord { TeamMemberId = 19, Period = currentPeriod, MetricKey = "5Star", Value = "4.5" },
+                        new MetricRecord { TeamMemberId = 19, Period = currentPeriod, MetricKey = "GSP", Value = "15.2" },
+                        new MetricRecord { TeamMemberId = 19, Period = currentPeriod, MetricKey = "Basket", Value = "75.00" }
+                    }
+                },
+                // --- Front End Department Members (Sample) ---
+                new TeamMember
+                {
+                    Id = 20,
+                    Name = "Linda",
+                    Department = "Front",
+                    AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 20, Period = currentPeriod, MetricKey = "GSP", Value = "25.0" },
+                        new MetricRecord { TeamMemberId = 20, Period = currentPeriod, MetricKey = "BP", Value = "120" },
+                        new MetricRecord { TeamMemberId = 20, Period = currentPeriod, MetricKey = "PM", Value = "85" },
+                        new MetricRecord { TeamMemberId = 20, Period = currentPeriod, MetricKey = "5Star", Value = "4.9" }
+                    }
+                },
+                new TeamMember
+                {
+                    Id = 21,
+                    Name = "David",
+                    Department = "Front",
+                    AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 21, Period = currentPeriod, MetricKey = "GSP", Value = "22.1" },
+                        new MetricRecord { TeamMemberId = 21, Period = currentPeriod, MetricKey = "BP", Value = "95" },
+                        new MetricRecord { TeamMemberId = 21, Period = currentPeriod, MetricKey = "PM", Value = "70" },
+                        new MetricRecord { TeamMemberId = 21, Period = currentPeriod, MetricKey = "5Star", Value = "4.7" }
+                    }
+                },
+                // --- Warehouse Department Members (Sample) ---
+                new TeamMember
+                {
+                    Id = 22,
+                    Name = "Carlos",
+                    Department = "Warehouse",
+                    AvatarUrl = "images/avatars/ishack2.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 22, Period = currentPeriod, MetricKey = "Picks", Value = "405" },
+                        new MetricRecord { TeamMemberId = 22, Period = currentPeriod, MetricKey = "Accuracy", Value = "98.2" },
+                        new MetricRecord { TeamMemberId = 22, Period = currentPeriod, MetricKey = "Awk", Value = "0.5" },
+                        new MetricRecord { TeamMemberId = 22, Period = currentPeriod, MetricKey = "Units", Value = "1402" }
+                    }
+                },
+                new TeamMember
+                {
+                    Id = 23,
+                    Name = "Jessica",
+                    Department = "Warehouse",
+                    AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord>
+                    {
+                        new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Picks", Value = "382" },
+                        new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Accuracy", Value = "99.5" },
+                        new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Awk", Value = "0.7" },
+                        new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Units", Value = "1280" }
                     }
                 }
             };

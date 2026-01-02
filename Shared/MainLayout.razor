@@ -27,6 +27,8 @@
 </div>
 
 @code {
+    // BUG B12: Brief flash of loading spinner before terms check completes
+    // Consider pre-rendering or using a different initial state
     private bool _termsAccepted = false;
     private bool _showTermsModal = false;
     private bool _termsChecked = false; // Prevent checking multiple times during render

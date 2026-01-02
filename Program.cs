@@ -13,7 +13,9 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Optional: keep SQLite for local testing (not used once API is live)
+// BUG B02: SQLite does NOT work in Blazor WebAssembly!
+// This is only here for local testing - production uses HttpDataService with API
+// TODO T05: Remove this once API is fully implemented
 builder.Services.AddDbContextFactory<AppDbContext>(options => 
     options.UseSqlite($"Data Source={nameof(AppDbContext)}.db"));
 
@@ -21,8 +23,9 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7157/";
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 
-// Switch to HTTP data service
-builder.Services.AddScoped<IDataService, HttpDataService>();
+// TODO: Switch to HttpDataService once API is implemented
+// For now, using MockDataService for local testing
+builder.Services.AddScoped<IDataService, MockDataService>();
 
 // App state
 builder.Services.AddSingleton<AppState>();

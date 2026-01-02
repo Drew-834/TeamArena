@@ -1,8 +1,4 @@
-﻿private string GetFormattedMetricName(string metricKey)
-    {
-        var displayName = TeamMember.GetMetricDisplayName(metricKey);
-        return displayName.Split(' ')[0]; // Return just the first word for brevity
-    }
+﻿@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
 @page "/character/{Id:int}"
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
@@ -11,6 +7,10 @@
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+
+@* BUG B04: GetDoubleValue(), FormatMetricValue(), GetMetricGoal() are duplicated 
+   across CharacterDetails, DepartmentOverview, and WeeklyTracker.
+   TODO: Extract to a shared utility class in Services/ *@
 
 <div class="bg-gray-900 min-h-screen text-white">
     <div class="container mx-auto px-4 py-8">

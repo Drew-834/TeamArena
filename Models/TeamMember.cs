@@ -7,6 +7,9 @@ using GameScoreboard.Data; // Added for MetricRecord
 
 namespace GameScoreboard.Models
 {
+    // BUG C02: This model has mixed concerns - business logic (scoring, title calculation)
+    // is mixed with data model properties. Consider separating into TeamMember (data) 
+    // and TeamMemberService (business logic)
     public class TeamMember
     {
         [Key] // Ensure EF Core recognizes this as the primary key
