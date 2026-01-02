@@ -39,4 +39,33 @@ public class MembersController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpPost]
+    public async Task<ActionResult<TeamMember>> Create(TeamMember member)
+    {
+        _db.TeamMembers.Add(member);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = member.Id }, member);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var member = await _db.TeamMembers.FindAsync(id);
+        if (member is null) return NotFound();
+        _db.TeamMembers.Remove(member);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("departments")]
+    public async Task<ActionResult<IEnumerable<string>>> GetDepartments()
+    {
+        var departments = await _db.TeamMembers
+            .Select(m => m.Department)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync();
+        return Ok(departments);
+    }
 } 

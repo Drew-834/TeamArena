@@ -23,13 +23,20 @@ public class Program
         builder.Services.AddDbContext<AppDbContext>(opt =>
             opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-        // CORS for local WASM dev
+        // CORS for WASM client (local dev + production)
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
-                policy.WithOrigins("http://localhost:5172", "https://localhost:5172")
-                      .AllowAnyHeader()
-                      .AllowAnyMethod());
+                policy.WithOrigins(
+                    "http://localhost:5117",
+                    "https://localhost:5117", 
+                    "http://localhost:5172", 
+                    "https://localhost:5172",
+                    "https://drew-834.github.io",
+                    "https://teamarena-client-start.azurestaticapps.net"  // Azure Static Web App
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod());
         });
 
         var app = builder.Build();
