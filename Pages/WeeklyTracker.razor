@@ -317,11 +317,28 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_isAuthenticated)
+        if (firstRender)
         {
-            await Task.Delay(50); // Shorter delay maybe
-            _showPasswordModal = true;
-            await InvokeAsync(StateHasChanged);
+            // Check if manager is already authenticated in this session
+            try
+            {
+                var isManagerAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
+                if (isManagerAuth == "true")
+                {
+                    _isAuthenticated = true;
+                    _showPasswordModal = false;
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+            }
+            catch { /* sessionStorage not available */ }
+
+            if (!_isAuthenticated)
+            {
+                await Task.Delay(50);
+                _showPasswordModal = true;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
 
@@ -451,7 +468,7 @@
     }
 
     // Password Check Logic
-    private void CheckPassword()
+    private async Task CheckPassword()
     {
         _enteredPassword = _passwordInput; // Update the actual variable *before* checking
 
@@ -460,6 +477,13 @@
             _passwordError = string.Empty;
             _isAuthenticated = true;
             _showPasswordModal = false;
+            
+            // Store manager auth in session (persists until browser tab is closed)
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true");
+            }
+            catch { /* sessionStorage not available */ }
         }
         else
         {
@@ -467,15 +491,15 @@
             _passwordInput = string.Empty; // Clear the input field visually on error
         }
         // Always trigger a UI update after checking
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
     }
 
     // Handle Enter key specifically
-    private void HandlePasswordInputKeydown(KeyboardEventArgs e)
+    private async Task HandlePasswordInputKeydown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            CheckPassword(); 
+            await CheckPassword(); 
         }
     }
 
