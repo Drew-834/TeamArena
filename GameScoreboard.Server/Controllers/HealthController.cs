@@ -23,6 +23,11 @@ public class HealthController : ControllerBase
     [HttpGet("db")]
     public async Task<IActionResult> CheckDb()
     {
+        var connStr = _config.GetConnectionString("DefaultConnection") ?? "";
+        // Mask the password for security
+        var maskedConnStr = System.Text.RegularExpressions.Regex.Replace(
+            connStr, @"Password=[^;]+", "Password=***");
+        
         try
         {
             // Try to connect to database
@@ -32,7 +37,7 @@ public class HealthController : ControllerBase
             return Ok(new { 
                 canConnect, 
                 memberCount,
-                hasConnectionString = !string.IsNullOrEmpty(_config.GetConnectionString("DefaultConnection")),
+                connectionString = maskedConnStr,
                 provider = _db.Database.ProviderName
             });
         }
@@ -42,7 +47,7 @@ public class HealthController : ControllerBase
                 canConnect = false, 
                 error = ex.Message,
                 innerError = ex.InnerException?.Message,
-                hasConnectionString = !string.IsNullOrEmpty(_config.GetConnectionString("DefaultConnection"))
+                connectionString = maskedConnStr
             });
         }
     }
