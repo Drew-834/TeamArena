@@ -30,12 +30,14 @@ public class HealthController : ControllerBase
         
         try
         {
-            // Try to connect to database
-            var canConnect = await _db.Database.CanConnectAsync();
-            var memberCount = canConnect ? await _db.TeamMembers.CountAsync() : -1;
+            // Force a real connection attempt with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await _db.Database.OpenConnectionAsync(cts.Token);
+            var memberCount = await _db.TeamMembers.CountAsync(cts.Token);
+            await _db.Database.CloseConnectionAsync();
             
             return Ok(new { 
-                canConnect, 
+                canConnect = true, 
                 memberCount,
                 connectionString = maskedConnStr,
                 provider = _db.Database.ProviderName
