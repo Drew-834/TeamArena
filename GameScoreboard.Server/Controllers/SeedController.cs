@@ -46,6 +46,30 @@ public class SeedController : ControllerBase
         return Ok(new { Message = $"Successfully seeded {members.Count} team members with metric records" });
     }
 
+    [HttpPost("pods")]
+    public async Task<IActionResult> SeedPodData([FromHeader(Name = "X-Admin-Key")] string? adminKey)
+    {
+        var expectedKey = _configuration["AdminKey"] ?? "TeamArena2025!";
+        if (adminKey != expectedKey)
+            return Unauthorized("Invalid admin key");
+
+        var existingPodDepts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+        };
+
+        var alreadySeeded = await _db.TeamMembers
+            .AnyAsync(m => existingPodDepts.Contains(m.Department));
+        if (alreadySeeded)
+            return BadRequest("Pod data already exists. DELETE /api/seed to clear first, or use the PodTracker page.");
+
+        var podMembers = GetPodMembers();
+        await _db.TeamMembers.AddRangeAsync(podMembers);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { Message = $"Seeded {podMembers.Count} pod members with metric records" });
+    }
+
     [HttpDelete]
     public async Task<IActionResult> ClearDatabase([FromHeader(Name = "X-Admin-Key")] string? adminKey)
     {
@@ -55,7 +79,6 @@ public class SeedController : ControllerBase
             return Unauthorized("Invalid admin key");
         }
 
-        // Clear all data
         _db.MetricRecords.RemoveRange(_db.MetricRecords);
         _db.TeamMembers.RemoveRange(_db.TeamMembers);
         await _db.SaveChangesAsync();
@@ -105,6 +128,79 @@ public class SeedController : ControllerBase
             CreateMember(17, "Jessica", department, "Tech Enthusiast", "images/avatars/kla1.png", period,
                 new() { ["M365Attach"] = "83.9%", ["GSP"] = "50.6%", ["Revenue"] = "$104,230", ["ASP"] = "$878", ["Basket"] = "2.4", ["PMAttach"] = "59.7%", ["5Star"] = "92.8%", ["BP"] = "1040", ["PM"] = "78", ["Picks"] = "149", ["Accuracy"] = "97.5%", ["Awk"] = "14" })
         };
+    }
+
+    private List<TeamMember> GetPodMembers()
+    {
+        var period = "Mid-Feb 2026";
+
+        return new List<TeamMember>
+        {
+            // Matt-Category Advisors
+            CreatePod("Maria Navas Davis", "Matt-Category Advisors", period, 1088, 15851, 14376, 5.0, 7.2, 4.1),
+            CreatePod("Jacqueline Soto", "Matt-Category Advisors", period, 1518, 9660, 3925, 4.3, 15.5, 1.8),
+            CreatePod("Johnathon King", "Matt-Category Advisors", period, 1606, 14265, 2684, 5.0, 19.4, 8.9),
+            CreatePod("Daniel Grove", "Matt-Category Advisors", period, 1097, 10137, 5003, 0, 4.2, 22.7),
+            CreatePod("David Schunk", "Matt-Category Advisors", period, 1106, 10501, 60960, 5.0, 15.0, 21.7),
+            CreatePod("Christian Nazario", "Matt-Category Advisors", period, 929, 6516, 3614, 5.0, 13.8, 12.2),
+            CreatePod("Christopher Santos", "Matt-Category Advisors", period, 1192, 58610, 2493, 5.0, 12.9, 29.7),
+            CreatePod("Gerardo Torres", "Matt-Category Advisors", period, 1197, 25358, 5316, 5.0, 5.5, 40.1),
+            CreatePod("William Cochrane", "Matt-Category Advisors", period, 1273, 11030, 2284, 0, 3.4, 23.2),
+            CreatePod("Anthony Rivera", "Matt-Category Advisors", period, 1050, 18314, 5076, 5.0, 4.1, 24.4),
+
+            // LUIS-DI/HT/Mobile
+            CreatePod("Gerardo Cruz", "LUIS-DI/HT/Mobile", period, 926, 12477, 26168, 0, 7.4, 17.7),
+            CreatePod("Danna Nunez", "LUIS-DI/HT/Mobile", period, 945, 13347, 5159, 4.0, 13.0, 15.1),
+            CreatePod("Julian Muriel", "LUIS-DI/HT/Mobile", period, 543, 16060, 18092, 0, 22.4, 6.7),
+            CreatePod("Sebastian Alvarez", "LUIS-DI/HT/Mobile", period, 982, 55628, 6825, 5.0, 4.5, 22.3),
+            CreatePod("Jose Lopez", "LUIS-DI/HT/Mobile", period, 637, 5356, 14236, 0, 6.5, 19.4),
+            CreatePod("Daniel Chaparro", "LUIS-DI/HT/Mobile", period, 952, 10885, 100000, 0, 10.8, 31.4),
+            CreatePod("Celine Paul", "LUIS-DI/HT/Mobile", period, 1066, 64158, 27665, 0, 7.1, 32.5),
+            CreatePod("Gabriel Gonzalez", "LUIS-DI/HT/Mobile", period, 1021, 4327, 30597, 0, 5.7, 21.0),
+            CreatePod("Marcos Castro Torres", "LUIS-DI/HT/Mobile", period, 358, 5582, 100000, 0, 9.1, 31.3),
+            CreatePod("Yoseph Cardozo", "LUIS-DI/HT/Mobile", period, 984, 8145, 27650, 5.0, 1.2, 36.5),
+            CreatePod("Ibrahim Adam", "LUIS-DI/HT/Mobile", period, 769, 4903, 5607, 5.0, 16.9, 8.3),
+
+            // Drews Crew-Computing
+            CreatePod("Cesar Perez", "Drews Crew-Computing", period, 780, 10504, 10275, 5.0, 4.4, 28.9),
+            CreatePod("Joao Aguiar", "Drews Crew-Computing", period, 857, 17931, 5851, 4.7, 11.8, 27.6),
+            CreatePod("Seyquan Williams", "Drews Crew-Computing", period, 902, 12263, 4638, 5.0, 0.0, 15.6),
+            CreatePod("Liz Tejeda Moras", "Drews Crew-Computing", period, 1018, 14059, 1283, 0, 16.7, 17.4),
+            CreatePod("Joao Richa", "Drews Crew-Computing", period, 858, 11756, 1802, 5.0, 1.5, 17.2),
+            CreatePod("Victor Richa", "Drews Crew-Computing", period, 1178, 17276, 1501, 0, 6.0, 19.4),
+            CreatePod("DJ Skelton", "Drews Crew-Computing", period, 1223, 39606, 35338, 0, 1.4, 20.3),
+            CreatePod("Jeremy Morales", "Drews Crew-Computing", period, 967, 17535, 2553, 0, 12.1, 23.1),
+            CreatePod("Yerik Palacios", "Drews Crew-Computing", period, 900, 7815, 1609, 5.0, 6.2, 14.0),
+            CreatePod("Dakota French", "Drews Crew-Computing", period, 1188, 16210, 5707, 5.0, 5.9, 17.4),
+            CreatePod("Jesus Nessy", "Drews Crew-Computing", period, 1173, 10267, 3639, 5.0, 5.2, 15.7),
+            CreatePod("Francisco Ramirez", "Drews Crew-Computing", period, 1217, 5455, 3611, 5.0, 6.6, 19.5),
+            CreatePod("Dillan Rawlings", "Drews Crew-Computing", period, 463, 9040, 23971, 0, 4.9, 16.3),
+
+            // Pod-Front End
+            CreatePod("Betzaida Cotto Hernandez", "Pod-Front End", period, 607, 16712, 7804, 5.0, 7.5, 7.1),
+            CreatePod("Liss Juarez", "Pod-Front End", period, 1007, 16657, 14257, 5.0, 4.0, 5.7),
+            CreatePod("Kate Martinez", "Pod-Front End", period, 664, 9229, 20592, 0, 6.0, 6.8),
+            CreatePod("Rasheka Fray", "Pod-Front End", period, 693, 100000, 100000, 0, 0.0, 27.8),
+            CreatePod("Matthew Soto Velez", "Pod-Front End", period, 1549, 100000, 100000, 1.0, 1.4, 24.6),
+            CreatePod("Alexa Arias", "Pod-Front End", period, 933, 100000, 43982, 0, 3.9, 3.9),
+            CreatePod("Elian Calderon", "Pod-Front End", period, 1296, 46504, 100000, 0, 0.0, 7.5),
+            CreatePod("Doo Lee", "Pod-Front End", period, 334, 100000, 100000, 0, 6.8, 5.3),
+        };
+    }
+
+    private TeamMember CreatePod(string name, string department, string period,
+        double rph, double appEff, double pmEff, double surveys, double warranty, double accAttach)
+    {
+        var metrics = new Dictionary<string, string>
+        {
+            ["RPH"] = rph.ToString("F0"),
+            ["AppEff"] = appEff.ToString("F0"),
+            ["PMEff"] = pmEff.ToString("F0"),
+            ["Surveys"] = surveys.ToString("F1"),
+            ["WarrantyAttach"] = warranty.ToString("F1"),
+            ["AccAttach"] = accAttach.ToString("F1")
+        };
+        return CreateMember(0, name, department, "Pod Member", "images/avatars/adam1.png", period, metrics);
     }
 
     private TeamMember CreateMember(int id, string name, string department, string role, string avatar, string period, Dictionary<string, string> metrics)

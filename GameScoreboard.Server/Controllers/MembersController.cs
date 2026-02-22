@@ -15,13 +15,21 @@ public class MembersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TeamMember>>> Get([FromQuery] string? department = null)
     {
-        IQueryable<TeamMember> query = _db.TeamMembers.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(department))
+        try
         {
-            query = query.Where(m => m.Department == department);
+            IQueryable<TeamMember> query = _db.TeamMembers.AsNoTracking();
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                query = query.Where(m => m.Department == department);
+            }
+            var result = await query.ToListAsync();
+            return Ok(result);
         }
-        var result = await query.ToListAsync();
-        return Ok(result);
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MembersController.Get error: {ex.Message}");
+            return Ok(new List<TeamMember>());
+        }
     }
 
     [HttpGet("{id:int}")]

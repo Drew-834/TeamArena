@@ -30,9 +30,17 @@ public class MetricsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<MetricRecord>>> Get([FromQuery] int? memberId = null, [FromQuery] string? period = null)
     {
-        IQueryable<MetricRecord> q = _db.MetricRecords.AsNoTracking();
-        if (memberId.HasValue) q = q.Where(r => r.TeamMemberId == memberId.Value);
-        if (!string.IsNullOrWhiteSpace(period)) q = q.Where(r => r.Period == period);
-        return Ok(await q.ToListAsync());
+        try
+        {
+            IQueryable<MetricRecord> q = _db.MetricRecords.AsNoTracking();
+            if (memberId.HasValue) q = q.Where(r => r.TeamMemberId == memberId.Value);
+            if (!string.IsNullOrWhiteSpace(period)) q = q.Where(r => r.Period == period);
+            return Ok(await q.ToListAsync());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MetricsController.Get error: {ex.Message}");
+            return Ok(new List<MetricRecord>());
+        }
     }
 } 
