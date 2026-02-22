@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel.DataAnnotations;
@@ -52,7 +52,19 @@ namespace GameScoreboard.Models
             { "MVP", "MVP" }, // Selected MVP (string)
             { "Picks", "Total Picks" },
             { "Accuracy", "Pick Accuracy %" },
-            { "Units", "Units Picked" }
+            { "Units", "Units Picked" },
+            // Pod Metrics
+            { "RPH", "RPH $" },
+            { "AppEff", "App Eff $" },
+            { "PMEff", "PM Eff $" },
+            { "Surveys", "5-Star" },
+            { "WarrantyAttach", "Warranty %" },
+            { "AccAttach", "Acc Attach %" },
+            { "Hours", "Hours" },
+            { "TotalRevenue", "Total Revenue $" },
+            { "TPH", "TPH" },
+            { "Apps", "Apps #" },
+            { "PMs", "PMs #" }
         };
 
         // Dictionary to map metric keys to potential character titles when excelling
@@ -74,8 +86,14 @@ namespace GameScoreboard.Models
             { "PickRate", "Picking Prodigy" },
             { "PickQuantity", "Quantity King/Queen" },
             { "Awk", "Logistics Legend" },
-            { "Pick$", "Value Voyager" }, // Added for Pick$ which is likely warehouse Revenue
-            // MVP doesn't have a typical "best score" title, handled differently
+            { "Pick$", "Value Voyager" },
+            // Pod Metrics
+            { "RPH", "Revenue Powerhouse" },
+            { "AppEff", "App Ace" },
+            { "PMEff", "PM Prodigy" },
+            { "Surveys", "Service Star" },
+            { "WarrantyAttach", "Warranty Warrior" },
+            { "AccAttach", "Accessory Authority" }
         };
 
         // --- New Leveling System Properties ---
@@ -173,7 +191,19 @@ namespace GameScoreboard.Models
                 "Accuracy" => "Pick Acc %",
                 "Awk" => "Awkward Qty", 
                 "Units" => "Units Picked",
-                _ => key // Default to key if not found
+                // Pod Metrics
+                "RPH" => "RPH $",
+                "AppEff" => "App Eff $",
+                "PMEff" => "PM Eff $",
+                "Surveys" => "5-Star",
+                "WarrantyAttach" => "Warranty %",
+                "AccAttach" => "Acc Attach %",
+                "Hours" => "Hours",
+                "TotalRevenue" => "Total Revenue $",
+                "TPH" => "TPH",
+                "Apps" => "Apps #",
+                "PMs" => "PMs #",
+                _ => key
             };
         }
 

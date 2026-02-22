@@ -1,0 +1,705 @@
+@page "/pods/{PodName}"
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@using GameScoreboard.Data
+@using System.Globalization
+@using System.Text.Json
+
+@inject IDataService DataService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject AppState AppState
+@implements IDisposable
+
+<div class="bg-gray-900 min-h-screen text-white p-8">
+    <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+        &lt; Back to Pods
+    </button>
+
+    <h1 class="text-4xl font-bold text-yellow-400 mb-2 text-center">@Uri.UnescapeDataString(PodName)</h1>
+    <h2 class="text-xl text-center text-gray-400 mb-2">Pod Performance Overview</h2>
+    <p class="text-center text-sm text-gray-500 mb-4">Latest Data: @(_latestPeriod ?? "No Data Available")</p>
+
+    <!-- Backup & History Controls -->
+    <div class="flex justify-center items-center gap-4 mb-8">
+        <button @onclick="BackupToDatabase" disabled="@_isSaving"
+                class="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors flex items-center gap-2">
+            @if (_isSaving)
+            {
+                <span class="animate-pulse">Saving...</span>
+            }
+            else
+            {
+                <span>Backup to Database</span>
+            }
+        </button>
+        <button @onclick="ToggleHistory"
+                class="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-yellow-400 font-semibold rounded-lg transition-colors">
+            @(_showHistory ? "Hide History" : "View History") (@_snapshots.Count)
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_backupMessage))
+    {
+        <div class="@(_backupSuccess ? "bg-green-800 border-green-500" : "bg-red-800 border-red-500") border rounded-lg p-3 mb-6 max-w-xl mx-auto text-center text-sm">
+            @_backupMessage
+        </div>
+    }
+
+    <!-- Snapshot History Panel -->
+    @if (_showHistory)
+    {
+        <div class="mb-10 bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Performance History</h2>
+            @if (_snapshots.Any())
+            {
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="py-2 px-3 text-left text-gray-400">#</th>
+                                <th class="py-2 px-3 text-left text-gray-400">Date</th>
+                                <th class="py-2 px-3 text-left text-gray-400">Label</th>
+                                <th class="py-2 px-3 text-left text-gray-400">Members</th>
+                                <th class="py-2 px-3 text-center text-gray-400">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var snap in _snapshots)
+                            {
+                                bool isExpanded = _expandedSnapshotId == snap.Id;
+                                <tr class="border-b border-gray-700 hover:bg-gray-700 cursor-pointer" @onclick="() => ToggleSnapshotDetail(snap.Id)">
+                                    <td class="py-2 px-3 text-gray-300">@snap.Id</td>
+                                    <td class="py-2 px-3 text-white">@snap.SnapshotDate.ToLocalTime().ToString("MMM dd, yyyy h:mm tt")</td>
+                                    <td class="py-2 px-3 text-gray-300">@(snap.Label ?? "—")</td>
+                                    <td class="py-2 px-3 text-gray-300">@GetSnapshotMemberCount(snap)</td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span class="text-yellow-400 text-xs">@(isExpanded ? "▼ Collapse" : "▶ Expand")</span>
+                                    </td>
+                                </tr>
+                                @if (isExpanded)
+                                {
+                                    <tr>
+                                        <td colspan="5" class="p-0">
+                                            <div class="bg-gray-900 border border-gray-700 rounded-b-lg p-4">
+                                                @{ var detail = ParseSnapshotData(snap); }
+                                                @if (detail != null && detail.Any())
+                                                {
+                                                    <div class="overflow-x-auto">
+                                                        <table class="w-full text-xs">
+                                                            <thead>
+                                                                <tr class="border-b border-gray-600">
+                                                                    <th class="py-1 px-2 text-left text-gray-400">Name</th>
+                                                                    @foreach (var metricKey in _podMetricKeys)
+                                                                    {
+                                                                        <th class="py-1 px-2 text-right text-gray-400">@TeamMember.GetMetricDisplayName(metricKey)</th>
+                                                                    }
+                                                                    <th class="py-1 px-2 text-right text-yellow-400">Score</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @foreach (var row in detail)
+                                                                {
+                                                                    <tr class="border-b border-gray-800">
+                                                                        <td class="py-1 px-2 text-white font-medium">@row.Name</td>
+                                                                        @foreach (var metricKey in _podMetricKeys)
+                                                                        {
+                                                                            var val = row.Metrics.GetValueOrDefault(metricKey, "—");
+                                                                            <td class="py-1 px-2 text-right text-gray-300">@val</td>
+                                                                        }
+                                                                        <td class="py-1 px-2 text-right text-yellow-400 font-bold">@row.WeightedScore</td>
+                                                                    </tr>
+                                                                }
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <p class="text-gray-500 text-center">Could not parse snapshot data.</p>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-gray-500 text-center">No snapshots yet. Click "Backup to Database" to save the current state.</p>
+            }
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <p class="text-center text-gray-500">Loading...</p>
+    }
+    else if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod))
+    {
+        <p class="text-center text-gray-500">No metric data available for this pod.</p>
+    }
+    else
+    {
+        <!-- Pod Leaderboard -->
+        @if (_podLeaderboard != null && _podLeaderboard.Any())
+        {
+            <div class="mb-10 bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Pod Leaderboard</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    @foreach (var pod in _podLeaderboard)
+                    {
+                        bool isCurrent = pod.Name.Equals(Uri.UnescapeDataString(PodName), StringComparison.OrdinalIgnoreCase);
+                        string borderClass = isCurrent ? "border-yellow-500 bg-gray-700" : "border-gray-600";
+                        string rankColor = pod.Rank == 1 ? "text-yellow-400" : pod.Rank == 2 ? "text-gray-200" : pod.Rank == 3 ? "text-orange-400" : "text-gray-400";
+
+                        <div class="rounded-lg border-2 @borderClass p-4 text-center">
+                            <div class="text-3xl font-bold @rankColor mb-1">#@pod.Rank</div>
+                            <div class="text-sm font-semibold @(isCurrent ? "text-yellow-400" : "text-white") mb-1">@pod.Name</div>
+                            <div class="text-2xl font-bold text-white">@pod.Score.ToString("F1")</div>
+                            <div class="text-xs text-gray-400">avg weighted score</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Weighted KPI Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            @foreach (var metricKey in _podMetricKeys)
+            {
+                var avgData = _departmentAverages.GetValueOrDefault(metricKey);
+                var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
+                var lowPerformer = _lowPerformerNames.GetValueOrDefault(metricKey);
+                var goal = GetMetricGoal(metricKey);
+                var weight = GetMetricWeight(metricKey);
+
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-yellow-400">@TeamMember.GetMetricDisplayName(metricKey)</h3>
+                        <span class="text-xs px-2 py-1 bg-gray-700 rounded-full text-gray-300">Weight: @weight/32</span>
+                    </div>
+                    <div class="flex justify-between items-baseline mb-3">
+                        @{
+                            bool isEfficiency = IsLowerBetter(metricKey);
+                            var statusColor = GetAverageStatusColor(avgData.Average, goal, isEfficiency);
+                        }
+                        <span class="text-3xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
+                        @if (goal.HasValue)
+                        {
+                            <span class="text-sm text-gray-400">Target: @(isEfficiency ? "≤ " : "")@FormatMetricValue(goal.Value, metricKey)</span>
+                        }
+                    </div>
+                    <div class="text-xs text-gray-400 mb-1">@(isEfficiency ? "Worst" : "Low"): @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+                    <div class="text-xs text-gray-400 mb-3">Best: @(highPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_highPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+
+                    @if (goal.HasValue && goal.Value > 0)
+                    {
+                        double progress;
+                        if (isEfficiency)
+                        {
+                            progress = avgData.Average > 0 ? (goal.Value / avgData.Average) * 100.0 : 0;
+                        }
+                        else
+                        {
+                            progress = (avgData.Average / goal.Value) * 100.0;
+                        }
+                        progress = Math.Clamp(progress, 0, 100);
+                        string barColor = progress >= 100 ? "bg-yellow-400" : progress >= 75 ? "bg-green-500" : progress >= 50 ? "bg-blue-500" : "bg-red-500";
+                        <div class="w-full bg-gray-600 rounded-full h-2.5 mb-1">
+                            <div class="@barColor h-2.5 rounded-full" style="width: @(progress.ToString("F0", CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                        <div class="text-xs text-right text-gray-400">@progress.ToString("F0")% of target</div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Team Member Cards -->
+        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Pod Members</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            @foreach (var member in _teamMembers.OrderByDescending(m => GetWeightedScore(m)))
+            {
+                var weightedScore = GetWeightedScore(member);
+                var strongestArea = GetStrongestWeightedArea(member);
+                bool isDeptBest = strongestArea != null && _highPerformerNames.TryGetValue(strongestArea, out var best) && best?.Contains(member.Name) == true;
+                string cardBorder = isDeptBest ? "border-yellow-500" : "border-gray-700";
+
+                <div @key="member.Id" class="character-card cursor-pointer flex-shrink-0 relative bg-gray-800 border-2 @cardBorder rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 m-2"
+                     style="width: 200px; height: 320px;"
+                     @onclick="() => NavigateToMember(member.Id)">
+                    <div class="absolute inset-0 opacity-20 z-0">
+                        <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="@member.Name" class="w-full h-full object-cover" />
+                    </div>
+
+                    <div class="relative z-10 p-3 flex flex-col h-full justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-center mt-2">@member.Name</h3>
+                            @if (strongestArea != null)
+                            {
+                                <p class="text-yellow-400 text-center text-xs mt-1">@TeamMember.GetMetricDisplayName(strongestArea) Leader</p>
+                            }
+                        </div>
+
+                        <div class="pt-4">
+                            <div class="metric-highlight bg-gray-800 bg-opacity-80 border border-gray-600 rounded-md p-3 text-center">
+                                <div class="text-xs text-gray-400">Weighted Score</div>
+                                <div class="text-2xl font-bold @(weightedScore >= 70 ? "text-yellow-400" : weightedScore >= 50 ? "text-green-400" : weightedScore >= 30 ? "text-blue-400" : "text-red-400")">
+                                    @weightedScore.ToString("F1")
+                                </div>
+                                <div class="text-xs text-gray-500">out of 100</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center text-sm mb-1 px-1">
+                                @{
+                                    int level = (int)(member.TotalExperience / 100) + 1;
+                                    double xpInLevel = member.TotalExperience % 100;
+                                    double progressPercent = (xpInLevel / 100.0) * 100;
+                                }
+                                <span class="font-bold text-purple-400">Level @level</span>
+                                <span class="text-xs text-gray-400">@xpInLevel.ToString("F0") / 100 XP</span>
+                            </div>
+                            <div class="h-2 bg-gray-600 bg-opacity-50 rounded-full overflow-hidden mx-1">
+                                <div class="h-full bg-purple-500 rounded-full" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string PodName { get; set; } = string.Empty;
+    private bool _isLoading = true;
+    private List<TeamMember> _teamMembers = new();
+    private string? _latestPeriod;
+
+    private bool _isSaving;
+    private string? _backupMessage;
+    private bool _backupSuccess;
+    private bool _showHistory;
+    private int? _expandedSnapshotId;
+    private List<GameScoreboard.Models.PodSnapshot> _snapshots = new();
+
+    private Dictionary<string, (double Average, double Min, double Max)> _departmentAverages = new();
+    private Dictionary<string, List<string>> _highPerformerNames = new();
+    private Dictionary<string, List<string>> _lowPerformerNames = new();
+    private Dictionary<string, double> _highPerformerValues = new();
+    private Dictionary<string, double> _lowPerformerValues = new();
+    private List<RankedMember>? _podLeaderboard;
+
+    // Pod-specific KPI keys in display order
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
+
+    // Weighted scoring: 7 App Eff, 5 Warranty, 5 Acc Attach, 5 PM Eff, 3 Surveys, 7 RPH = 32 total
+    private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 }
+    };
+    private const int TotalWeight = 32;
+
+    // Targets from the Excel sheet
+    private static readonly Dictionary<string, double> _metricTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "RPH", 920.0 },
+        { "AppEff", 6500.0 },
+        { "PMEff", 4000.0 },
+        { "Surveys", 4.6 },
+        { "WarrantyAttach", 10.0 },
+        { "AccAttach", 20.0 }
+    };
+
+    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+    };
+
+    private static bool IsLowerBetter(string metricKey) =>
+        metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
+        metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnMetricsUpdatedAsync += HandleMetricsUpdated;
+        await LoadPodData();
+    }
+
+    private async Task HandleMetricsUpdated()
+    {
+        await InvokeAsync(async () =>
+        {
+            _isLoading = true;
+            StateHasChanged();
+            try { await LoadPodData(); }
+            finally { StateHasChanged(); }
+        });
+    }
+
+    private async Task LoadPodData()
+    {
+        _isLoading = true;
+        _latestPeriod = null;
+        _departmentAverages.Clear();
+        _highPerformerNames.Clear();
+        _lowPerformerNames.Clear();
+        _highPerformerValues.Clear();
+        _lowPerformerValues.Clear();
+        _teamMembers.Clear();
+
+        var decodedPodName = Uri.UnescapeDataString(PodName);
+        if (string.IsNullOrEmpty(decodedPodName)) { _isLoading = false; return; }
+
+        try
+        {
+            var allMembers = await DataService.GetTeamMembersAsync();
+            _teamMembers = allMembers?.Where(m => m.Department.Equals(decodedPodName, StringComparison.OrdinalIgnoreCase)).ToList()
+                           ?? new List<TeamMember>();
+
+            if (_teamMembers.Any())
+            {
+                _latestPeriod = _teamMembers
+                    .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
+                    .Select(r => r.Period)
+                    .FirstOrDefault();
+
+                if (!string.IsNullOrEmpty(_latestPeriod))
+                {
+                    CalculateSummary();
+                }
+            }
+
+            // Build pod leaderboard from all pod members
+            CalculatePodLeaderboard(allMembers ?? new List<TeamMember>());
+
+            await LoadSnapshots();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading pod data: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void CalculatePodLeaderboard(List<TeamMember> allMembers)
+    {
+        var podGroups = allMembers
+            .Where(m => PodDepartments.Contains(m.Department))
+            .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var podScores = new List<(string Name, double AvgScore)>();
+
+        foreach (var group in podGroups)
+        {
+            var scores = group.Select(m => GetWeightedScore(m)).Where(s => s > 0).ToList();
+            double avgScore = scores.Any() ? scores.Average() : 0;
+            podScores.Add((group.Key, avgScore));
+        }
+
+        _podLeaderboard = podScores
+            .OrderByDescending(p => p.AvgScore)
+            .Select((p, idx) => new RankedMember { Id = idx, Name = p.Name, Department = p.Name, Score = p.AvgScore, Rank = idx + 1 })
+            .ToList();
+    }
+
+    private void CalculateSummary()
+    {
+        if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod)) return;
+
+        _departmentAverages.Clear();
+        _highPerformerNames.Clear();
+        _lowPerformerNames.Clear();
+        _highPerformerValues.Clear();
+        _lowPerformerValues.Clear();
+
+        foreach (var key in _podMetricKeys)
+        {
+            var valuesForMetric = _teamMembers
+                .Select(m => (Name: m.Name, Value: GetMemberMetricValue(m, key)))
+                .Where(pair => pair.Value.HasValue)
+                .Select(pair => (pair.Name, Value: pair.Value!.Value))
+                .ToList();
+
+            // For AppEff/PMEff, filter out $100,000 sentinel values (means 0 apps/PMs)
+            if (key == "AppEff" || key == "PMEff")
+            {
+                valuesForMetric = valuesForMetric.Where(v => v.Value < 90000).ToList();
+            }
+
+            if (valuesForMetric.Any())
+            {
+                double avg = valuesForMetric.Average(v => v.Value);
+                double minVal = valuesForMetric.Min(v => v.Value);
+                double maxVal = valuesForMetric.Max(v => v.Value);
+                _departmentAverages[key] = (avg, minVal, maxVal);
+
+                var bestPerformers = valuesForMetric.Where(v => v.Value == maxVal).Select(v => v.Name).ToList();
+                var worstPerformers = valuesForMetric.Where(v => v.Value == minVal).Select(v => v.Name).ToList();
+
+                // For AppEff and PMEff, lower is actually better (more efficient spending per app/PM)
+                if (key == "AppEff" || key == "PMEff")
+                {
+                    _highPerformerNames[key] = worstPerformers; // Lower = better efficiency
+                    _lowPerformerNames[key] = bestPerformers;
+                    _highPerformerValues[key] = minVal;
+                    _lowPerformerValues[key] = maxVal;
+                }
+                else
+                {
+                    _highPerformerNames[key] = bestPerformers;
+                    _lowPerformerNames[key] = worstPerformers;
+                    _highPerformerValues[key] = maxVal;
+                    _lowPerformerValues[key] = minVal;
+                }
+            }
+        }
+    }
+
+    private double? GetMemberMetricValue(TeamMember member, string metricKey)
+    {
+        var record = member.MetricRecords?.FirstOrDefault(r =>
+            r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase) &&
+            r.Period == _latestPeriod);
+        if (record?.Value != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            return val;
+        return null;
+    }
+
+    private double GetWeightedScore(TeamMember member)
+    {
+        double totalWeightedScore = 0;
+        int applicableWeight = 0;
+
+        foreach (var kvp in _metricWeights)
+        {
+            double? rawValue = GetMemberMetricValue(member, kvp.Key);
+            if (!rawValue.HasValue) continue;
+
+            // Skip sentinel values for efficiency metrics
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
+
+            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+            double normalizedScore;
+
+            if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
+            {
+                // Lower is better for efficiency: score = target / actual * 100
+                normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
+            }
+            else
+            {
+                // Higher is better
+                normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
+            }
+
+            normalizedScore = Math.Clamp(normalizedScore, 0, 150);
+            totalWeightedScore += normalizedScore * kvp.Value;
+            applicableWeight += kvp.Value;
+        }
+
+        return applicableWeight > 0 ? totalWeightedScore / applicableWeight : 0;
+    }
+
+    private string? GetStrongestWeightedArea(TeamMember member)
+    {
+        string? bestKey = null;
+        double bestScore = double.MinValue;
+
+        foreach (var kvp in _metricWeights)
+        {
+            double? rawValue = GetMemberMetricValue(member, kvp.Key);
+            if (!rawValue.HasValue) continue;
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
+
+            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+            double normalizedScore;
+            if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
+                normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
+            else
+                normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
+
+            if (normalizedScore > bestScore)
+            {
+                bestScore = normalizedScore;
+                bestKey = kvp.Key;
+            }
+        }
+
+        return bestKey;
+    }
+
+    private double? GetMetricGoal(string metricKey)
+    {
+        return _metricTargets.TryGetValue(metricKey, out var target) ? target : null;
+    }
+
+    private int GetMetricWeight(string metricKey)
+    {
+        return _metricWeights.GetValueOrDefault(metricKey, 0);
+    }
+
+    private string GetAverageStatusColor(double average, double? goal, bool lowerIsBetter = false)
+    {
+        if (!goal.HasValue || goal.Value <= 0) return "text-white";
+
+        double progress;
+        if (lowerIsBetter)
+        {
+            progress = average > 0 ? (goal.Value / average) * 100.0 : 0;
+        }
+        else
+        {
+            progress = (average / goal.Value) * 100.0;
+        }
+
+        if (progress >= 100) return "text-yellow-400";
+        if (progress >= 75) return "text-green-400";
+        if (progress >= 50) return "text-blue-400";
+        return "text-red-400";
+    }
+
+    private string FormatMetricValue(double value, string metricKey)
+    {
+        bool isPercentage = metricKey == "WarrantyAttach" || metricKey == "AccAttach";
+        bool isCurrency = metricKey == "RPH" || metricKey == "AppEff" || metricKey == "PMEff";
+        bool isRating = metricKey == "Surveys";
+
+        if (isPercentage) return value.ToString("F1", CultureInfo.InvariantCulture) + "%";
+        if (isCurrency) return "$" + value.ToString("N0", CultureInfo.InvariantCulture);
+        if (isRating) return value.ToString("F1", CultureInfo.InvariantCulture);
+        return value.ToString("N0", CultureInfo.InvariantCulture);
+    }
+
+    private async Task LoadSnapshots()
+    {
+        try
+        {
+            var podName = Uri.UnescapeDataString(PodName);
+            _snapshots = await DataService.GetPodSnapshotsAsync(podName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading snapshots: {ex.Message}");
+            _snapshots = new();
+        }
+    }
+
+    private async Task BackupToDatabase()
+    {
+        if (_isSaving || _teamMembers == null || !_teamMembers.Any()) return;
+
+        _isSaving = true;
+        _backupMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var podName = Uri.UnescapeDataString(PodName);
+            var snapshotData = _teamMembers.Select(m => new
+            {
+                m.Name,
+                m.Id,
+                WeightedScore = GetWeightedScore(m).ToString("F1", CultureInfo.InvariantCulture),
+                Metrics = _podMetricKeys.ToDictionary(
+                    key => key,
+                    key =>
+                    {
+                        var val = GetMemberMetricValue(m, key);
+                        return val.HasValue ? FormatMetricValue(val.Value, key) : "—";
+                    })
+            }).ToList();
+
+            var json = JsonSerializer.Serialize(snapshotData);
+
+            var snapshot = new GameScoreboard.Models.PodSnapshot
+            {
+                PodName = podName,
+                Label = _latestPeriod ?? "Manual Backup",
+                JsonData = json
+            };
+
+            await DataService.SavePodSnapshotAsync(snapshot);
+            await LoadSnapshots();
+
+            _backupSuccess = true;
+            _backupMessage = $"Snapshot saved at {DateTime.Now:MMM dd, yyyy h:mm tt} with {_teamMembers.Count} members.";
+        }
+        catch (Exception ex)
+        {
+            _backupSuccess = false;
+            _backupMessage = $"Backup failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleHistory()
+    {
+        _showHistory = !_showHistory;
+    }
+
+    private void ToggleSnapshotDetail(int snapshotId)
+    {
+        _expandedSnapshotId = _expandedSnapshotId == snapshotId ? null : snapshotId;
+    }
+
+    private int GetSnapshotMemberCount(GameScoreboard.Models.PodSnapshot snap)
+    {
+        try
+        {
+            var data = JsonSerializer.Deserialize<List<JsonElement>>(snap.JsonData);
+            return data?.Count ?? 0;
+        }
+        catch { return 0; }
+    }
+
+    private record SnapshotRow(string Name, Dictionary<string, string> Metrics, string WeightedScore);
+
+    private List<SnapshotRow>? ParseSnapshotData(GameScoreboard.Models.PodSnapshot snap)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(snap.JsonData);
+            var rows = new List<SnapshotRow>();
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                var name = element.GetProperty("Name").GetString() ?? "Unknown";
+                var score = element.GetProperty("WeightedScore").GetString() ?? "0";
+                var metricsObj = element.GetProperty("Metrics");
+                var metrics = new Dictionary<string, string>();
+                foreach (var key in _podMetricKeys)
+                {
+                    if (metricsObj.TryGetProperty(key, out var val))
+                        metrics[key] = val.GetString() ?? "—";
+                    else
+                        metrics[key] = "—";
+                }
+                rows.Add(new SnapshotRow(name, metrics, score));
+            }
+            return rows.OrderByDescending(r => double.TryParse(r.WeightedScore, NumberStyles.Any, CultureInfo.InvariantCulture, out var s) ? s : 0).ToList();
+        }
+        catch { return null; }
+    }
+
+    private void NavigateBack() => NavigationManager.NavigateTo("/pods");
+    private void NavigateToMember(int memberId) => NavigationManager.NavigateTo($"/character/{memberId}");
+
+    public void Dispose()
+    {
+        AppState.OnMetricsUpdatedAsync -= HandleMetricsUpdated;
+        GC.SuppressFinalize(this);
+    }
+}

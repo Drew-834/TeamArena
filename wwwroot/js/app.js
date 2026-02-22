@@ -1,4 +1,4 @@
-﻿// Carousel functionality
+// Carousel functionality
 let isDragging = false;
 let startPosition = 0;
 let currentTranslate = 0;
@@ -36,6 +36,12 @@ window.initKeySequenceDetector = () => {
                 const weeklyTrackerCard = document.getElementById('weekly-tracker-card');
                 if (weeklyTrackerCard) {
                     weeklyTrackerCard.classList.remove('hidden');
+                }
+
+                // Reveal the Pod Tracker card on Pod Index page
+                const podTrackerCard = document.getElementById('pod-tracker-card');
+                if (podTrackerCard) {
+                    podTrackerCard.classList.remove('hidden');
                 }
                 keySequence = [];
             }

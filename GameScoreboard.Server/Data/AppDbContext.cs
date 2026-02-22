@@ -10,6 +10,7 @@ namespace GameScoreboard.Server.Data
         public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
         public DbSet<MetricRecord> MetricRecords => Set<MetricRecord>();
         public DbSet<ArchivedPeriod> ArchivedPeriods => Set<ArchivedPeriod>();
+        public DbSet<PodSnapshot> PodSnapshots => Set<PodSnapshot>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,6 +38,13 @@ namespace GameScoreboard.Server.Data
             modelBuilder.Entity<ArchivedPeriod>()
                 .HasIndex(a => new { a.Department, a.Period })
                 .IsUnique();
+
+            modelBuilder.Entity<PodSnapshot>()
+                .Property(s => s.PodName).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<PodSnapshot>()
+                .Property(s => s.JsonData).IsRequired();
+            modelBuilder.Entity<PodSnapshot>()
+                .HasIndex(s => new { s.PodName, s.SnapshotDate });
         }
     }
 } 

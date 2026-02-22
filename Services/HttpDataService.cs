@@ -184,6 +184,48 @@ namespace GameScoreboard.Services
                 return DateTime.MinValue;
             }
         }
+
+        public async Task SavePodSnapshotAsync(GameScoreboard.Models.PodSnapshot snapshot)
+        {
+            try
+            {
+                await _http.PostAsJsonAsync("api/snapshot", snapshot);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HttpDataService.SavePodSnapshotAsync error: {ex.Message}");
+            }
+        }
+
+        public async Task<List<GameScoreboard.Models.PodSnapshot>> GetPodSnapshotsAsync(string? podName = null)
+        {
+            try
+            {
+                var url = "api/snapshot";
+                if (!string.IsNullOrWhiteSpace(podName))
+                    url += $"?podName={Uri.EscapeDataString(podName)}";
+                var snapshots = await _http.GetFromJsonAsync<List<GameScoreboard.Models.PodSnapshot>>(url);
+                return snapshots ?? new();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HttpDataService.GetPodSnapshotsAsync error: {ex.Message}");
+                return new();
+            }
+        }
+
+        public async Task<GameScoreboard.Models.PodSnapshot?> GetPodSnapshotByIdAsync(int id)
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<GameScoreboard.Models.PodSnapshot>($"api/snapshot/{id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HttpDataService.GetPodSnapshotByIdAsync error: {ex.Message}");
+                return null;
+            }
+        }
     }
 }
 

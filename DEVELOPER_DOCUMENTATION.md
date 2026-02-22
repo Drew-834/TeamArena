@@ -1,8 +1,9 @@
 # Team Performance Arena - Developer Documentation
 
-> **Last Updated:** January 2026  
-> **Framework:** Blazor WebAssembly (.NET 8)  
-> **Live Site:** https://drew-834.github.io/TeamArena/
+> **Last Updated:** February 2026  
+> **Framework:** Blazor WebAssembly (.NET 8) with ASP.NET Core Web API Backend  
+> **Live Site:** https://drew-834.github.io/TeamArena/  
+> **API:** Azure App Service (ASP.NET Core Web API + SQL Server)
 
 ---
 
@@ -44,7 +45,10 @@ Team Performance Arena is a gamified performance visualization dashboard that pr
 | **Tailwind CSS** | Styling (via CDN) |
 | **Entity Framework Core 9.0** | Data access (SQLite configured but using MockDataService) |
 | **LocalStorage/SessionStorage** | Client-side persistence for terms acceptance |
-| **GitHub Pages** | Hosting |
+| **ASP.NET Core Web API** | Backend API (GameScoreboard.Server project) |
+| **Entity Framework Core (SQL Server)** | Server-side data persistence (Azure SQL) |
+| **GitHub Pages** | Frontend hosting |
+| **Azure App Service** | API hosting |
 
 ### Key Dependencies (from `GameScoreboard.csproj`)
 
@@ -65,7 +69,10 @@ GameScoreboard/
 │   ├── CharacterDetails.razor   # Individual member view (route: "/character/{Id:int}")
 │   ├── WeeklyTracker.razor      # Admin data entry (route: "/weeklytracker")
 │   ├── ArchivedTrackers.razor   # Historical data view (route: "/archived-trackers")
-│   └── RadarChart.razor         # Radar chart SVG component
+│   ├── RadarChart.razor         # Radar chart SVG component
+│   ├── PodIndex.razor           # Pod selection (route: "/pods")
+│   ├── PodOverview.razor        # Pod KPI dashboard (route: "/pods/{PodName}")
+│   └── PodTracker.razor         # Pod admin data entry (route: "/podtracker")
 │
 ├── Shared/                   # Reusable components
 │   ├── MainLayout.razor      # App layout with terms modal
@@ -262,7 +269,47 @@ member.TotalExperience += averagePeriodScore;
 
 ---
 
-### 6. Terms of Use Modal (TermsOfUseModal.razor + MainLayout.razor)
+### 6. Pod Performance System (PodIndex, PodOverview, PodTracker)
+
+**Routes:** `/pods`, `/pods/{PodName}`, `/podtracker`
+
+**Description:** Separate performance tracking system for pods (cross-functional teams) with different KPIs than the department system. Uses weighted scoring.
+
+**Pod KPIs & Weights (Total: 32 parts):**
+
+| Metric Key | Display Name | Weight | Target | Direction |
+|------------|-------------|--------|--------|-----------|
+| `AppEff` | App Eff $ | 7 | $6,500 | Lower is better |
+| `RPH` | RPH $ | 7 | $920 | Higher is better |
+| `WarrantyAttach` | Warranty % | 5 | 10% | Higher is better |
+| `AccAttach` | Acc Attach % | 5 | 20% | Higher is better |
+| `PMEff` | PM Eff $ | 5 | $4,000 | Lower is better |
+| `Surveys` | 5-Star | 3 | 4.6 | Higher is better |
+
+**Current Pods:**
+- Matt-Category Advisors (10 members)
+- LUIS-DI/HT/Mobile (11 members)
+- Drews Crew-Computing (13 members)
+- Pod-Front End (8 members)
+
+**Weighted Score Calculation:**
+```csharp
+// For each metric: normalize to 0-150 scale relative to target
+// "Higher is better": normalizedScore = (value / target) * 100
+// "Lower is better" (AppEff, PMEff): normalizedScore = (target / value) * 100
+// Final: sum(normalizedScore * weight) / sum(applicableWeights)
+```
+
+**Excel Paste Format:** PodTracker accepts copy-paste from the pod performance Excel spreadsheet. It auto-detects tab-delimited columns and maps: Employee, RPH, App Eff (value), PM Eff (value), Surveys/5-Star, Warranty Attach, Accessory Attach.
+
+**Adding a New Pod:**
+1. Add members with the pod name as `Department` in `MockDataService`
+2. Add the pod name to `PodDepartments` HashSet in `PodIndex.razor`, `PodOverview.razor`, and `PodTracker.razor`
+3. Add metrics definition in `WeeklyTracker._departmentMetrics` (optional, for compatibility)
+
+---
+
+### 7. Terms of Use Modal (TermsOfUseModal.razor + MainLayout.razor)
 
 **Description:** Modal requiring user acceptance before viewing content.
 
@@ -273,7 +320,7 @@ member.TotalExperience += averagePeriodScore;
 
 ---
 
-### 7. Hidden Features & Easter Eggs
+### 8. Hidden Features & Easter Eggs
 
 | Feature | Trigger | Effect |
 |---------|---------|--------|
@@ -522,12 +569,25 @@ Fixed issue where WeeklyTracker department and period dropdowns were empty:
 
 ## Deployment Notes
 
-### GitHub Pages Deployment
+### Architecture
+
+The app uses a split deployment model:
+- **Frontend:** Blazor WebAssembly hosted on GitHub Pages
+- **Backend API:** ASP.NET Core Web API hosted on Azure App Service
+- **Database:** Azure SQL Server
+
+In DEBUG mode, the frontend uses `MockDataService` (in-memory). In RELEASE mode, it uses `HttpDataService` to call the API.
+
+### GitHub Pages Deployment (Frontend)
 
 The app is configured for GitHub Pages with:
 - SPA routing script in `index.html` (rafgraph/spa-github-pages pattern)
 - `<base href="/">` in `index.html`
 - `404.html` for fallback routing
+
+### API Configuration
+
+The API base URL is configured in `wwwroot/appsettings.json` → `ApiBaseUrl`. Program.cs uses this to create the `HttpClient`.
 
 ### Build Command
 ```bash
@@ -552,8 +612,12 @@ dotnet publish -c Release
 |------|-------|
 | Add team members | `Services/MockDataService.cs` → `InitializeMockData()` |
 | Add department metrics | `WeeklyTracker.razor` → `_departmentMetrics` dictionary |
-| Change admin password | `WeeklyTracker.razor` → `CorrectPassword` constant |
-| Modify performance goals | Search for `GetMetricGoal` (exists in 3 files) |
+| Add pod members | `Services/MockDataService.cs` → `InitializeMockData()` (use pod name as Department) |
+| Add new pod | `PodIndex.razor`, `PodOverview.razor`, `PodTracker.razor` → `PodDepartments` HashSet |
+| Modify pod KPI weights | `PodOverview.razor` & `PodTracker.razor` → `_metricWeights` dictionary |
+| Modify pod KPI targets | `PodOverview.razor` & `PodTracker.razor` → `_metricTargets` dictionary |
+| Change admin password | `WeeklyTracker.razor` & `PodTracker.razor` → `CorrectPassword` constant |
+| Modify performance goals | Search for `GetMetricGoal` (exists in 3+ files) |
 | Change XP formula | `TeamMember.cs` → `CurrentLevel` property |
 | Add metric display names | `TeamMember.cs` → `GetMetricDisplayName()` |
 | Modify radar chart metrics | `CharacterDetails.razor` → `GenerateRadarChartData()` |

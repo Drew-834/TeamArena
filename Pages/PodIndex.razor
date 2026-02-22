@@ -1,0 +1,78 @@
+@page "/pods"
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@using GameScoreboard.Services
+@inject IDataService DataService
+
+<div class="bg-gray-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <button @onclick='() => NavigateTo("/")' class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+            &lt; Back to Home
+        </button>
+
+        <h1 class="text-4xl font-bold text-yellow-400 text-center mb-4">Pod Performance</h1>
+        <p class="text-gray-400 text-center mb-12">Select a pod to view individual KPI performance</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            @foreach (var pod in _pods)
+            {
+                <div @onclick="() => NavigateToPod(pod)"
+                     class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-40 flex flex-col justify-center">
+                    <h2 class="text-2xl font-semibold mb-2">@pod</h2>
+                    <p class="text-gray-400">@GetPodMemberCount(pod) members</p>
+                </div>
+            }
+        </div>
+
+        <!-- Hidden Pod Tracker Card -->
+        <div id="pod-tracker-card" @onclick='() => NavigateTo("/podtracker")'
+             class="hidden max-w-4xl mx-auto mt-8 department-card bg-gray-800 border-2 border-purple-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
+            <h2 class="text-2xl font-semibold mb-2 text-purple-400">Pod Tracker</h2>
+            <p class="text-gray-400">Input and update pod metrics.</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<string> _pods = new();
+    private List<GameScoreboard.Models.TeamMember>? _allMembers;
+
+    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allMembers = await DataService.GetTeamMembersAsync();
+        _pods = _allMembers
+            .Where(m => PodDepartments.Contains(m.Department))
+            .Select(m => m.Department)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(d => d)
+            .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initKeySequenceDetector");
+        }
+    }
+
+    private int GetPodMemberCount(string pod)
+    {
+        return _allMembers?.Count(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)) ?? 0;
+    }
+
+    private void NavigateToPod(string podName)
+    {
+        NavigationManager.NavigateTo($"/pods/{Uri.EscapeDataString(podName)}");
+    }
+
+    private void NavigateTo(string path)
+    {
+        NavigationManager.NavigateTo(path);
+    }
+}

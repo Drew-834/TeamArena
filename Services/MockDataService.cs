@@ -23,6 +23,9 @@ namespace GameScoreboard.Services
         Task DeleteTeamMemberAsync(int id);
         Task SaveMetricRecordsForPeriodAsync(int memberId, string period, List<MetricRecord> records);
         Task<List<MetricRecord>> GetMetricRecordsAsync(int? memberId = null, string? period = null);
+        Task SavePodSnapshotAsync(GameScoreboard.Models.PodSnapshot snapshot);
+        Task<List<GameScoreboard.Models.PodSnapshot>> GetPodSnapshotsAsync(string? podName = null);
+        Task<GameScoreboard.Models.PodSnapshot?> GetPodSnapshotByIdAsync(int id);
     }
 
     public class MockDataService : IDataService
@@ -57,6 +60,7 @@ namespace GameScoreboard.Services
         {
             // EOM-Dec 2025 data loaded from actual metrics spreadsheet
             const string currentPeriod = "EOM-Dec 2025";
+            const string podPeriod = "Mid-Feb 2026";
             
             return new List<TeamMember>
             {
@@ -419,7 +423,394 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Awk", Value = "0.7" },
                         new MetricRecord { TeamMemberId = 23, Period = currentPeriod, MetricKey = "Units", Value = "1280" }
                     }
-                }
+                },
+
+                // ========== POD MEMBERS (Feb 2026 Pod Performance Data) ==========
+                // Pod: Matt-Category Advisors
+                new TeamMember { Id = 100, Name = "Maria Navas Davis", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "RPH", Value = "1088" },
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "AppEff", Value = "15851" },
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "PMEff", Value = "14376" },
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.2" },
+                        new MetricRecord { TeamMemberId = 100, Period = podPeriod, MetricKey = "AccAttach", Value = "4.1" }
+                    }},
+                new TeamMember { Id = 101, Name = "Jacqueline Soto", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "RPH", Value = "1518" },
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "AppEff", Value = "9660" },
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "PMEff", Value = "3925" },
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "Surveys", Value = "4.3" },
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "15.5" },
+                        new MetricRecord { TeamMemberId = 101, Period = podPeriod, MetricKey = "AccAttach", Value = "1.8" }
+                    }},
+                new TeamMember { Id = 102, Name = "Johnathon King", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "RPH", Value = "1606" },
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "AppEff", Value = "14265" },
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "PMEff", Value = "2684" },
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "19.4" },
+                        new MetricRecord { TeamMemberId = 102, Period = podPeriod, MetricKey = "AccAttach", Value = "8.9" }
+                    }},
+                new TeamMember { Id = 103, Name = "Daniel Grove", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "RPH", Value = "1097" },
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "AppEff", Value = "10137" },
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "PMEff", Value = "5003" },
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.2" },
+                        new MetricRecord { TeamMemberId = 103, Period = podPeriod, MetricKey = "AccAttach", Value = "22.7" }
+                    }},
+                new TeamMember { Id = 104, Name = "David Schunk", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/gustavo1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "RPH", Value = "1106" },
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "AppEff", Value = "10501" },
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "PMEff", Value = "60960" },
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "15.0" },
+                        new MetricRecord { TeamMemberId = 104, Period = podPeriod, MetricKey = "AccAttach", Value = "21.7" }
+                    }},
+                new TeamMember { Id = 105, Name = "Christian Nazario", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/ruben1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "RPH", Value = "929" },
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "AppEff", Value = "6516" },
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "PMEff", Value = "3614" },
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "13.8" },
+                        new MetricRecord { TeamMemberId = 105, Period = podPeriod, MetricKey = "AccAttach", Value = "12.2" }
+                    }},
+                new TeamMember { Id = 106, Name = "Christopher Santos", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/ishack2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "RPH", Value = "1192" },
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "AppEff", Value = "58610" },
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "PMEff", Value = "2493" },
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "12.9" },
+                        new MetricRecord { TeamMemberId = 106, Period = podPeriod, MetricKey = "AccAttach", Value = "29.7" }
+                    }},
+                new TeamMember { Id = 107, Name = "Gerardo Torres", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/drew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "RPH", Value = "1197" },
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "AppEff", Value = "25358" },
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "PMEff", Value = "5316" },
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.5" },
+                        new MetricRecord { TeamMemberId = 107, Period = podPeriod, MetricKey = "AccAttach", Value = "40.1" }
+                    }},
+                new TeamMember { Id = 108, Name = "William Cochrane", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/matthew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "RPH", Value = "1273" },
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "AppEff", Value = "11030" },
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "PMEff", Value = "2284" },
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "3.4" },
+                        new MetricRecord { TeamMemberId = 108, Period = podPeriod, MetricKey = "AccAttach", Value = "23.2" }
+                    }},
+                new TeamMember { Id = 109, Name = "Anthony Rivera", Department = "Matt-Category Advisors", AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "RPH", Value = "1050" },
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "AppEff", Value = "18314" },
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "PMEff", Value = "5076" },
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.1" },
+                        new MetricRecord { TeamMemberId = 109, Period = podPeriod, MetricKey = "AccAttach", Value = "24.4" }
+                    }},
+
+                // Pod: LUIS-DI/HT/Mobile
+                new TeamMember { Id = 110, Name = "Gerardo Cruz", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "RPH", Value = "926" },
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "AppEff", Value = "12477" },
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "PMEff", Value = "26168" },
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.4" },
+                        new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "AccAttach", Value = "17.7" }
+                    }},
+                new TeamMember { Id = 111, Name = "Danna Nunez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "RPH", Value = "945" },
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "AppEff", Value = "13347" },
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "PMEff", Value = "5159" },
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "Surveys", Value = "4" },
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "13.0" },
+                        new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "AccAttach", Value = "15.1" }
+                    }},
+                new TeamMember { Id = 112, Name = "Julian Muriel", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "RPH", Value = "543" },
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "AppEff", Value = "16060" },
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "PMEff", Value = "18092" },
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "22.4" },
+                        new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "AccAttach", Value = "6.7" }
+                    }},
+                new TeamMember { Id = 113, Name = "Sebastian Alvarez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/ishack2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "RPH", Value = "982" },
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "AppEff", Value = "55628" },
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "PMEff", Value = "6825" },
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.5" },
+                        new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "AccAttach", Value = "22.3" }
+                    }},
+                new TeamMember { Id = 114, Name = "Jose Lopez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/gustavo1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "RPH", Value = "637" },
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "AppEff", Value = "5356" },
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "PMEff", Value = "14236" },
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.5" },
+                        new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "AccAttach", Value = "19.4" }
+                    }},
+                new TeamMember { Id = 115, Name = "Daniel Chaparro", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/ruben1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "RPH", Value = "952" },
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "AppEff", Value = "10885" },
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "10.8" },
+                        new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "AccAttach", Value = "31.4" }
+                    }},
+                new TeamMember { Id = 116, Name = "Celine Paul", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "RPH", Value = "1066" },
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "AppEff", Value = "64158" },
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "PMEff", Value = "27665" },
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.1" },
+                        new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "AccAttach", Value = "32.5" }
+                    }},
+                new TeamMember { Id = 117, Name = "Gabriel Gonzalez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/drew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "RPH", Value = "1021" },
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "AppEff", Value = "4327" },
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "PMEff", Value = "30597" },
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.7" },
+                        new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "AccAttach", Value = "21.0" }
+                    }},
+                new TeamMember { Id = 118, Name = "Marcos Castro Torres", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/matthew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "RPH", Value = "358" },
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "AppEff", Value = "5582" },
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "9.1" },
+                        new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "AccAttach", Value = "31.3" }
+                    }},
+                new TeamMember { Id = 119, Name = "Yoseph Cardozo", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "RPH", Value = "984" },
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "AppEff", Value = "8145" },
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "PMEff", Value = "27650" },
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.2" },
+                        new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "AccAttach", Value = "36.5" }
+                    }},
+                new TeamMember { Id = 120, Name = "Ibrahim Adam", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "RPH", Value = "769" },
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "AppEff", Value = "4903" },
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "PMEff", Value = "5607" },
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "16.9" },
+                        new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "AccAttach", Value = "8.3" }
+                    }},
+
+                // Pod: Drew's Crew-Computing
+                new TeamMember { Id = 130, Name = "Cesar Perez", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/gustavo1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "RPH", Value = "780" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "AppEff", Value = "10504" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "PMEff", Value = "10275" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.4" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "AccAttach", Value = "28.9" }
+                    }},
+                new TeamMember { Id = 131, Name = "Joao Aguiar", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ishack2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "RPH", Value = "857" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "AppEff", Value = "17931" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "PMEff", Value = "5851" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "Surveys", Value = "4.7" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "11.8" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "AccAttach", Value = "27.6" }
+                    }},
+                new TeamMember { Id = 132, Name = "Seyquan Williams", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "RPH", Value = "902" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "AppEff", Value = "12263" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "PMEff", Value = "4638" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "0.0" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "AccAttach", Value = "15.6" }
+                    }},
+                new TeamMember { Id = 133, Name = "Liz Tejeda Moras", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "RPH", Value = "1018" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "AppEff", Value = "14059" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "PMEff", Value = "1283" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "16.7" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" }
+                    }},
+                new TeamMember { Id = 134, Name = "Joao Richa", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ruben1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "RPH", Value = "858" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "AppEff", Value = "11756" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "PMEff", Value = "1802" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.5" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "AccAttach", Value = "17.2" }
+                    }},
+                new TeamMember { Id = 135, Name = "Victor Richa", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/drew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "RPH", Value = "1178" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "AppEff", Value = "17276" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "PMEff", Value = "1501" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.0" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "AccAttach", Value = "19.4" }
+                    }},
+                new TeamMember { Id = 136, Name = "DJ Skelton", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "RPH", Value = "1223" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "AppEff", Value = "39606" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "PMEff", Value = "35338" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.4" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "AccAttach", Value = "20.3" }
+                    }},
+                new TeamMember { Id = 137, Name = "Jeremy Morales", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "RPH", Value = "967" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "AppEff", Value = "17535" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "PMEff", Value = "2553" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "12.1" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "AccAttach", Value = "23.1" }
+                    }},
+                new TeamMember { Id = 138, Name = "Yerik Palacios", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/matthew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "RPH", Value = "900" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "AppEff", Value = "7815" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "PMEff", Value = "1609" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.2" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "AccAttach", Value = "14.0" }
+                    }},
+                new TeamMember { Id = 139, Name = "Dakota French", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/gustavo1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "RPH", Value = "1188" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "AppEff", Value = "16210" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "PMEff", Value = "5707" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.9" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" }
+                    }},
+                new TeamMember { Id = 140, Name = "Jesus Nessy", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ishack2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "RPH", Value = "1173" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "AppEff", Value = "10267" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "PMEff", Value = "3639" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.2" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "AccAttach", Value = "15.7" }
+                    }},
+                new TeamMember { Id = 141, Name = "Francisco Ramirez", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ruben1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "RPH", Value = "1217" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "AppEff", Value = "5455" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "PMEff", Value = "3611" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.6" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "AccAttach", Value = "19.5" }
+                    }},
+                new TeamMember { Id = 142, Name = "Dillan Rawlings", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "RPH", Value = "463" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "AppEff", Value = "9040" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "PMEff", Value = "23971" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.9" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "AccAttach", Value = "16.3" }
+                    }},
+
+                // Pod: Front End
+                new TeamMember { Id = 150, Name = "Betzaida Cotto Hernandez", Department = "Pod-Front End", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "RPH", Value = "607" },
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "AppEff", Value = "16712" },
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "PMEff", Value = "7804" },
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.5" },
+                        new MetricRecord { TeamMemberId = 150, Period = podPeriod, MetricKey = "AccAttach", Value = "7.1" }
+                    }},
+                new TeamMember { Id = 151, Name = "Liss Juarez", Department = "Pod-Front End", AvatarUrl = "images/avatars/vinny2.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "RPH", Value = "1007" },
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "AppEff", Value = "16657" },
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "PMEff", Value = "14257" },
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.0" },
+                        new MetricRecord { TeamMemberId = 151, Period = podPeriod, MetricKey = "AccAttach", Value = "5.7" }
+                    }},
+                new TeamMember { Id = 152, Name = "Kate Martinez", Department = "Pod-Front End", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "RPH", Value = "664" },
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "AppEff", Value = "9229" },
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "PMEff", Value = "20592" },
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.0" },
+                        new MetricRecord { TeamMemberId = 152, Period = podPeriod, MetricKey = "AccAttach", Value = "6.8" }
+                    }},
+                new TeamMember { Id = 153, Name = "Rasheka Fray", Department = "Pod-Front End", AvatarUrl = "images/avatars/adam1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "RPH", Value = "693" },
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "AppEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "0.0" },
+                        new MetricRecord { TeamMemberId = 153, Period = podPeriod, MetricKey = "AccAttach", Value = "27.8" }
+                    }},
+                new TeamMember { Id = 154, Name = "Matthew Soto Velez", Department = "Pod-Front End", AvatarUrl = "images/avatars/matthew1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "RPH", Value = "1549" },
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "AppEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "Surveys", Value = "1" },
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.4" },
+                        new MetricRecord { TeamMemberId = 154, Period = podPeriod, MetricKey = "AccAttach", Value = "24.6" }
+                    }},
+                new TeamMember { Id = 155, Name = "Alexa Arias", Department = "Pod-Front End", AvatarUrl = "images/avatars/kla1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "RPH", Value = "933" },
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "AppEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "PMEff", Value = "43982" },
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "3.9" },
+                        new MetricRecord { TeamMemberId = 155, Period = podPeriod, MetricKey = "AccAttach", Value = "3.9" }
+                    }},
+                new TeamMember { Id = 156, Name = "Elian Calderon", Department = "Pod-Front End", AvatarUrl = "images/avatars/gustavo1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "RPH", Value = "1296" },
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "AppEff", Value = "46504" },
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "0.0" },
+                        new MetricRecord { TeamMemberId = 156, Period = podPeriod, MetricKey = "AccAttach", Value = "7.5" }
+                    }},
+                new TeamMember { Id = 157, Name = "Doo Lee", Department = "Pod-Front End", AvatarUrl = "images/avatars/jon1.png",
+                    MetricRecords = new List<MetricRecord> {
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "RPH", Value = "334" },
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "AppEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "PMEff", Value = "100000" },
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.8" },
+                        new MetricRecord { TeamMemberId = 157, Period = podPeriod, MetricKey = "AccAttach", Value = "5.3" }
+                    }}
             };
         }
 
@@ -630,6 +1021,30 @@ namespace GameScoreboard.Services
             Console.WriteLine($"GetMetricRecordsAsync: memberId={memberId}, period={period}. Found {filteredRecords.Count} records.");
 
             return Task.FromResult(filteredRecords);
+        }
+
+        private readonly List<GameScoreboard.Models.PodSnapshot> _podSnapshots = new();
+        private int _nextSnapshotId = 1;
+
+        public Task SavePodSnapshotAsync(GameScoreboard.Models.PodSnapshot snapshot)
+        {
+            snapshot.Id = _nextSnapshotId++;
+            snapshot.SnapshotDate = DateTime.UtcNow;
+            _podSnapshots.Add(snapshot);
+            return Task.CompletedTask;
+        }
+
+        public Task<List<GameScoreboard.Models.PodSnapshot>> GetPodSnapshotsAsync(string? podName = null)
+        {
+            IEnumerable<GameScoreboard.Models.PodSnapshot> q = _podSnapshots;
+            if (!string.IsNullOrWhiteSpace(podName))
+                q = q.Where(s => s.PodName == podName);
+            return Task.FromResult(q.OrderByDescending(s => s.SnapshotDate).ToList());
+        }
+
+        public Task<GameScoreboard.Models.PodSnapshot?> GetPodSnapshotByIdAsync(int id)
+        {
+            return Task.FromResult(_podSnapshots.FirstOrDefault(s => s.Id == id));
         }
     }
 }

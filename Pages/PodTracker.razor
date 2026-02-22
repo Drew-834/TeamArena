@@ -1,0 +1,635 @@
+@page "/podtracker"
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@using GameScoreboard.Data
+@using System.Globalization
+
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject AppState AppState
+
+<div class="bg-gray-900 min-h-screen text-white p-8">
+
+    @if (!_isAuthenticated)
+    {
+        <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-500 @(_showPasswordModal ? "opacity-100" : "opacity-0 pointer-events-none")">
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-purple-500 transform transition-transform duration-300 ease-out @(_showPasswordModal ? "scale-100 opacity-100" : "scale-95 opacity-0")">
+                <h2 class="text-2xl font-bold text-purple-400 mb-4">Enter Admin Password</h2>
+                <div class="mb-4">
+                    <input type="password" @bind="PasswordInputValue" @bind:event="oninput" @onkeydown="HandlePasswordKeydown"
+                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
+                           placeholder="Password" />
+                </div>
+                @if (!string.IsNullOrEmpty(_passwordError))
+                {
+                    <p class="text-red-500 text-sm mb-4">@_passwordError</p>
+                }
+                <button @onclick="CheckPassword"
+                        class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-semibold transition-colors">
+                    Authenticate
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="flex-grow md:w-3/4">
+                <h1 class="text-4xl font-bold text-yellow-400 mb-8">Pod Metrics Tracker</h1>
+
+                <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+                    &lt; Back to Pods
+                </button>
+
+                <!-- Pod and Period Selection -->
+                <div class="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Selection</h2>
+                    <div class="flex space-x-4">
+                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPodChanged">
+                            <option value="">Select Pod...</option>
+                            @foreach (var pod in _pods)
+                            {
+                                <option value="@pod">@pod</option>
+                            }
+                        </select>
+                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
+                            <option value="">Select Period...</option>
+                            @foreach (var period in _periods)
+                            {
+                                <option value="@period">@period</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Paste Area for Excel Data -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Paste Excel Data (copy rows from pod tracker spreadsheet):</label>
+                        <textarea @bind="_pastedData" @bind:event="oninput" rows="8"
+                                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500"
+                                  placeholder="Copy rows from Excel including the header row (Employee, Hours, Total Revenue, TPH, RPH, ...) and paste here..."></textarea>
+                    </div>
+                    <div class="mt-2 text-right">
+                        <button @onclick="HandlePastedData" class="px-4 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold text-sm transition-colors">
+                            Process Pasted Data
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_uploadStatusMessage))
+                    {
+                        <p class="mt-2 text-sm @(_uploadSuccess ? "text-green-400" : "text-red-400")">@_uploadStatusMessage</p>
+                    }
+                </div>
+
+                <!-- Data Input Grid -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Enter Metrics for @(_selectedPod ?? "Selected Pod")</h2>
+
+                    <!-- Weighting reference -->
+                    <div class="mb-3 flex flex-wrap gap-2 text-xs">
+                        <span class="px-2 py-1 bg-gray-700 rounded">RPH: <strong class="text-yellow-400">7</strong></span>
+                        <span class="px-2 py-1 bg-gray-700 rounded">App Eff: <strong class="text-yellow-400">7</strong></span>
+                        <span class="px-2 py-1 bg-gray-700 rounded">PM Eff: <strong class="text-yellow-400">5</strong></span>
+                        <span class="px-2 py-1 bg-gray-700 rounded">Warranty: <strong class="text-yellow-400">5</strong></span>
+                        <span class="px-2 py-1 bg-gray-700 rounded">Acc Attach: <strong class="text-yellow-400">5</strong></span>
+                        <span class="px-2 py-1 bg-gray-700 rounded">Surveys: <strong class="text-yellow-400">3</strong></span>
+                    </div>
+
+                    @if (_currentPodMembers != null && _currentPodMembers.Any() && !string.IsNullOrEmpty(_selectedPod))
+                    {
+                        <table class="w-full min-w-[900px] border-collapse">
+                            <thead>
+                                <tr class="bg-gray-700">
+                                    <th class="p-3 text-left sticky left-0 bg-gray-700 z-10">Name</th>
+                                    @foreach (var metricKey in _podMetricKeys)
+                                    {
+                                        <th class="p-3 text-center">@TeamMember.GetMetricDisplayName(metricKey)</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in _currentPodMembers.OrderBy(m => m.Name))
+                                {
+                                    <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                                        <td class="p-3 font-medium sticky left-0 bg-gray-800 hover:bg-gray-700/50 z-10">@member.Name</td>
+                                        @foreach (var metricKey in _podMetricKeys)
+                                        {
+                                            <td>
+                                                <input type="text"
+                                                       class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded focus:outline-none focus:border-yellow-500 focus:bg-gray-500 text-center"
+                                                       placeholder="-"
+                                                       @bind="_inputValues[member.Id][metricKey]"
+                                                       @bind:event="oninput" />
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else if (!string.IsNullOrEmpty(_selectedPod))
+                    {
+                        <p class="text-gray-500">No team members found for this pod.</p>
+                    }
+                    else
+                    {
+                        <p class="text-gray-500">Select a pod to display the input grid.</p>
+                    }
+                </div>
+
+                <!-- Save Button -->
+                <div class="mt-6 text-right">
+                    <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors">
+                        @(_isSaving ? "Saving..." : "Save Metrics")
+                    </button>
+                    <button @onclick="ClearInputs" class="mt-2 text-sm text-gray-400 hover:text-gray-200 underline focus:outline-none">
+                        Clear Inputs
+                    </button>
+                    @if (!string.IsNullOrEmpty(_saveSuccessMessage))
+                    {
+                        <div class="mt-3 p-2 bg-green-800 border border-green-600 text-green-200 rounded text-sm">@_saveSuccessMessage</div>
+                    }
+                    @if (!string.IsNullOrEmpty(_saveError))
+                    {
+                        <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Right Side Panel -->
+            <div class="md:w-1/4 bg-gray-800 rounded-lg border border-gray-700 p-6 self-start sticky top-8">
+                <h2 class="text-2xl font-semibold text-yellow-400 mb-4 border-b border-gray-700 pb-2">Pod Rankings</h2>
+                @if (_podRankings != null && _podRankings.Any())
+                {
+                    <div class="space-y-4">
+                        @foreach (var kvp in _podRankings.OrderBy(kv => kv.Key))
+                        {
+                            <div>
+                                <h4 class="font-semibold text-gray-300 mb-1 text-sm">@kvp.Key</h4>
+                                <ul class="space-y-1 text-sm">
+                                    @foreach (var rm in kvp.Value.Take(5))
+                                    {
+                                        <li class="flex justify-between items-center @(rm.Rank == 1 ? "text-yellow-400" : rm.Rank <= 3 ? "text-gray-200" : "text-gray-400")">
+                                            <span>@rm.Rank. @rm.Name</span>
+                                            <span class="font-mono text-xs">@rm.Score.ToString("F0")</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-gray-500 italic">No ranking data yet.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isAuthenticated = false;
+    private bool _showPasswordModal = false;
+    private string _passwordInput = string.Empty;
+    private string _passwordError = string.Empty;
+    private const string CorrectPassword = "Admin321";
+    private bool _isSaving = false;
+    private string? _saveError = null;
+    private string? _saveSuccessMessage = null;
+    private string? _uploadStatusMessage = null;
+    private bool _uploadSuccess = false;
+    private string _pastedData = string.Empty;
+
+    private List<string> _pods = new();
+    private List<string> _periods = new();
+    private string? _selectedPod;
+    private string? _selectedPeriod;
+    private List<TeamMember>? _currentPodMembers;
+    private Dictionary<int, Dictionary<string, string>> _inputValues = new();
+    private List<TeamMember>? _allPodMembers;
+    private Dictionary<string, List<RankedMember>>? _podRankings;
+
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
+
+    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+    };
+
+    private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 }
+    };
+
+    private static readonly Dictionary<string, double> _metricTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 }, { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
+    };
+
+    // Map from Excel column header -> internal metric key
+    private static readonly Dictionary<string, string> _excelHeaderToKeyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "RPH (3x)", "RPH" }, { "RPH", "RPH" },
+        { "Warranty Attach", "WarrantyAttach" }, { "Warranty", "WarrantyAttach" },
+        { "Accessory Attach", "AccAttach" }, { "Acc Attach", "AccAttach" },
+        { "Surveys / 5-Star", "Surveys" }, { "5-Star", "Surveys" }, { "Surveys", "Surveys" }
+    };
+
+    private string PasswordInputValue
+    {
+        get => _passwordInput;
+        set { _passwordInput = value; if (!string.IsNullOrEmpty(_passwordError)) _passwordError = string.Empty; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _periods = GeneratePeriods(6);
+        try
+        {
+            _allPodMembers = (await DataService.GetTeamMembersAsync())
+                ?.Where(m => PodDepartments.Contains(m.Department))
+                .ToList() ?? new List<TeamMember>();
+
+            _pods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList();
+            CalculateAllRankings();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in PodTracker init: {ex.Message}");
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
+                if (isAuth == "true") { _isAuthenticated = true; _showPasswordModal = false; await InvokeAsync(StateHasChanged); return; }
+            }
+            catch { }
+
+            if (!_isAuthenticated)
+            {
+                await Task.Delay(50);
+                _showPasswordModal = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private List<string> GeneratePeriods(int monthsBack)
+    {
+        var periods = new List<string>();
+        var today = DateTime.Today;
+        for (int i = monthsBack; i >= -1; i--)
+        {
+            var monthStart = new DateTime(today.Year, today.Month, 1).AddMonths(-i);
+            periods.Add($"Mid-{monthStart:MMM yyyy}");
+            periods.Add($"EOM-{monthStart:MMM yyyy}");
+        }
+        return periods.OrderByDescending(p => p).ToList();
+    }
+
+    private async Task CheckPassword()
+    {
+        if (_passwordInput == CorrectPassword)
+        {
+            _passwordError = string.Empty; _isAuthenticated = true; _showPasswordModal = false;
+            try { await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true"); } catch { }
+        }
+        else
+        {
+            _passwordError = "Incorrect password."; _passwordInput = string.Empty;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePasswordKeydown(KeyboardEventArgs e) { if (e.Key == "Enter") await CheckPassword(); }
+
+    private void OnPodChanged(ChangeEventArgs e) { _selectedPod = e.Value?.ToString(); LoadMembersAndInit(); }
+    private void OnPeriodChanged(ChangeEventArgs e) { _selectedPeriod = e.Value?.ToString(); }
+
+    private void LoadMembersAndInit()
+    {
+        _currentPodMembers = null; _inputValues.Clear(); _saveError = null;
+        if (!string.IsNullOrEmpty(_selectedPod))
+        {
+            _currentPodMembers = _allPodMembers?.Where(m => m.Department.Equals(_selectedPod, StringComparison.OrdinalIgnoreCase)).ToList();
+            InitializeInputValues();
+        }
+        StateHasChanged();
+    }
+
+    private void InitializeInputValues()
+    {
+        _inputValues.Clear();
+        if (_currentPodMembers == null) return;
+        foreach (var member in _currentPodMembers)
+        {
+            var memberInputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var key in _podMetricKeys) memberInputs[key] = string.Empty;
+            _inputValues[member.Id] = memberInputs;
+        }
+    }
+
+    private void HandlePastedData()
+    {
+        _uploadStatusMessage = "Processing pasted data..."; _uploadSuccess = false; StateHasChanged();
+
+        if (string.IsNullOrEmpty(_selectedPod) || string.IsNullOrEmpty(_selectedPeriod))
+        { _uploadStatusMessage = "Please select a pod and period first."; return; }
+        if (string.IsNullOrWhiteSpace(_pastedData))
+        { _uploadStatusMessage = "Paste area is empty."; return; }
+
+        try
+        {
+            var lines = _pastedData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length <= 1) { _uploadStatusMessage = "Need at least a header row and one data row."; return; }
+
+            // Detect delimiter
+            char delimiter = '\t';
+            var headerCells = lines[0].Split(delimiter);
+            if (headerCells.Length <= 2) { delimiter = ','; headerCells = lines[0].Split(delimiter); }
+
+            // Build header index map
+            var headerIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < headerCells.Length; i++)
+            {
+                var h = headerCells[i]?.Trim();
+                if (!string.IsNullOrEmpty(h)) headerIndex[h] = i;
+            }
+
+            // Find Employee column
+            int nameCol = -1;
+            if (headerIndex.TryGetValue("Employee", out var nc)) nameCol = nc;
+            if (nameCol == -1) { _uploadStatusMessage = "Could not find 'Employee' column."; return; }
+
+            // Find RPH column - it's the 5th column in the Excel format (index 4)
+            int rphCol = -1;
+            if (headerIndex.TryGetValue("RPH (3x)", out var rc)) rphCol = rc;
+            else if (headerIndex.TryGetValue("RPH", out rc)) rphCol = rc;
+
+            // Find App Eff column - the value after "Apps / App Eff (2x)" header
+            // In the Excel, column layout is: Apps_count | App_Eff_value | status
+            // The "Apps / App Eff (2x)" header is at one column but the efficiency VALUE is the next column
+            int appEffCol = -1;
+            foreach (var kvp in headerIndex)
+            {
+                if (kvp.Key.Contains("App", StringComparison.OrdinalIgnoreCase) &&
+                    kvp.Key.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                { appEffCol = kvp.Value + 1; break; } // Value is in the next column
+                if (kvp.Key.StartsWith("Apps", StringComparison.OrdinalIgnoreCase))
+                { appEffCol = kvp.Value + 1; break; }
+            }
+
+            // Find PM Eff column - similar pattern
+            int pmEffCol = -1;
+            foreach (var kvp in headerIndex)
+            {
+                if (kvp.Key.Contains("PM", StringComparison.OrdinalIgnoreCase) &&
+                    kvp.Key.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                { pmEffCol = kvp.Value + 1; break; }
+                if (kvp.Key.StartsWith("PMs", StringComparison.OrdinalIgnoreCase))
+                { pmEffCol = kvp.Value + 1; break; }
+            }
+
+            // Find Surveys/5-Star column - the value after Surveys header
+            int surveysCol = -1;
+            foreach (var kvp in headerIndex)
+            {
+                if (kvp.Key.Contains("Surveys", StringComparison.OrdinalIgnoreCase) ||
+                    kvp.Key.Contains("5-Star", StringComparison.OrdinalIgnoreCase))
+                { surveysCol = kvp.Value + 1; break; } // 5-Star value is next column
+            }
+
+            // Find Warranty Attach column
+            int warrantyCol = -1;
+            foreach (var kvp in headerIndex)
+            {
+                if (kvp.Key.Contains("Warranty", StringComparison.OrdinalIgnoreCase) &&
+                    kvp.Key.Contains("Attach", StringComparison.OrdinalIgnoreCase))
+                { warrantyCol = kvp.Value; break; }
+            }
+
+            // Find Accessory Attach column
+            int accCol = -1;
+            foreach (var kvp in headerIndex)
+            {
+                if (kvp.Key.Contains("Accessory", StringComparison.OrdinalIgnoreCase) &&
+                    kvp.Key.Contains("Attach", StringComparison.OrdinalIgnoreCase))
+                { accCol = kvp.Value; break; }
+            }
+
+            Console.WriteLine($"Column mapping: name={nameCol}, rph={rphCol}, appEff={appEffCol}, pmEff={pmEffCol}, surveys={surveysCol}, warranty={warrantyCol}, acc={accCol}");
+
+            int updatedCount = 0;
+            var membersInPod = _currentPodMembers ?? new List<TeamMember>();
+            var assignedIds = new HashSet<int>();
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var cells = lines[i].Split(delimiter);
+                if (cells.Length <= nameCol) continue;
+
+                var csvName = cells[nameCol]?.Trim();
+                if (string.IsNullOrEmpty(csvName)) continue;
+
+                // Skip section headers (lines that contain only a name with no data)
+                bool isHeader = true;
+                for (int c = 1; c < Math.Min(cells.Length, 5); c++)
+                {
+                    if (!string.IsNullOrWhiteSpace(cells[c])) { isHeader = false; break; }
+                }
+                if (isHeader) continue;
+
+                // Skip #N/A rows
+                if (cells.Length > 1 && cells[1]?.Trim() == "#N/A") continue;
+
+                // Match to member
+                var matched = MatchMember(csvName, membersInPod);
+                if (matched == null || assignedIds.Contains(matched.Id)) continue;
+                assignedIds.Add(matched.Id);
+
+                if (!_inputValues.ContainsKey(matched.Id))
+                    _inputValues[matched.Id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                // Extract values
+                if (rphCol >= 0 && rphCol < cells.Length)
+                    _inputValues[matched.Id]["RPH"] = CleanCurrencyValue(cells[rphCol]);
+                if (appEffCol >= 0 && appEffCol < cells.Length)
+                    _inputValues[matched.Id]["AppEff"] = CleanCurrencyValue(cells[appEffCol]);
+                if (pmEffCol >= 0 && pmEffCol < cells.Length)
+                    _inputValues[matched.Id]["PMEff"] = CleanCurrencyValue(cells[pmEffCol]);
+                if (surveysCol >= 0 && surveysCol < cells.Length)
+                    _inputValues[matched.Id]["Surveys"] = cells[surveysCol]?.Trim() ?? "";
+                if (warrantyCol >= 0 && warrantyCol < cells.Length)
+                    _inputValues[matched.Id]["WarrantyAttach"] = CleanPercentageValue(cells[warrantyCol]);
+                if (accCol >= 0 && accCol < cells.Length)
+                    _inputValues[matched.Id]["AccAttach"] = CleanPercentageValue(cells[accCol]);
+
+                updatedCount++;
+                Console.WriteLine($"Matched: {csvName} -> {matched.Name}");
+            }
+
+            if (updatedCount > 0)
+            {
+                _uploadStatusMessage = $"Processed data for {updatedCount} member(s).";
+                _uploadSuccess = true; _pastedData = string.Empty;
+            }
+            else
+            {
+                _uploadStatusMessage = "No matching member names found in pasted data.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _uploadStatusMessage = $"Error: {ex.Message}"; _uploadSuccess = false;
+            Console.WriteLine($"PodTracker paste error: {ex}");
+        }
+        finally { InvokeAsync(StateHasChanged); }
+    }
+
+    private string CleanCurrencyValue(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        return raw.Replace("$", "").Replace(",", "").Replace(" ", "").Trim();
+    }
+
+    private string CleanPercentageValue(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        return raw.Replace("%", "").Replace(" ", "").Trim();
+    }
+
+    private TeamMember? MatchMember(string csvName, List<TeamMember> members)
+    {
+        // Exact match
+        var match = members.FirstOrDefault(m => m.Name.Equals(csvName, StringComparison.OrdinalIgnoreCase));
+        if (match != null) return match;
+
+        // First name match
+        var csvFirst = csvName.Split(' ')[0];
+        var candidates = members.Where(m => m.Name.Split(' ')[0].Equals(csvFirst, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (candidates.Count == 1) return candidates[0];
+
+        // Partial last name match
+        if (csvName.Split(' ').Length > 1)
+        {
+            var csvLast = csvName.Split(' ', 2)[1];
+            foreach (var member in members)
+            {
+                if (member.Name.Contains(csvFirst, StringComparison.OrdinalIgnoreCase) &&
+                    (csvLast.Contains(member.Name.Split(' ', 2).ElementAtOrDefault(1) ?? "XXXX", StringComparison.OrdinalIgnoreCase) ||
+                     (member.Name.Split(' ', 2).ElementAtOrDefault(1) ?? "").Contains(csvLast.Split(' ')[0], StringComparison.OrdinalIgnoreCase)))
+                    return member;
+            }
+        }
+        return null;
+    }
+
+    private async Task SaveMetrics()
+    {
+        if (_isSaving) return;
+        _isSaving = true; _saveError = null; _saveSuccessMessage = null;
+
+        if (_currentPodMembers == null || string.IsNullOrEmpty(_selectedPod) || string.IsNullOrEmpty(_selectedPeriod))
+        { _saveError = "Pod and Period must be selected."; _isSaving = false; StateHasChanged(); return; }
+
+        try
+        {
+            var updateTasks = new List<Task>();
+
+            foreach (var member in _currentPodMembers)
+            {
+                if (!_inputValues.TryGetValue(member.Id, out var memberInputs)) continue;
+
+                var records = new List<MetricRecord>();
+                double totalWeightedScore = 0;
+                int applicableWeight = 0;
+
+                foreach (var metricKey in _podMetricKeys)
+                {
+                    string rawVal = memberInputs.GetValueOrDefault(metricKey, "")?.Trim() ?? "";
+                    records.Add(new MetricRecord { TeamMemberId = member.Id, Period = _selectedPeriod, MetricKey = metricKey, Value = rawVal });
+
+                    if (double.TryParse(rawVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
+                    {
+                        int weight = _metricWeights.GetValueOrDefault(metricKey, 0);
+                        double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
+                        double normalized;
+
+                        if (metricKey == "AppEff" || metricKey == "PMEff")
+                            normalized = target > 0 && numVal > 0 && numVal < 90000 ? (target / numVal) * 100.0 : 0;
+                        else
+                            normalized = target > 0 ? (numVal / target) * 100.0 : 0;
+
+                        normalized = Math.Clamp(normalized, 0, 150);
+                        totalWeightedScore += normalized * weight;
+                        applicableWeight += weight;
+                    }
+                }
+
+                updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod, records));
+
+                if (applicableWeight > 0)
+                {
+                    double avgScore = totalWeightedScore / applicableWeight;
+                    member.TotalExperience += avgScore;
+                    updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
+                }
+            }
+
+            await Task.WhenAll(updateTasks);
+
+            // Sync XP to global list
+            if (_allPodMembers != null && _currentPodMembers != null)
+            {
+                foreach (var updated in _currentPodMembers)
+                {
+                    var global = _allPodMembers.FirstOrDefault(m => m.Id == updated.Id);
+                    if (global != null) global.TotalExperience = updated.TotalExperience;
+                }
+            }
+
+            CalculateAllRankings();
+            await AppState.NotifyMetricsUpdatedAsync();
+            _saveSuccessMessage = "Pod metrics saved successfully!";
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Error saving: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false; StateHasChanged();
+        }
+    }
+
+    private void CalculateAllRankings()
+    {
+        if (_allPodMembers == null || !_allPodMembers.Any()) return;
+        _podRankings = new Dictionary<string, List<RankedMember>>();
+
+        foreach (var pod in _pods)
+        {
+            var membersInPod = _allPodMembers.Where(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (!membersInPod.Any()) continue;
+
+            var ranked = membersInPod
+                .Select(m => new RankedMember { Id = m.Id, Name = m.Name, Department = m.Department, Score = m.TotalExperience })
+                .OrderByDescending(rm => rm.Score)
+                .Select((rm, idx) => { rm.Rank = idx + 1; return rm; })
+                .ToList();
+
+            _podRankings[pod] = ranked;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void NavigateBack() => NavigationManager.NavigateTo("/pods");
+    private void ClearInputs() { _inputValues.Clear(); _saveError = null; _saveSuccessMessage = null; StateHasChanged(); }
+}

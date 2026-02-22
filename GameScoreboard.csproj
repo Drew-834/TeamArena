@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -7,11 +7,14 @@
     <BlazorCacheBootResources>false</BlazorCacheBootResources>
   </PropertyGroup>
 
-  <!-- Exclude server project files from client build -->
+  <!-- Exclude server project files and duplicate subfolder from client build -->
   <ItemGroup>
     <Compile Remove="GameScoreboard.Server\**\*.cs" />
     <Content Remove="GameScoreboard.Server\**\*.*" />
     <None Remove="GameScoreboard.Server\**\*.*" />
+    <Compile Remove="GameScoreboard\**\*.cs" />
+    <Content Remove="GameScoreboard\**\*.*" />
+    <None Remove="GameScoreboard\**\*.*" />
   </ItemGroup>
 
   <!-- Ensure all static web assets are copied to the publish output -->
