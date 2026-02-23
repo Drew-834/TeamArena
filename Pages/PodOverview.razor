@@ -1,4 +1,4 @@
-@page "/pods/{PodName}"
+@page "/pods/{*PodName}"
 @using GameScoreboard.Models
 @using GameScoreboard.Services
 @using GameScoreboard.Data
@@ -16,7 +16,7 @@
         &lt; Back to Pods
     </button>
 
-    <h1 class="text-4xl font-bold text-yellow-400 mb-2 text-center">@Uri.UnescapeDataString(PodName)</h1>
+    <h1 class="text-4xl font-bold text-yellow-400 mb-2 text-center">@PodName</h1>
     <h2 class="text-xl text-center text-gray-400 mb-2">Pod Performance Overview</h2>
     <p class="text-center text-sm text-gray-500 mb-4">Latest Data: @(_latestPeriod ?? "No Data Available")</p>
 
@@ -152,7 +152,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     @foreach (var pod in _podLeaderboard)
                     {
-                        bool isCurrent = pod.Name.Equals(Uri.UnescapeDataString(PodName), StringComparison.OrdinalIgnoreCase);
+                        bool isCurrent = pod.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase);
                         string borderClass = isCurrent ? "border-yellow-500 bg-gray-700" : "border-gray-600";
                         string rankColor = pod.Rank == 1 ? "text-yellow-400" : pod.Rank == 2 ? "text-gray-200" : pod.Rank == 3 ? "text-orange-400" : "text-gray-400";
 
@@ -353,13 +353,12 @@
         _lowPerformerValues.Clear();
         _teamMembers.Clear();
 
-        var decodedPodName = Uri.UnescapeDataString(PodName);
-        if (string.IsNullOrEmpty(decodedPodName)) { _isLoading = false; return; }
+        if (string.IsNullOrEmpty(PodName)) { _isLoading = false; return; }
 
         try
         {
             var allMembers = await DataService.GetTeamMembersAsync();
-            _teamMembers = allMembers?.Where(m => m.Department.Equals(decodedPodName, StringComparison.OrdinalIgnoreCase)).ToList()
+            _teamMembers = allMembers?.Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)).ToList()
                            ?? new List<TeamMember>();
 
             if (_teamMembers.Any())
@@ -436,6 +435,12 @@
                 valuesForMetric = valuesForMetric.Where(v => v.Value < 90000).ToList();
             }
 
+            // For Surveys, 0 means no surveys received - exclude from averages
+            if (key == "Surveys")
+            {
+                valuesForMetric = valuesForMetric.Where(v => v.Value > 0).ToList();
+            }
+
             if (valuesForMetric.Any())
             {
                 double avg = valuesForMetric.Average(v => v.Value);
@@ -488,17 +493,23 @@
             // Skip sentinel values for efficiency metrics
             if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
 
+            // Surveys of 0 means no surveys received - treat as on-track, don't penalize
+            if (kvp.Key == "Surveys" && rawValue.Value == 0)
+            {
+                totalWeightedScore += 100.0 * kvp.Value;
+                applicableWeight += kvp.Value;
+                continue;
+            }
+
             double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
             double normalizedScore;
 
-            if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
+            if (IsLowerBetter(kvp.Key))
             {
-                // Lower is better for efficiency: score = target / actual * 100
                 normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
             }
             else
             {
-                // Higher is better
                 normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
             }
 
@@ -521,12 +532,19 @@
             if (!rawValue.HasValue) continue;
             if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
 
-            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
             double normalizedScore;
-            if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
-                normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
+            if (kvp.Key == "Surveys" && rawValue.Value == 0)
+            {
+                normalizedScore = 100.0;
+            }
             else
-                normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
+            {
+                double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+                if (IsLowerBetter(kvp.Key))
+                    normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
+                else
+                    normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
+            }
 
             if (normalizedScore > bestScore)
             {
@@ -584,8 +602,7 @@
     {
         try
         {
-            var podName = Uri.UnescapeDataString(PodName);
-            _snapshots = await DataService.GetPodSnapshotsAsync(podName);
+            _snapshots = await DataService.GetPodSnapshotsAsync(PodName);
         }
         catch (Exception ex)
         {
@@ -604,7 +621,6 @@
 
         try
         {
-            var podName = Uri.UnescapeDataString(PodName);
             var snapshotData = _teamMembers.Select(m => new
             {
                 m.Name,
@@ -623,7 +639,7 @@
 
             var snapshot = new GameScoreboard.Models.PodSnapshot
             {
-                PodName = podName,
+                PodName = PodName,
                 Label = _latestPeriod ?? "Manual Backup",
                 JsonData = json
             };

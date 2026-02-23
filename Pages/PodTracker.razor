@@ -559,13 +559,22 @@
                     if (double.TryParse(rawVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
                     {
                         int weight = _metricWeights.GetValueOrDefault(metricKey, 0);
-                        double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
                         double normalized;
 
-                        if (metricKey == "AppEff" || metricKey == "PMEff")
+                        if (metricKey == "Surveys" && numVal == 0)
+                        {
+                            normalized = 100.0;
+                        }
+                        else if (metricKey == "AppEff" || metricKey == "PMEff")
+                        {
+                            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
                             normalized = target > 0 && numVal > 0 && numVal < 90000 ? (target / numVal) * 100.0 : 0;
+                        }
                         else
+                        {
+                            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
                             normalized = target > 0 ? (numVal / target) * 100.0 : 0;
+                        }
 
                         normalized = Math.Clamp(normalized, 0, 150);
                         totalWeightedScore += normalized * weight;

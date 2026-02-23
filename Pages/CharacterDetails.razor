@@ -1,4 +1,4 @@
-﻿@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
+@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
 @page "/character/{Id:int}"
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
@@ -789,6 +789,20 @@
          };
     }
 
+    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+    };
+
+    private static readonly Dictionary<string, double> _podMetricTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 },
+        { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
+    };
+
+    private bool IsPodMember() =>
+        _teamMember != null && PodDepartments.Contains(_teamMember.Department);
+
     private object GenerateRadarChartData()
     {
         if (_latestMetricsDict == null || !_latestMetricsDict.Any())
@@ -799,58 +813,74 @@
         var labels = new List<string>();
         var normalizedData = new List<double>();
 
-        // Define the order and keys for the radar chart explicitly
-        var radarMetrics = new List<string> { "Revenue", "ASP", "Basket", "M365Attach", "PMAttach", "GSP" };
+        bool isPod = IsPodMember();
+        var radarMetrics = isPod
+            ? new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" }
+            : new List<string> { "Revenue", "ASP", "Basket", "M365Attach", "PMAttach", "GSP" };
 
         foreach (var key in radarMetrics)
         {
             if (_latestMetricsDict.TryGetValue(key, out var rawValueObj))
             {
                 double? rawValue = GetDoubleValue(rawValueObj);
-                // Use GOAL as the target for normalization again
-                double? goal = GetMetricGoal(key);
                 double normalizedScore = 0;
 
-                if (rawValue.HasValue && goal.HasValue && goal.Value > 0)
+                if (isPod)
                 {
-                    // Calculate score as percentage of GOAL, cap at 100%
-                    normalizedScore = Math.Min((rawValue.Value / goal.Value) * 100.0, 100.0); 
+                    bool isEfficiency = key == "AppEff" || key == "PMEff";
+
+                    // Sentinel values for efficiency (no apps/PMs sold)
+                    if (isEfficiency && rawValue.HasValue && rawValue.Value >= 90000)
+                    {
+                        normalizedScore = 0;
+                    }
+                    // Surveys=0 means no surveys, treat as on-track
+                    else if (key == "Surveys" && rawValue.HasValue && rawValue.Value == 0)
+                    {
+                        normalizedScore = 100.0;
+                    }
+                    else if (rawValue.HasValue && _podMetricTargets.TryGetValue(key, out var target) && target > 0)
+                    {
+                        if (isEfficiency)
+                            normalizedScore = rawValue.Value > 0 ? Math.Min((target / rawValue.Value) * 100.0, 100.0) : 0;
+                        else
+                            normalizedScore = Math.Min((rawValue.Value / target) * 100.0, 100.0);
+                    }
                 }
-                else if (rawValue.HasValue && rawValue.Value > 0 && (!goal.HasValue || goal.Value <= 0)){
-                    // Handle cases with no goal or zero goal.
-                    // Assign a moderate score, maybe 50? Or base on average?
-                    // Let's stick to 50 for now if no goal is set.
-                    normalizedScore = 50.0; 
+                else
+                {
+                    double? goal = GetMetricGoal(key);
+                    if (rawValue.HasValue && goal.HasValue && goal.Value > 0)
+                        normalizedScore = Math.Min((rawValue.Value / goal.Value) * 100.0, 100.0);
+                    else if (rawValue.HasValue && rawValue.Value > 0)
+                        normalizedScore = 50.0;
                 }
-                // If rawValue is null/zero, score remains 0.
-                
+
                 labels.Add(TeamMember.GetMetricDisplayName(key)); 
                 normalizedData.Add(Math.Clamp(normalizedScore, 0, 100)); 
             }
-             else
-             {
-                 // Handle missing metric data for the chart if necessary
-                 labels.Add(TeamMember.GetMetricDisplayName(key));
-                 normalizedData.Add(0);
-             }
+            else
+            {
+                labels.Add(TeamMember.GetMetricDisplayName(key));
+                normalizedData.Add(isPod && key == "Surveys" ? 100.0 : 0);
+            }
         }
 
         var datasets = new List<object>
         {
             new {
-                label = $"{_teamMember?.Name ?? "Member"} Performance (% of Goal)", // Label updated
+                label = $"{_teamMember?.Name ?? "Member"} Performance (% of Goal)",
                 data = normalizedData,
                 fill = true,
-                backgroundColor = "rgba(255, 215, 0, 0.1)", // Decreased opacity (0.2 -> 0.1)
-                borderColor = "rgb(255, 215, 0)", // Solid yellow
+                backgroundColor = "rgba(255, 215, 0, 0.1)",
+                borderColor = "rgb(255, 215, 0)",
                 pointBackgroundColor = "rgb(255, 215, 0)",
                 pointBorderColor = "#fff",
                 pointHoverBackgroundColor = "#fff",
                 pointHoverBorderColor = "rgb(255, 215, 0)"
             }
         };
-        
-        Console.WriteLine("Radar chart data generated with normalized scores.");
+
         return new { labels, datasets };
     }
 }
