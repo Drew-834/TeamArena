@@ -5,19 +5,7 @@
       "/_framework/*",
       "/css/*",
       "/js/*",
-      "/images/*",
-      "*.ico",
-      "*.css",
-      "*.js",
-      "*.wasm",
-      "*.dll",
-      "*.dat",
-      "*.json",
-      "*.woff",
-      "*.woff2",
-      "*.png",
-      "*.jpg",
-      "*.svg"
+      "/images/*"
     ]
   }
 }
