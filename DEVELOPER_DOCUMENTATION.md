@@ -288,7 +288,7 @@ member.TotalExperience += averagePeriodScore;
 
 **Current Pods:**
 - Matt-Category Advisors (10 members)
-- LUIS-DI/HT/Mobile (11 members)
+- Luis the Beast (11 members)
 - Drews Crew-Computing (13 members)
 - Pod-Front End (8 members)
 

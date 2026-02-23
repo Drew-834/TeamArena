@@ -156,7 +156,8 @@
                         string borderClass = isCurrent ? "border-yellow-500 bg-gray-700" : "border-gray-600";
                         string rankColor = pod.Rank == 1 ? "text-yellow-400" : pod.Rank == 2 ? "text-gray-200" : pod.Rank == 3 ? "text-orange-400" : "text-gray-400";
 
-                        <div class="rounded-lg border-2 @borderClass p-4 text-center">
+                        <div @onclick="() => SwitchToPod(pod.Name)"
+                             class="rounded-lg border-2 @borderClass p-4 text-center cursor-pointer hover:bg-gray-600 transition-colors">
                             <div class="text-3xl font-bold @rankColor mb-1">#@pod.Rank</div>
                             <div class="text-sm font-semibold @(isCurrent ? "text-yellow-400" : "text-white") mb-1">@pod.Name</div>
                             <div class="text-2xl font-bold text-white">@pod.Score.ToString("F1")</div>
@@ -318,7 +319,7 @@
 
     private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
     };
 
     private static bool IsLowerBetter(string metricKey) =>
@@ -513,12 +514,12 @@
                 normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
             }
 
-            normalizedScore = Math.Clamp(normalizedScore, 0, 150);
+            normalizedScore = Math.Clamp(normalizedScore, 0, 100);
             totalWeightedScore += normalizedScore * kvp.Value;
             applicableWeight += kvp.Value;
         }
 
-        return applicableWeight > 0 ? totalWeightedScore / applicableWeight : 0;
+        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 100) : 0;
     }
 
     private string? GetStrongestWeightedArea(TeamMember member)
@@ -708,6 +709,12 @@
             return rows.OrderByDescending(r => double.TryParse(r.WeightedScore, NumberStyles.Any, CultureInfo.InvariantCulture, out var s) ? s : 0).ToList();
         }
         catch { return null; }
+    }
+
+    private void SwitchToPod(string podName)
+    {
+        if (!podName.Equals(PodName, StringComparison.OrdinalIgnoreCase))
+            NavigationManager.NavigateTo($"/pods/{podName}", forceLoad: true);
     }
 
     private void NavigateBack() => NavigationManager.NavigateTo("/pods");

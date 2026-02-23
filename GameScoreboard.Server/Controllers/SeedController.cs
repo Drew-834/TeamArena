@@ -55,7 +55,7 @@ public class SeedController : ControllerBase
 
         var existingPodDepts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+            "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
         };
 
         var alreadySeeded = await _db.TeamMembers
@@ -149,17 +149,17 @@ public class SeedController : ControllerBase
             CreatePod("Anthony Rivera", "Matt-Category Advisors", period, 1050, 18314, 5076, 5.0, 4.1, 24.4),
 
             // LUIS-DI/HT/Mobile
-            CreatePod("Gerardo Cruz", "LUIS-DI/HT/Mobile", period, 926, 12477, 26168, 0, 7.4, 17.7),
-            CreatePod("Danna Nunez", "LUIS-DI/HT/Mobile", period, 945, 13347, 5159, 4.0, 13.0, 15.1),
-            CreatePod("Julian Muriel", "LUIS-DI/HT/Mobile", period, 543, 16060, 18092, 0, 22.4, 6.7),
-            CreatePod("Sebastian Alvarez", "LUIS-DI/HT/Mobile", period, 982, 55628, 6825, 5.0, 4.5, 22.3),
-            CreatePod("Jose Lopez", "LUIS-DI/HT/Mobile", period, 637, 5356, 14236, 0, 6.5, 19.4),
-            CreatePod("Daniel Chaparro", "LUIS-DI/HT/Mobile", period, 952, 10885, 100000, 0, 10.8, 31.4),
-            CreatePod("Celine Paul", "LUIS-DI/HT/Mobile", period, 1066, 64158, 27665, 0, 7.1, 32.5),
-            CreatePod("Gabriel Gonzalez", "LUIS-DI/HT/Mobile", period, 1021, 4327, 30597, 0, 5.7, 21.0),
-            CreatePod("Marcos Castro Torres", "LUIS-DI/HT/Mobile", period, 358, 5582, 100000, 0, 9.1, 31.3),
-            CreatePod("Yoseph Cardozo", "LUIS-DI/HT/Mobile", period, 984, 8145, 27650, 5.0, 1.2, 36.5),
-            CreatePod("Ibrahim Adam", "LUIS-DI/HT/Mobile", period, 769, 4903, 5607, 5.0, 16.9, 8.3),
+            CreatePod("Gerardo Cruz", "Luis the Beast", period, 926, 12477, 26168, 0, 7.4, 17.7),
+            CreatePod("Danna Nunez", "Luis the Beast", period, 945, 13347, 5159, 4.0, 13.0, 15.1),
+            CreatePod("Julian Muriel", "Luis the Beast", period, 543, 16060, 18092, 0, 22.4, 6.7),
+            CreatePod("Sebastian Alvarez", "Luis the Beast", period, 982, 55628, 6825, 5.0, 4.5, 22.3),
+            CreatePod("Jose Lopez", "Luis the Beast", period, 637, 5356, 14236, 0, 6.5, 19.4),
+            CreatePod("Daniel Chaparro", "Luis the Beast", period, 952, 10885, 100000, 0, 10.8, 31.4),
+            CreatePod("Celine Paul", "Luis the Beast", period, 1066, 64158, 27665, 0, 7.1, 32.5),
+            CreatePod("Gabriel Gonzalez", "Luis the Beast", period, 1021, 4327, 30597, 0, 5.7, 21.0),
+            CreatePod("Marcos Castro Torres", "Luis the Beast", period, 358, 5582, 100000, 0, 9.1, 31.3),
+            CreatePod("Yoseph Cardozo", "Luis the Beast", period, 984, 8145, 27650, 5.0, 1.2, 36.5),
+            CreatePod("Ibrahim Adam", "Luis the Beast", period, 769, 4903, 5607, 5.0, 16.9, 8.3),
 
             // Drews Crew-Computing
             CreatePod("Cesar Perez", "Drews Crew-Computing", period, 780, 10504, 10275, 5.0, 4.4, 28.9),

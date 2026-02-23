@@ -104,14 +104,23 @@
                                         
                                         <!-- Performance Score -->
                                         <div class="mt-1 flex justify-between text-xs">
-                                            <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                            <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
-                                            <span>Max: 
-                                                @{
-                                                    var displayMax = GetDisplayMaxValue(metric.Key);
-                                                }
-                                                @FormatMetricValue(metric.Key, displayMax)
-                                            </span>
+                                            @if (IsLowerBetterMetric(metric.Key))
+                                            {
+                                                <span>Best: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
+                                                <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                                                <span>Worst: @FormatMetricValue(metric.Key, GetMetricMaxValue(metric.Key))</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
+                                                <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                                                <span>Max: 
+                                                    @{
+                                                        var displayMax = GetDisplayMaxValue(metric.Key);
+                                                    }
+                                                    @FormatMetricValue(metric.Key, displayMax)
+                                                </span>
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -346,10 +355,18 @@
         {
             var values = allLatestPeriodRecords
                 .Where(r => r.MetricKey.Equals(key, StringComparison.OrdinalIgnoreCase) && r.Value != null)
-                .Select(r => GetDoubleValue(r.Value)) // Use helper to attempt conversion
+                .Select(r => GetDoubleValue(r.Value))
                 .Where(v => v.HasValue)                
                 .Select(v => v!.Value)                 
                 .ToList();
+
+            // For efficiency metrics, exclude sentinel values ($100,000)
+            if (IsPodEfficiency(key))
+                values = values.Where(v => v < 90000).ToList();
+
+            // For Surveys/5Star, exclude 0 (no surveys received)
+            if (key.Equals("Surveys", StringComparison.OrdinalIgnoreCase) || key.Equals("5Star", StringComparison.OrdinalIgnoreCase))
+                values = values.Where(v => v > 0).ToList();
 
             if (values.Any())
             {
@@ -401,20 +418,34 @@
          return null; 
      }
 
+    private static bool IsPodEfficiency(string metricKey) =>
+        metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
+        metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLowerBetterMetric(string metricKey) =>
+        metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase) || IsPodEfficiency(metricKey);
+
     private bool IsTopPerformer(string metricKey)
     {
         double? memberValue = GetMetricDoubleValue(metricKey);
         if (!memberValue.HasValue) return false;
 
-        double? maxScore = _allLatestPeriodDeptRecords
-                             .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
-                             .Select(r => GetDoubleValue(r.Value))
-                             .Where(v => v.HasValue)
-                             .Select(v => v!.Value)
-                             .DefaultIfEmpty(double.MinValue)
-                             .Max();
-                             
-        return maxScore != double.MinValue && memberValue.Value >= maxScore;
+        var scores = _allLatestPeriodDeptRecords
+                     .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+                     .Select(r => GetDoubleValue(r.Value))
+                     .Where(v => v.HasValue)
+                     .Select(v => v!.Value);
+
+        if (IsPodEfficiency(metricKey))
+            scores = scores.Where(v => v < 90000);
+
+        var scoreList = scores.ToList();
+        if (!scoreList.Any()) return false;
+
+        if (IsLowerBetterMetric(metricKey))
+            return memberValue.Value <= scoreList.Min();
+        else
+            return memberValue.Value >= scoreList.Max();
     }
     
     private bool IsBottomPerformer(string metricKey)
@@ -422,20 +453,22 @@
         double? memberValue = GetMetricDoubleValue(metricKey);
         if (!memberValue.HasValue) return false;
         
-        bool lowerIsBetter = metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase); 
-
         var scores = _allLatestPeriodDeptRecords
                      .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
                      .Select(r => GetDoubleValue(r.Value))
                      .Where(v => v.HasValue)
-                     .Select(v => v!.Value)
-                     .ToList();
+                     .Select(v => v!.Value);
 
-        if (!scores.Any()) return false;
+        if (IsPodEfficiency(metricKey))
+            scores = scores.Where(v => v < 90000);
 
-        double extremeScore = lowerIsBetter ? scores.Max() : scores.Min();
-        
-        return lowerIsBetter ? memberValue.Value >= extremeScore : memberValue.Value <= extremeScore;
+        var scoreList = scores.ToList();
+        if (!scoreList.Any()) return false;
+
+        if (IsLowerBetterMetric(metricKey))
+            return memberValue.Value >= scoreList.Max();
+        else
+            return memberValue.Value <= scoreList.Min();
     }
     
     private double GetTeamAverage(string metricKey)
@@ -456,55 +489,63 @@
     
     // Formatting helpers (FormatMetricValue, GetFormattedMetricName) are likely fine.
 
+    private bool IsAboveAverage(string metricKey, double? numericValue)
+    {
+        if (!numericValue.HasValue) return false;
+        double teamAverage = GetTeamAverage(metricKey);
+        if (teamAverage <= 0) return false;
+
+        if (IsLowerBetterMetric(metricKey))
+            return numericValue.Value < teamAverage;
+        else
+            return numericValue.Value > teamAverage;
+    }
+
     private string GetMetricBarClass(string metricKey, object? value)
     {
-        double? numericValue = GetDoubleValue(value); // Convert current value
-        double teamAverage = GetTeamAverage(metricKey); // Get numeric average
+        double? numericValue = GetDoubleValue(value);
 
         if (IsTopPerformer(metricKey))
             return "bg-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "bg-red-400";
-        // Compare the numeric value against the numeric average
-        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage) 
-            return "bg-blue-500"; // Above average
+        else if (IsAboveAverage(metricKey, numericValue))
+            return "bg-blue-500";
         else
-            return "bg-blue-400"; // At or below average (or average is 0)
+            return "bg-blue-400";
     }
     
     private string GetMetricBorderClass(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
-        double teamAverage = GetTeamAverage(metricKey);
 
         if (IsTopPerformer(metricKey))
             return "border-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "border-red-400";
-        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage)
+        else if (IsAboveAverage(metricKey, numericValue))
             return "border-blue-500";
         else
-            return "border-gray-600"; // Default/neutral border
+            return "border-gray-600";
     }
     
     private string GetMetricValueClass(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
-        double teamAverage = GetTeamAverage(metricKey);
 
         if (IsTopPerformer(metricKey))
             return "text-yellow-400";
         else if (IsBottomPerformer(metricKey))
             return "text-red-400";
-        else if (numericValue.HasValue && teamAverage > 0 && numericValue.Value > teamAverage)
+        else if (IsAboveAverage(metricKey, numericValue))
             return "text-blue-400";
         else
-            return "text-white"; // Default text color
+            return "text-white";
     }
     
     private string GetMetricBarWidth(string metricKey, object? value)
     {
-        if (_teamMember == null) return "0%"; // Added null check for _teamMember (Fixes CS8602)
+        if (_teamMember == null) return "0%";
         if (value == null) return "0%";
         double? numericValue = GetDoubleValue(value);
         if (!numericValue.HasValue) return "0%";
@@ -515,7 +556,12 @@
         
         if (range <= 0) return numericValue > 0 ? "100%" : "0%";
 
-        double percentage = Math.Min(Math.Max(((numericValue.Value - min) / range) * 100, 0), 100);
+        double percentage;
+        if (IsLowerBetterMetric(metricKey))
+            percentage = Math.Min(Math.Max(((max - numericValue.Value) / range) * 100, 0), 100);
+        else
+            percentage = Math.Min(Math.Max(((numericValue.Value - min) / range) * 100, 0), 100);
+
         return $"{percentage:F1}%";
     }
     
@@ -523,12 +569,17 @@
     {
         double average = GetTeamAverage(metricKey);
         double max = GetMetricMaxValue(metricKey);
-         double min = GetMetricMinValue(metricKey);
+        double min = GetMetricMinValue(metricKey);
         double range = max - min;
 
         if (range <= 0) return "50%";
 
-        double percentage = Math.Min(Math.Max(((average - min) / range) * 100, 0), 100);
+        double percentage;
+        if (IsLowerBetterMetric(metricKey))
+            percentage = Math.Min(Math.Max(((max - average) / range) * 100, 0), 100);
+        else
+            percentage = Math.Min(Math.Max(((average - min) / range) * 100, 0), 100);
+
         return $"{percentage:F1}%";
     }
     
@@ -546,65 +597,53 @@
     // Updated Performance Score calculation to include goals and bonus multiplier
     private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
     {
-        // Define specific goals for certain metrics
+        bool lowerIsBetter = IsLowerBetterMetric(metricKey);
+
+        // For Surveys/5Star with value 0, treat as on-track
+        if ((metricKey.Equals("Surveys", StringComparison.OrdinalIgnoreCase) ||
+             metricKey.Equals("5Star", StringComparison.OrdinalIgnoreCase)) && numericValue == 0)
+            return 100;
+
+        // Sentinel values for efficiency metrics
+        if (IsPodEfficiency(metricKey) && numericValue >= 90000) return 0;
+
+        // Define goal targets
         double? goal = metricKey switch
         {
-            "PMAttach" => 25.0,   // Goal is 25%
-            "M365Attach" => 30.0, // Goal is 30%
-            "GSP" => 20.0,        // Goal is 20%
-            _ => null             // No specific goal for other metrics
+            "PMAttach" => 25.0,
+            "M365Attach" => 30.0,
+            "GSP" => 20.0,
+            "RPH" => 920.0,
+            "AppEff" => 6500.0,
+            "PMEff" => 4000.0,
+            "Surveys" => 4.6,
+            "WarrantyAttach" => 10.0,
+            "AccAttach" => 20.0,
+            _ => null
         };
 
-        double baseScoreTarget = 100.0; // The value needed to achieve a base score of 100 (before bonus)
-        bool lowerIsBetter = metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase);
-
-        if (goal.HasValue && !lowerIsBetter) // Use goal if defined and higher is better
-        {
+        double baseScoreTarget;
+        if (goal.HasValue)
             baseScoreTarget = goal.Value;
-        }
-        else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0) // Otherwise, use team average if available
-        {
-             baseScoreTarget = average; 
-        }
-        else if (!lowerIsBetter) // If no goal and no average, and higher is better, default target (prevents division by zero)
-        {
-             return numericValue > 0 ? 100 : 50;
-        }
+        else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0)
+            baseScoreTarget = average;
+        else
+            return numericValue > 0 ? 50 : 0;
+
+        if (baseScoreTarget <= 0) return 0;
 
         double score;
-        double bonusMultiplier = 1.25;
-
         if (lowerIsBetter)
         {
-            if (baseScoreTarget <= 0) 
-            {
-                 return numericValue <= 0 ? 100 : 0; 
-            }
-             if (numericValue <= 0) return 100; 
-            
-            double ratio = baseScoreTarget / numericValue;
-            score = ratio * 50; 
+            if (numericValue <= 0) return 100;
+            score = (baseScoreTarget / numericValue) * 100.0;
         }
-        else // Higher is better
+        else
         {
-            if (baseScoreTarget <= 0) 
-            {
-                 return numericValue > 0 ? 100 : 50;
-            }
-            
-            double baseRatio = numericValue / baseScoreTarget;
-            score = baseRatio * 100; // Achieving the target gives a score of 100
-
-            if (numericValue > baseScoreTarget)
-            {
-                double excessValue = numericValue - baseScoreTarget;
-                double excessRatio = excessValue / baseScoreTarget; 
-                double bonusPoints = (excessRatio * 100) * bonusMultiplier;
-                score = 100 + bonusPoints; 
-            }
+            score = (numericValue / baseScoreTarget) * 100.0;
         }
 
-        return Math.Min(Math.Max(score, 0), 150); // Cap score
+        return Math.Clamp(score, 0, 100);
     }
     
     // Overload GetPerformanceScore to fetch the current value
@@ -699,7 +738,7 @@
              
         if (!numericScores.Any()) return 0;
 
-        return numericScores.Average();
+        return Math.Min(numericScores.Average(), 100);
     }
     
     private string GetFormattedMetricName(string metricKey)
@@ -741,7 +780,6 @@
     // Helper method to determine the Max value to display (Goal or Actual Max)
     private double? GetDisplayMaxValue(string metricKey)
     {
-        // Check for specific goals first
         double? goal = metricKey switch
         {
             "PMAttach" => 25.0,
@@ -750,15 +788,13 @@
             _ => null
         };
 
-        if (goal.HasValue && !metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase)) // Don't show goal for 'lower is better'
-        {
+        if (_podMetricTargets.TryGetValue(metricKey, out var podGoal))
+            goal = podGoal;
+
+        if (goal.HasValue && !IsLowerBetterMetric(metricKey))
             return goal.Value;
-        }
-        else
-        {
-            // Otherwise, return the actual max calculated from team members
-            return GetMetricMaxValue(metricKey);
-        }
+
+        return GetMetricMaxValue(metricKey);
     }
     
     private double GetMetricMaxValue(string metricKey)
@@ -791,7 +827,7 @@
 
     private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Matt-Category Advisors", "LUIS-DI/HT/Mobile", "Drews Crew-Computing", "Pod-Front End"
+        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
     };
 
     private static readonly Dictionary<string, double> _podMetricTargets = new(StringComparer.OrdinalIgnoreCase)

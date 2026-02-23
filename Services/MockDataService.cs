@@ -519,7 +519,7 @@ namespace GameScoreboard.Services
                     }},
 
                 // Pod: LUIS-DI/HT/Mobile
-                new TeamMember { Id = 110, Name = "Gerardo Cruz", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/adam1.png",
+                new TeamMember { Id = 110, Name = "Gerardo Cruz", Department = "Luis the Beast", AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "RPH", Value = "926" },
                         new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "AppEff", Value = "12477" },
@@ -528,7 +528,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.4" },
                         new MetricRecord { TeamMemberId = 110, Period = podPeriod, MetricKey = "AccAttach", Value = "17.7" }
                     }},
-                new TeamMember { Id = 111, Name = "Danna Nunez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/kla1.png",
+                new TeamMember { Id = 111, Name = "Danna Nunez", Department = "Luis the Beast", AvatarUrl = "images/avatars/kla1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "RPH", Value = "945" },
                         new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "AppEff", Value = "13347" },
@@ -537,7 +537,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "13.0" },
                         new MetricRecord { TeamMemberId = 111, Period = podPeriod, MetricKey = "AccAttach", Value = "15.1" }
                     }},
-                new TeamMember { Id = 112, Name = "Julian Muriel", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/jon1.png",
+                new TeamMember { Id = 112, Name = "Julian Muriel", Department = "Luis the Beast", AvatarUrl = "images/avatars/jon1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "RPH", Value = "543" },
                         new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "AppEff", Value = "16060" },
@@ -546,7 +546,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "22.4" },
                         new MetricRecord { TeamMemberId = 112, Period = podPeriod, MetricKey = "AccAttach", Value = "6.7" }
                     }},
-                new TeamMember { Id = 113, Name = "Sebastian Alvarez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/ishack2.png",
+                new TeamMember { Id = 113, Name = "Sebastian Alvarez", Department = "Luis the Beast", AvatarUrl = "images/avatars/ishack2.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "RPH", Value = "982" },
                         new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "AppEff", Value = "55628" },
@@ -555,7 +555,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.5" },
                         new MetricRecord { TeamMemberId = 113, Period = podPeriod, MetricKey = "AccAttach", Value = "22.3" }
                     }},
-                new TeamMember { Id = 114, Name = "Jose Lopez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/gustavo1.png",
+                new TeamMember { Id = 114, Name = "Jose Lopez", Department = "Luis the Beast", AvatarUrl = "images/avatars/gustavo1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "RPH", Value = "637" },
                         new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "AppEff", Value = "5356" },
@@ -564,7 +564,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.5" },
                         new MetricRecord { TeamMemberId = 114, Period = podPeriod, MetricKey = "AccAttach", Value = "19.4" }
                     }},
-                new TeamMember { Id = 115, Name = "Daniel Chaparro", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/ruben1.png",
+                new TeamMember { Id = 115, Name = "Daniel Chaparro", Department = "Luis the Beast", AvatarUrl = "images/avatars/ruben1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "RPH", Value = "952" },
                         new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "AppEff", Value = "10885" },
@@ -573,7 +573,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "10.8" },
                         new MetricRecord { TeamMemberId = 115, Period = podPeriod, MetricKey = "AccAttach", Value = "31.4" }
                     }},
-                new TeamMember { Id = 116, Name = "Celine Paul", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/kla1.png",
+                new TeamMember { Id = 116, Name = "Celine Paul", Department = "Luis the Beast", AvatarUrl = "images/avatars/kla1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "RPH", Value = "1066" },
                         new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "AppEff", Value = "64158" },
@@ -582,7 +582,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "7.1" },
                         new MetricRecord { TeamMemberId = 116, Period = podPeriod, MetricKey = "AccAttach", Value = "32.5" }
                     }},
-                new TeamMember { Id = 117, Name = "Gabriel Gonzalez", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/drew1.png",
+                new TeamMember { Id = 117, Name = "Gabriel Gonzalez", Department = "Luis the Beast", AvatarUrl = "images/avatars/drew1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "RPH", Value = "1021" },
                         new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "AppEff", Value = "4327" },
@@ -591,7 +591,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.7" },
                         new MetricRecord { TeamMemberId = 117, Period = podPeriod, MetricKey = "AccAttach", Value = "21.0" }
                     }},
-                new TeamMember { Id = 118, Name = "Marcos Castro Torres", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/matthew1.png",
+                new TeamMember { Id = 118, Name = "Marcos Castro Torres", Department = "Luis the Beast", AvatarUrl = "images/avatars/matthew1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "RPH", Value = "358" },
                         new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "AppEff", Value = "5582" },
@@ -600,7 +600,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "9.1" },
                         new MetricRecord { TeamMemberId = 118, Period = podPeriod, MetricKey = "AccAttach", Value = "31.3" }
                     }},
-                new TeamMember { Id = 119, Name = "Yoseph Cardozo", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/vinny2.png",
+                new TeamMember { Id = 119, Name = "Yoseph Cardozo", Department = "Luis the Beast", AvatarUrl = "images/avatars/vinny2.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "RPH", Value = "984" },
                         new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "AppEff", Value = "8145" },
@@ -609,7 +609,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.2" },
                         new MetricRecord { TeamMemberId = 119, Period = podPeriod, MetricKey = "AccAttach", Value = "36.5" }
                     }},
-                new TeamMember { Id = 120, Name = "Ibrahim Adam", Department = "LUIS-DI/HT/Mobile", AvatarUrl = "images/avatars/adam1.png",
+                new TeamMember { Id = 120, Name = "Ibrahim Adam", Department = "Luis the Beast", AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "RPH", Value = "769" },
                         new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "AppEff", Value = "4903" },
