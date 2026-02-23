@@ -278,7 +278,9 @@
 
 @code {
     [Parameter] public string PodName { get; set; } = string.Empty;
+    private string _currentPodName = string.Empty;
     private bool _isLoading = true;
+    private List<TeamMember> _allMembersCache = new();
     private List<TeamMember> _teamMembers = new();
     private string? _latestPeriod;
 
@@ -329,7 +331,17 @@
     protected override async Task OnInitializedAsync()
     {
         AppState.OnMetricsUpdatedAsync += HandleMetricsUpdated;
+        _currentPodName = PodName;
         await LoadPodData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.Equals(_currentPodName, PodName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(PodName))
+        {
+            _currentPodName = PodName;
+            await LoadPodDataFromCache();
+        }
     }
 
     private async Task HandleMetricsUpdated()
@@ -346,38 +358,14 @@
     private async Task LoadPodData()
     {
         _isLoading = true;
-        _latestPeriod = null;
-        _departmentAverages.Clear();
-        _highPerformerNames.Clear();
-        _lowPerformerNames.Clear();
-        _highPerformerValues.Clear();
-        _lowPerformerValues.Clear();
-        _teamMembers.Clear();
+        ResetState();
 
         if (string.IsNullOrEmpty(PodName)) { _isLoading = false; return; }
 
         try
         {
-            var allMembers = await DataService.GetTeamMembersAsync();
-            _teamMembers = allMembers?.Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)).ToList()
-                           ?? new List<TeamMember>();
-
-            if (_teamMembers.Any())
-            {
-                _latestPeriod = _teamMembers
-                    .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
-                    .Select(r => r.Period)
-                    .FirstOrDefault();
-
-                if (!string.IsNullOrEmpty(_latestPeriod))
-                {
-                    CalculateSummary();
-                }
-            }
-
-            // Build pod leaderboard from all pod members
-            CalculatePodLeaderboard(allMembers ?? new List<TeamMember>());
-
+            _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+            PopulateFromCache();
             await LoadSnapshots();
         }
         catch (Exception ex)
@@ -388,6 +376,58 @@
         {
             _isLoading = false;
         }
+    }
+
+    private async Task LoadPodDataFromCache()
+    {
+        _isLoading = true;
+        ResetState();
+        StateHasChanged();
+
+        if (string.IsNullOrEmpty(PodName)) { _isLoading = false; return; }
+
+        if (!_allMembersCache.Any())
+        {
+            _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+        }
+
+        PopulateFromCache();
+        await LoadSnapshots();
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ResetState()
+    {
+        _latestPeriod = null;
+        _departmentAverages.Clear();
+        _highPerformerNames.Clear();
+        _lowPerformerNames.Clear();
+        _highPerformerValues.Clear();
+        _lowPerformerValues.Clear();
+        _teamMembers.Clear();
+    }
+
+    private void PopulateFromCache()
+    {
+        _teamMembers = _allMembersCache
+            .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (_teamMembers.Any())
+        {
+            _latestPeriod = _teamMembers
+                .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
+                .Select(r => r.Period)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrEmpty(_latestPeriod))
+            {
+                CalculateSummary();
+            }
+        }
+
+        CalculatePodLeaderboard(_allMembersCache);
     }
 
     private void CalculatePodLeaderboard(List<TeamMember> allMembers)
@@ -714,7 +754,7 @@
     private void SwitchToPod(string podName)
     {
         if (!podName.Equals(PodName, StringComparison.OrdinalIgnoreCase))
-            NavigationManager.NavigateTo($"/pods/{podName}", forceLoad: true);
+            NavigationManager.NavigateTo($"/pods/{podName}");
     }
 
     private void NavigateBack() => NavigationManager.NavigateTo("/pods");
