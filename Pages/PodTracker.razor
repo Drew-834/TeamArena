@@ -352,12 +352,14 @@
         "front", "computers", "warehouse"
     };
 
-    // Known skip keywords in paste data
+    // Keywords that indicate a row is a header/title, not data or a pod name
     private static readonly HashSet<string> _skipKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
         "Employee", "Hours", "Total Revenue", "TPH", "RPH", "Apps", "PMs", "Surveys",
         "Individual", "Pod Performance", "Score", "Warranty", "Accessory", "5 Star",
-        "#N/A"
+        "#N/A", "February", "January", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+        "Individual Pod Performance"
     };
 
     // ── Parse result class ──
@@ -740,10 +742,9 @@
     {
         int nonEmptyCount = cells.Count(c => !string.IsNullOrWhiteSpace(c));
 
-        // Pod headers typically have 1-3 non-empty cells (the name and maybe a couple merged cell remnants)
+        // Pod headers typically have 1-3 non-empty cells
         if (nonEmptyCount > 5) return null;
 
-        // Find a cell that looks like a pod name
         foreach (var cell in cells)
         {
             string val = cell?.Trim() ?? "";
@@ -751,9 +752,11 @@
             if (val.Length < 4) continue;
             if (_skipKeywords.Contains(val)) continue;
             if (val.StartsWith("$") || val.StartsWith("#") || val.EndsWith("%")) continue;
+            // Skip pure numbers (e.g., "1411")
             if (double.TryParse(val.Replace(",", ""), NumberStyles.Any, CultureInfo.InvariantCulture, out _)) continue;
+            // Skip short date-like strings (e.g., "2/22/2026") but not pod names with slashes
+            if (val.Length <= 12 && DateTime.TryParse(val, CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) continue;
 
-            // Looks like a name/label - check if it could be a pod
             if (LooksLikePodName(val))
                 return val;
         }
@@ -766,28 +769,76 @@
         if (_podAliases.ContainsKey(val)) return true;
         if (PodExistsInSystem(val)) return true;
 
-        // Heuristic: contains a dash or common pod-name words, multiple words, etc.
-        if (val.Contains("-") || val.Contains("Pod") || val.Contains("Front") ||
-            val.Contains("Advisors") || val.Contains("Computing") || val.Contains("Beast") ||
-            val.Contains("Flex") || val.Contains("Mobile") || val.Contains("Category") ||
-            val.Contains("Crew") || val.Contains("End"))
-            return true;
-
-        // Multi-word name that doesn't look like a metric
-        if (val.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
+        // Fuzzy match to existing pod (handles typos)
+        if (_allPodMembers != null)
         {
-            bool hasDigitsOnly = val.All(c => char.IsDigit(c) || c == '.' || c == ',' || c == '$' || c == '%');
-            if (!hasDigitsOnly) return true;
+            var existingPods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase);
+            if (existingPods.Any(p => FuzzyMatch(val, p)))
+                return true;
         }
+
+        // Heuristic: contains a dash or common pod-name keywords
+        string lower = val.ToLowerInvariant();
+        if (val.Contains("-") || lower.Contains("pod") || lower.Contains("front") ||
+            lower.Contains("advisor") || lower.Contains("computing") || lower.Contains("beast") ||
+            lower.Contains("flex") || lower.Contains("mobile") || lower.Contains("category") ||
+            lower.Contains("crew") || lower.Contains("end") || lower.Contains("jamie") ||
+            lower.Contains("matt") || lower.Contains("luis") || lower.Contains("drew"))
+            return true;
 
         return false;
     }
 
     private string ResolvePodName(string excelName)
     {
+        // Direct alias match
         if (_podAliases.TryGetValue(excelName, out var systemName))
             return systemName;
+
+        // Exact match to existing pod
+        if (PodExistsInSystem(excelName))
+            return excelName;
+
+        // Fuzzy match against existing pods (handles typos like "Advisros" → "Advisors")
+        if (_allPodMembers != null)
+        {
+            var existingPods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            foreach (var existing in existingPods)
+            {
+                if (FuzzyMatch(excelName, existing))
+                {
+                    _parseLog.Add($"⚠ Fuzzy matched '{excelName}' → '{existing}' (possible typo in Excel)");
+                    return existing;
+                }
+            }
+        }
+
         return excelName;
+    }
+
+    private static bool FuzzyMatch(string a, string b)
+    {
+        if (a.Length < 5 || b.Length < 5) return false;
+        if (Math.Abs(a.Length - b.Length) > 3) return false;
+
+        int distance = LevenshteinDistance(a.ToLowerInvariant(), b.ToLowerInvariant());
+        int maxLen = Math.Max(a.Length, b.Length);
+        return distance <= 3 && distance < maxLen * 0.2;
+    }
+
+    private static int LevenshteinDistance(string s, string t)
+    {
+        int n = s.Length, m = t.Length;
+        var d = new int[n + 1, m + 1];
+        for (int i = 0; i <= n; i++) d[i, 0] = i;
+        for (int j = 0; j <= m; j++) d[0, j] = j;
+        for (int i = 1; i <= n; i++)
+            for (int j = 1; j <= m; j++)
+            {
+                int cost = s[i - 1] == t[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            }
+        return d[n, m];
     }
 
     private bool PodExistsInSystem(string name)
