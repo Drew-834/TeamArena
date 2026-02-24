@@ -35,57 +35,163 @@
     }
     else
     {
-        <div class="flex flex-col md:flex-row gap-8">
-            <div class="flex-grow md:w-3/4">
-                <h1 class="text-4xl font-bold text-yellow-400 mb-8">Pod Metrics Tracker</h1>
+        <h1 class="text-4xl font-bold text-yellow-400 mb-8">Pod Metrics Tracker</h1>
+        <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
+            &lt; Back to Pods
+        </button>
 
-                <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-                    &lt; Back to Pods
+        <!-- Import Section -->
+        <div class="mb-8 p-5 bg-gray-800 rounded-lg border border-gray-700">
+            <h2 class="text-xl font-semibold text-yellow-400 mb-4">Import Pod Tracker Data</h2>
+
+            <div class="flex flex-wrap gap-4 mb-4">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Period</label>
+                    <select class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
+                        <option value="">Select Period...</option>
+                        @foreach (var period in _periods)
+                        {
+                            <option value="@period" selected="@(period == _selectedPeriod)">@period</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-300 mb-1">
+                    Paste Full Excel Sheet
+                    <span class="text-gray-500">(copy all rows from the pod tracker including pod headers)</span>
+                </label>
+                <textarea @bind="_pastedData" @bind:event="oninput" rows="10"
+                          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500"
+                          placeholder="Select all data in the Excel pod tracker (Ctrl+A) and paste here (Ctrl+V)...&#10;&#10;The parser will auto-detect:&#10;  - Pod section headers (Matt-Category Advisors, etc.)&#10;  - Employee names and all KPI columns&#10;  - New pods and new advisors"></textarea>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button @onclick="HandlePastedData" disabled="@_isParsing"
+                        class="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors">
+                    @(_isParsing ? "Processing..." : "Process Pasted Data")
                 </button>
 
-                <!-- Pod and Period Selection -->
-                <div class="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Selection</h2>
-                    <div class="flex space-x-4">
-                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPodChanged">
+                @if (!string.IsNullOrEmpty(_uploadStatusMessage))
+                {
+                    <span class="text-sm @(_uploadSuccess ? "text-green-400" : "text-red-400")">@_uploadStatusMessage</span>
+                }
+            </div>
+
+            @* Parse Results Panel *@
+            @if (_parseResults != null && _parseResults.Any())
+            {
+                <div class="mt-5 p-4 bg-gray-700 rounded-lg border border-gray-600">
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-3">Parse Results</h3>
+
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
+                            <span class="text-yellow-400 font-bold">@_parseResults.Count</span> pods detected
+                        </span>
+                        <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
+                            <span class="text-green-400 font-bold">@_parseResults.Sum(r => r.MatchedMembers.Count)</span> matched
+                        </span>
+                        @{ var newCount = _parseResults.Sum(r => r.NewMembers.Count); }
+                        @if (newCount > 0)
+                        {
+                            <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
+                                <span class="text-blue-400 font-bold">@newCount</span> new members created
+                            </span>
+                        }
+                        @{ var unmatchedCount = _parseResults.Sum(r => r.UnmatchedNames.Count); }
+                        @if (unmatchedCount > 0)
+                        {
+                            <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
+                                <span class="text-orange-400 font-bold">@unmatchedCount</span> unmatched
+                            </span>
+                        }
+                    </div>
+
+                    @foreach (var pod in _parseResults)
+                    {
+                        <div class="mb-2 p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-750"
+                             @onclick="() => SelectPodFromResults(pod.SystemName)">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="@(pod.IsNew ? "text-blue-400" : "text-green-400") text-lg">@(pod.IsNew ? "★" : "✓")</span>
+                                <span class="font-semibold">@pod.ExcelName</span>
+                                @if (pod.ExcelName != pod.SystemName)
+                                {
+                                    <span class="text-gray-500">→</span>
+                                    <span class="text-yellow-400">@pod.SystemName</span>
+                                }
+                                @if (pod.IsNew)
+                                {
+                                    <span class="text-xs bg-blue-600 px-2 py-0.5 rounded">NEW POD</span>
+                                }
+                                <span class="text-gray-400 text-sm ml-auto">
+                                    @(pod.MatchedMembers.Count + pod.NewMembers.Count) members
+                                    @if (pod.NewMembers.Any()) { <span class="text-blue-400">(@pod.NewMembers.Count new)</span> }
+                                </span>
+                            </div>
+                            @if (pod.NewMembers.Any())
+                            {
+                                <div class="text-xs text-blue-300 mt-1 ml-7">New: @string.Join(", ", pod.NewMembers)</div>
+                            }
+                            @if (pod.UnmatchedNames.Any())
+                            {
+                                <div class="text-xs text-orange-300 mt-1 ml-7">Could not match: @string.Join(", ", pod.UnmatchedNames)</div>
+                            }
+                        </div>
+                    }
+
+                    @if (_parseLog.Any())
+                    {
+                        <details class="mt-3">
+                            <summary class="text-sm text-gray-400 cursor-pointer hover:text-gray-200">Detailed parse log (@_parseLog.Count entries)</summary>
+                            <div class="mt-2 p-3 bg-gray-900 rounded text-xs font-mono max-h-48 overflow-y-auto space-y-0.5">
+                                @foreach (var log in _parseLog)
+                                {
+                                    string logClass = log.StartsWith("⚠") ? "text-yellow-400" : log.StartsWith("★") ? "text-blue-400" : log.StartsWith("✗") ? "text-red-400" : "text-green-400";
+                                    <div class="@logClass">@log</div>
+                                }
+                            </div>
+                        </details>
+                    }
+
+                    @if (_parsedPodData.Any())
+                    {
+                        <div class="mt-4 flex gap-3">
+                            <button @onclick="SaveAllPods" disabled="@_isSaving"
+                                    class="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors">
+                                @(_isSaving ? "Saving All..." : $"Save All {_parsedPodData.Count} Pods")
+                            </button>
+                            <button @onclick="ClearParseResults"
+                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg text-sm transition-colors">
+                                Clear Results
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Data Grid Section -->
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="flex-grow md:w-3/4">
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xl font-semibold text-yellow-400">
+                            @(_selectedPod ?? "Select a Pod")
+                            @if (_parsedPodData.ContainsKey(_selectedPod ?? ""))
+                            {
+                                <span class="text-sm text-green-400 ml-2">(data loaded)</span>
+                            }
+                        </h2>
+                        <select class="px-3 py-1 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500 text-sm" @onchange="OnPodChanged">
                             <option value="">Select Pod...</option>
                             @foreach (var pod in _pods)
                             {
-                                <option value="@pod">@pod</option>
-                            }
-                        </select>
-                        <select class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
-                            <option value="">Select Period...</option>
-                            @foreach (var period in _periods)
-                            {
-                                <option value="@period">@period</option>
+                                <option value="@pod" selected="@(pod == _selectedPod)">@pod</option>
                             }
                         </select>
                     </div>
 
-                    <!-- Paste Area for Excel Data -->
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-300 mb-1">Paste Excel Data (copy rows from pod tracker spreadsheet):</label>
-                        <textarea @bind="_pastedData" @bind:event="oninput" rows="8"
-                                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500"
-                                  placeholder="Copy rows from Excel including the header row (Employee, Hours, Total Revenue, TPH, RPH, ...) and paste here..."></textarea>
-                    </div>
-                    <div class="mt-2 text-right">
-                        <button @onclick="HandlePastedData" class="px-4 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold text-sm transition-colors">
-                            Process Pasted Data
-                        </button>
-                    </div>
-                    @if (!string.IsNullOrEmpty(_uploadStatusMessage))
-                    {
-                        <p class="mt-2 text-sm @(_uploadSuccess ? "text-green-400" : "text-red-400")">@_uploadStatusMessage</p>
-                    }
-                </div>
-
-                <!-- Data Input Grid -->
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
-                    <h2 class="text-xl font-semibold text-yellow-400 mb-3">Enter Metrics for @(_selectedPod ?? "Selected Pod")</h2>
-
-                    <!-- Weighting reference -->
                     <div class="mb-3 flex flex-wrap gap-2 text-xs">
                         <span class="px-2 py-1 bg-gray-700 rounded">RPH: <strong class="text-yellow-400">7</strong></span>
                         <span class="px-2 py-1 bg-gray-700 rounded">App Eff: <strong class="text-yellow-400">7</strong></span>
@@ -133,30 +239,30 @@
                     }
                     else
                     {
-                        <p class="text-gray-500">Select a pod to display the input grid.</p>
+                        <p class="text-gray-500">Select a pod above or paste data to get started.</p>
                     }
                 </div>
 
-                <!-- Save Button -->
-                <div class="mt-6 text-right">
-                    <button @onclick="SaveMetrics" class="px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition-colors">
-                        @(_isSaving ? "Saving..." : "Save Metrics")
+                <div class="mt-6 flex items-center justify-end gap-4">
+                    <button @onclick="SaveMetrics" disabled="@(_isSaving || string.IsNullOrEmpty(_selectedPod))"
+                            class="px-6 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 rounded font-semibold transition-colors">
+                        @(_isSaving ? "Saving..." : "Save Current Pod")
                     </button>
-                    <button @onclick="ClearInputs" class="mt-2 text-sm text-gray-400 hover:text-gray-200 underline focus:outline-none">
+                    <button @onclick="ClearInputs" class="text-sm text-gray-400 hover:text-gray-200 underline focus:outline-none">
                         Clear Inputs
                     </button>
-                    @if (!string.IsNullOrEmpty(_saveSuccessMessage))
-                    {
-                        <div class="mt-3 p-2 bg-green-800 border border-green-600 text-green-200 rounded text-sm">@_saveSuccessMessage</div>
-                    }
-                    @if (!string.IsNullOrEmpty(_saveError))
-                    {
-                        <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
-                    }
                 </div>
+                @if (!string.IsNullOrEmpty(_saveSuccessMessage))
+                {
+                    <div class="mt-3 p-2 bg-green-800 border border-green-600 text-green-200 rounded text-sm text-right">@_saveSuccessMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(_saveError))
+                {
+                    <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
+                }
             </div>
 
-            <!-- Right Side Panel -->
+            <!-- Right Side Panel: Pod Rankings -->
             <div class="md:w-1/4 bg-gray-800 rounded-lg border border-gray-700 p-6 self-start sticky top-8">
                 <h2 class="text-2xl font-semibold text-yellow-400 mb-4 border-b border-gray-700 pb-2">Pod Rankings</h2>
                 @if (_podRankings != null && _podRankings.Any())
@@ -189,18 +295,23 @@
 </div>
 
 @code {
+    // ── Auth state ──
     private bool _isAuthenticated = false;
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
     private const string CorrectPassword = "Admin321";
+
+    // ── Page state ──
     private bool _isSaving = false;
+    private bool _isParsing = false;
     private string? _saveError = null;
     private string? _saveSuccessMessage = null;
     private string? _uploadStatusMessage = null;
     private bool _uploadSuccess = false;
     private string _pastedData = string.Empty;
 
+    // ── Data ──
     private List<string> _pods = new();
     private List<string> _periods = new();
     private string? _selectedPod;
@@ -210,12 +321,13 @@
     private List<TeamMember>? _allPodMembers;
     private Dictionary<string, List<RankedMember>>? _podRankings;
 
-    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
+    // ── Parse results ──
+    private List<PodParseInfo>? _parseResults;
+    private List<string> _parseLog = new();
+    private Dictionary<string, Dictionary<int, Dictionary<string, string>>> _parsedPodData = new();
 
-    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
-    };
+    // ── Constants ──
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
 
     private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -227,15 +339,39 @@
         { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 }, { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
     };
 
-    // Map from Excel column header -> internal metric key
-    private static readonly Dictionary<string, string> _excelHeaderToKeyMap = new(StringComparer.OrdinalIgnoreCase)
+    // Pod name alias mapping: Excel name → system name
+    private static readonly Dictionary<string, string> _podAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "RPH (3x)", "RPH" }, { "RPH", "RPH" },
-        { "Warranty Attach", "WarrantyAttach" }, { "Warranty", "WarrantyAttach" },
-        { "Accessory Attach", "AccAttach" }, { "Acc Attach", "AccAttach" },
-        { "Surveys / 5-Star", "Surveys" }, { "5-Star", "Surveys" }, { "Surveys", "Surveys" }
+        { "LUIS-DI/HT/Mobile", "Luis the Beast" },
+        { "Luis-DI/HT/Mobile", "Luis the Beast" },
     };
 
+    // Non-pod departments to exclude from auto-detection
+    private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "front", "computers", "warehouse"
+    };
+
+    // Known skip keywords in paste data
+    private static readonly HashSet<string> _skipKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Employee", "Hours", "Total Revenue", "TPH", "RPH", "Apps", "PMs", "Surveys",
+        "Individual", "Pod Performance", "Score", "Warranty", "Accessory", "5 Star",
+        "#N/A"
+    };
+
+    // ── Parse result class ──
+    private class PodParseInfo
+    {
+        public string ExcelName { get; set; } = "";
+        public string SystemName { get; set; } = "";
+        public bool IsNew { get; set; }
+        public List<string> MatchedMembers { get; set; } = new();
+        public List<string> NewMembers { get; set; } = new();
+        public List<string> UnmatchedNames { get; set; } = new();
+    }
+
+    // ── Lifecycle ──
     private string PasswordInputValue
     {
         get => _passwordInput;
@@ -247,10 +383,10 @@
         _periods = GeneratePeriods(6);
         try
         {
-            _allPodMembers = (await DataService.GetTeamMembersAsync())
-                ?.Where(m => PodDepartments.Contains(m.Department))
-                .ToList() ?? new List<TeamMember>();
-
+            var allMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+            _allPodMembers = allMembers
+                .Where(m => !_regularDepartments.Contains(m.Department))
+                .ToList();
             _pods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList();
             CalculateAllRankings();
         }
@@ -271,7 +407,6 @@
                 if (isAuth == "true") { _isAuthenticated = true; _showPasswordModal = false; await InvokeAsync(StateHasChanged); return; }
             }
             catch { }
-
             if (!_isAuthenticated)
             {
                 await Task.Delay(50);
@@ -281,6 +416,7 @@
         }
     }
 
+    // ── Period + Pod selection ──
     private List<string> GeneratePeriods(int monthsBack)
     {
         var periods = new List<string>();
@@ -294,32 +430,47 @@
         return periods.OrderByDescending(p => p).ToList();
     }
 
-    private async Task CheckPassword()
-    {
-        if (_passwordInput == CorrectPassword)
-        {
-            _passwordError = string.Empty; _isAuthenticated = true; _showPasswordModal = false;
-            try { await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true"); } catch { }
-        }
-        else
-        {
-            _passwordError = "Incorrect password."; _passwordInput = string.Empty;
-        }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task HandlePasswordKeydown(KeyboardEventArgs e) { if (e.Key == "Enter") await CheckPassword(); }
-
-    private void OnPodChanged(ChangeEventArgs e) { _selectedPod = e.Value?.ToString(); LoadMembersAndInit(); }
     private void OnPeriodChanged(ChangeEventArgs e) { _selectedPeriod = e.Value?.ToString(); }
 
-    private void LoadMembersAndInit()
+    private void OnPodChanged(ChangeEventArgs e)
     {
-        _currentPodMembers = null; _inputValues.Clear(); _saveError = null;
-        if (!string.IsNullOrEmpty(_selectedPod))
+        _selectedPod = e.Value?.ToString();
+        LoadMembersForSelectedPod();
+    }
+
+    private void SelectPodFromResults(string podName)
+    {
+        _selectedPod = podName;
+        LoadMembersForSelectedPod();
+        StateHasChanged();
+    }
+
+    private void LoadMembersForSelectedPod()
+    {
+        _currentPodMembers = null;
+        _inputValues.Clear();
+        _saveError = null;
+        _saveSuccessMessage = null;
+
+        if (string.IsNullOrEmpty(_selectedPod)) return;
+
+        _currentPodMembers = _allPodMembers?
+            .Where(m => m.Department.Equals(_selectedPod, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        InitializeInputValues();
+
+        // If we have parsed data for this pod, overlay it
+        if (_parsedPodData.TryGetValue(_selectedPod, out var podData))
         {
-            _currentPodMembers = _allPodMembers?.Where(m => m.Department.Equals(_selectedPod, StringComparison.OrdinalIgnoreCase)).ToList();
-            InitializeInputValues();
+            foreach (var (memberId, values) in podData)
+            {
+                if (_inputValues.ContainsKey(memberId))
+                {
+                    foreach (var (key, val) in values)
+                        _inputValues[memberId][key] = val;
+                }
+            }
         }
         StateHasChanged();
     }
@@ -336,201 +487,430 @@
         }
     }
 
-    private void HandlePastedData()
-    {
-        _uploadStatusMessage = "Processing pasted data..."; _uploadSuccess = false; StateHasChanged();
+    // ══════════════════════════════════════════════════════════
+    //  PASTE PARSER - handles entire Excel pod tracker sheets
+    // ══════════════════════════════════════════════════════════
 
-        if (string.IsNullOrEmpty(_selectedPod) || string.IsNullOrEmpty(_selectedPeriod))
-        { _uploadStatusMessage = "Please select a pod and period first."; return; }
+    private async Task HandlePastedData()
+    {
+        _parseResults = null;
+        _parseLog.Clear();
+        _parsedPodData.Clear();
+        _uploadStatusMessage = null;
+        _uploadSuccess = false;
+        _isParsing = true;
+        StateHasChanged();
+
+        if (string.IsNullOrEmpty(_selectedPeriod))
+        {
+            _uploadStatusMessage = "Please select a period first.";
+            _isParsing = false;
+            return;
+        }
         if (string.IsNullOrWhiteSpace(_pastedData))
-        { _uploadStatusMessage = "Paste area is empty."; return; }
+        {
+            _uploadStatusMessage = "Paste area is empty.";
+            _isParsing = false;
+            return;
+        }
 
         try
         {
-            var lines = _pastedData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length <= 1) { _uploadStatusMessage = "Need at least a header row and one data row."; return; }
-
-            // Detect delimiter
-            char delimiter = '\t';
-            var headerCells = lines[0].Split(delimiter);
-            if (headerCells.Length <= 2) { delimiter = ','; headerCells = lines[0].Split(delimiter); }
-
-            // Build header index map
-            var headerIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < headerCells.Length; i++)
+            var lines = _pastedData.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length < 3)
             {
-                var h = headerCells[i]?.Trim();
-                if (!string.IsNullOrEmpty(h)) headerIndex[h] = i;
+                _uploadStatusMessage = "Need more data - paste the full pod tracker sheet.";
+                _isParsing = false;
+                return;
             }
 
-            // Find Employee column
-            int nameCol = -1;
-            if (headerIndex.TryGetValue("Employee", out var nc)) nameCol = nc;
-            if (nameCol == -1) { _uploadStatusMessage = "Could not find 'Employee' column."; return; }
+            // Step 1: Detect column layout from header row
+            int nameCol = 0, rphCol = 4, appEffCol = 7, pmEffCol = 10, fiveStarCol = 13, warCol = 15, accCol = 17;
+            int headerRowIdx = FindHeaderRow(lines, ref nameCol, ref rphCol, ref appEffCol, ref pmEffCol, ref fiveStarCol, ref warCol, ref accCol);
 
-            // Find RPH column - it's the 5th column in the Excel format (index 4)
-            int rphCol = -1;
-            if (headerIndex.TryGetValue("RPH (3x)", out var rc)) rphCol = rc;
-            else if (headerIndex.TryGetValue("RPH", out rc)) rphCol = rc;
+            if (headerRowIdx >= 0)
+                _parseLog.Add($"✓ Header found at row {headerRowIdx + 1}. Columns: Name={nameCol}, RPH={rphCol}, AppEff={appEffCol}, PMEff={pmEffCol}, 5Star={fiveStarCol}, Warranty={warCol}, Acc={accCol}");
+            else
+                _parseLog.Add("⚠ No header row detected. Using default column layout (Employee at col 0).");
 
-            // Find App Eff column - the value after "Apps / App Eff (2x)" header
-            // In the Excel, column layout is: Apps_count | App_Eff_value | status
-            // The "Apps / App Eff (2x)" header is at one column but the efficiency VALUE is the next column
-            int appEffCol = -1;
-            foreach (var kvp in headerIndex)
+            // Step 2: Walk through lines detecting pods and member data
+            var results = new List<PodParseInfo>();
+            PodParseInfo? currentPod = null;
+            int startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+
+            for (int i = startRow; i < lines.Length; i++)
             {
-                if (kvp.Key.Contains("App", StringComparison.OrdinalIgnoreCase) &&
-                    kvp.Key.Contains("Eff", StringComparison.OrdinalIgnoreCase))
-                { appEffCol = kvp.Value + 1; break; } // Value is in the next column
-                if (kvp.Key.StartsWith("Apps", StringComparison.OrdinalIgnoreCase))
-                { appEffCol = kvp.Value + 1; break; }
-            }
+                var cells = lines[i].Split('\t');
 
-            // Find PM Eff column - similar pattern
-            int pmEffCol = -1;
-            foreach (var kvp in headerIndex)
-            {
-                if (kvp.Key.Contains("PM", StringComparison.OrdinalIgnoreCase) &&
-                    kvp.Key.Contains("Eff", StringComparison.OrdinalIgnoreCase))
-                { pmEffCol = kvp.Value + 1; break; }
-                if (kvp.Key.StartsWith("PMs", StringComparison.OrdinalIgnoreCase))
-                { pmEffCol = kvp.Value + 1; break; }
-            }
+                // Skip lines with very few cells
+                if (cells.Length < 2) continue;
+                if (cells.All(c => string.IsNullOrWhiteSpace(c))) continue;
 
-            // Find Surveys/5-Star column - the value after Surveys header
-            int surveysCol = -1;
-            foreach (var kvp in headerIndex)
-            {
-                if (kvp.Key.Contains("Surveys", StringComparison.OrdinalIgnoreCase) ||
-                    kvp.Key.Contains("5-Star", StringComparison.OrdinalIgnoreCase))
-                { surveysCol = kvp.Value + 1; break; } // 5-Star value is next column
-            }
-
-            // Find Warranty Attach column
-            int warrantyCol = -1;
-            foreach (var kvp in headerIndex)
-            {
-                if (kvp.Key.Contains("Warranty", StringComparison.OrdinalIgnoreCase) &&
-                    kvp.Key.Contains("Attach", StringComparison.OrdinalIgnoreCase))
-                { warrantyCol = kvp.Value; break; }
-            }
-
-            // Find Accessory Attach column
-            int accCol = -1;
-            foreach (var kvp in headerIndex)
-            {
-                if (kvp.Key.Contains("Accessory", StringComparison.OrdinalIgnoreCase) &&
-                    kvp.Key.Contains("Attach", StringComparison.OrdinalIgnoreCase))
-                { accCol = kvp.Value; break; }
-            }
-
-            Console.WriteLine($"Column mapping: name={nameCol}, rph={rphCol}, appEff={appEffCol}, pmEff={pmEffCol}, surveys={surveysCol}, warranty={warrantyCol}, acc={accCol}");
-
-            int updatedCount = 0;
-            var membersInPod = _currentPodMembers ?? new List<TeamMember>();
-            var assignedIds = new HashSet<int>();
-
-            for (int i = 1; i < lines.Length; i++)
-            {
-                var cells = lines[i].Split(delimiter);
-                if (cells.Length <= nameCol) continue;
-
-                var csvName = cells[nameCol]?.Trim();
-                if (string.IsNullOrEmpty(csvName)) continue;
-
-                // Skip section headers (lines that contain only a name with no data)
-                bool isHeader = true;
-                for (int c = 1; c < Math.Min(cells.Length, 5); c++)
+                // Detect pod section header
+                var detectedPodName = DetectPodHeader(cells, nameCol);
+                if (detectedPodName != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(cells[c])) { isHeader = false; break; }
+                    string systemName = ResolvePodName(detectedPodName);
+                    bool isNew = !PodExistsInSystem(systemName);
+
+                    currentPod = new PodParseInfo { ExcelName = detectedPodName, SystemName = systemName, IsNew = isNew };
+                    results.Add(currentPod);
+
+                    if (detectedPodName != systemName)
+                        _parseLog.Add($"✓ Pod '{detectedPodName}' → mapped to '{systemName}'");
+                    else if (!isNew)
+                        _parseLog.Add($"✓ Pod '{detectedPodName}' found in system");
+                    else
+                        _parseLog.Add($"★ Pod '{detectedPodName}' is new - will be created on save");
+
+                    continue;
                 }
-                if (isHeader) continue;
+
+                // Skip rows before first pod header is detected
+                if (currentPod == null) continue;
 
                 // Skip #N/A rows
-                if (cells.Length > 1 && cells[1]?.Trim() == "#N/A") continue;
+                if (IsNARow(cells)) continue;
 
-                // Match to member
-                var matched = MatchMember(csvName, membersInPod);
-                if (matched == null || assignedIds.Contains(matched.Id)) continue;
-                assignedIds.Add(matched.Id);
+                // Extract member name
+                if (cells.Length <= nameCol) continue;
+                string memberName = (cells[nameCol] ?? "").Trim();
+                if (string.IsNullOrEmpty(memberName)) continue;
 
-                if (!_inputValues.ContainsKey(matched.Id))
-                    _inputValues[matched.Id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                // Skip if it looks like a sub-header or metadata row
+                if (_skipKeywords.Contains(memberName)) continue;
 
-                // Extract values
-                if (rphCol >= 0 && rphCol < cells.Length)
-                    _inputValues[matched.Id]["RPH"] = CleanCurrencyValue(cells[rphCol]);
-                if (appEffCol >= 0 && appEffCol < cells.Length)
-                    _inputValues[matched.Id]["AppEff"] = CleanCurrencyValue(cells[appEffCol]);
-                if (pmEffCol >= 0 && pmEffCol < cells.Length)
-                    _inputValues[matched.Id]["PMEff"] = CleanCurrencyValue(cells[pmEffCol]);
-                if (surveysCol >= 0 && surveysCol < cells.Length)
-                    _inputValues[matched.Id]["Surveys"] = cells[surveysCol]?.Trim() ?? "";
-                if (warrantyCol >= 0 && warrantyCol < cells.Length)
-                    _inputValues[matched.Id]["WarrantyAttach"] = CleanPercentageValue(cells[warrantyCol]);
-                if (accCol >= 0 && accCol < cells.Length)
-                    _inputValues[matched.Id]["AccAttach"] = CleanPercentageValue(cells[accCol]);
+                // Validate it's a real data row (needs numeric data)
+                int numericCells = CountNumericCells(cells, nameCol + 1);
+                if (numericCells < 2)
+                {
+                    _parseLog.Add($"⚠ Skipped row '{memberName}' (only {numericCells} numeric values detected)");
+                    continue;
+                }
 
-                updatedCount++;
-                Console.WriteLine($"Matched: {csvName} -> {matched.Name}");
+                // Match member to existing system entries
+                var podMembers = _allPodMembers?
+                    .Where(m => m.Department.Equals(currentPod.SystemName, StringComparison.OrdinalIgnoreCase))
+                    .ToList() ?? new();
+
+                var matched = MatchMember(memberName, podMembers);
+
+                if (matched == null)
+                {
+                    // Try all pod members (maybe they moved)
+                    var allMatch = MatchMember(memberName, _allPodMembers ?? new());
+                    if (allMatch != null)
+                    {
+                        _parseLog.Add($"⚠ '{memberName}' found in '{allMatch.Department}' → moving to '{currentPod.SystemName}'");
+                        allMatch.Department = currentPod.SystemName;
+                        matched = allMatch;
+                    }
+                }
+
+                if (matched == null)
+                {
+                    // Create new member
+                    var newMember = new TeamMember
+                    {
+                        Name = memberName,
+                        Department = currentPod.SystemName,
+                        AvatarUrl = "images/avatars/avatar4.png"
+                    };
+
+                    try
+                    {
+                        await DataService.AddTeamMemberAsync(newMember);
+                        _allPodMembers ??= new List<TeamMember>();
+                        _allPodMembers.Add(newMember);
+                        matched = newMember;
+                        currentPod.NewMembers.Add(memberName);
+                        _parseLog.Add($"★ Created '{memberName}' in '{currentPod.SystemName}'");
+                    }
+                    catch (Exception ex)
+                    {
+                        currentPod.UnmatchedNames.Add(memberName);
+                        _parseLog.Add($"✗ Failed to create '{memberName}': {ex.Message}");
+                        continue;
+                    }
+                }
+                else
+                {
+                    currentPod.MatchedMembers.Add(memberName);
+                }
+
+                // Extract KPI values from known column positions
+                var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["RPH"] = CleanCurrency(SafeGet(cells, rphCol)),
+                    ["AppEff"] = CleanCurrency(SafeGet(cells, appEffCol)),
+                    ["PMEff"] = CleanCurrency(SafeGet(cells, pmEffCol)),
+                    ["Surveys"] = SafeGet(cells, fiveStarCol).Trim(),
+                    ["WarrantyAttach"] = CleanPercentage(SafeGet(cells, warCol)),
+                    ["AccAttach"] = CleanPercentage(SafeGet(cells, accCol))
+                };
+
+                // Store parsed values
+                if (!_parsedPodData.ContainsKey(currentPod.SystemName))
+                    _parsedPodData[currentPod.SystemName] = new();
+                _parsedPodData[currentPod.SystemName][matched.Id] = values;
             }
 
-            if (updatedCount > 0)
+            _parseResults = results;
+
+            // Update pod dropdown to include new pods
+            foreach (var pod in results)
             {
-                _uploadStatusMessage = $"Processed data for {updatedCount} member(s).";
-                _uploadSuccess = true; _pastedData = string.Empty;
+                if (!_pods.Contains(pod.SystemName, StringComparer.OrdinalIgnoreCase))
+                    _pods.Add(pod.SystemName);
             }
-            else
+            _pods.Sort(StringComparer.OrdinalIgnoreCase);
+
+            // Build summary
+            int totalMatched = results.Sum(r => r.MatchedMembers.Count);
+            int totalNew = results.Sum(r => r.NewMembers.Count);
+            int totalUnmatched = results.Sum(r => r.UnmatchedNames.Count);
+
+            _uploadSuccess = (totalMatched + totalNew) > 0;
+            _uploadStatusMessage = $"Parsed {totalMatched + totalNew} members across {results.Count} pods.";
+            if (totalNew > 0) _uploadStatusMessage += $" ({totalNew} new members created)";
+            if (totalUnmatched > 0) _uploadStatusMessage += $" ({totalUnmatched} could not be matched)";
+
+            _pastedData = string.Empty;
+
+            // Auto-select first pod with data
+            if (results.Any())
             {
-                _uploadStatusMessage = "No matching member names found in pasted data.";
+                _selectedPod = results.First().SystemName;
+                LoadMembersForSelectedPod();
             }
         }
         catch (Exception ex)
         {
-            _uploadStatusMessage = $"Error: {ex.Message}"; _uploadSuccess = false;
-            Console.WriteLine($"PodTracker paste error: {ex}");
+            _uploadStatusMessage = $"Parse error: {ex.Message}";
+            _uploadSuccess = false;
+            _parseLog.Add($"✗ Fatal: {ex.Message}");
+            Console.WriteLine($"PodTracker parse error: {ex}");
         }
-        finally { InvokeAsync(StateHasChanged); }
-    }
-
-    private string CleanCurrencyValue(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return "";
-        return raw.Replace("$", "").Replace(",", "").Replace(" ", "").Trim();
-    }
-
-    private string CleanPercentageValue(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return "";
-        return raw.Replace("%", "").Replace(" ", "").Trim();
-    }
-
-    private TeamMember? MatchMember(string csvName, List<TeamMember> members)
-    {
-        // Exact match
-        var match = members.FirstOrDefault(m => m.Name.Equals(csvName, StringComparison.OrdinalIgnoreCase));
-        if (match != null) return match;
-
-        // First name match
-        var csvFirst = csvName.Split(' ')[0];
-        var candidates = members.Where(m => m.Name.Split(' ')[0].Equals(csvFirst, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (candidates.Count == 1) return candidates[0];
-
-        // Partial last name match
-        if (csvName.Split(' ').Length > 1)
+        finally
         {
-            var csvLast = csvName.Split(' ', 2)[1];
-            foreach (var member in members)
+            _isParsing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ── Header detection ──
+    private int FindHeaderRow(string[] lines, ref int nameCol, ref int rphCol, ref int appEffCol, ref int pmEffCol, ref int fiveStarCol, ref int warCol, ref int accCol)
+    {
+        for (int i = 0; i < Math.Min(lines.Length, 15); i++)
+        {
+            var cells = lines[i].Split('\t');
+            int employeeIdx = Array.FindIndex(cells, c => c.Trim().Equals("Employee", StringComparison.OrdinalIgnoreCase));
+            if (employeeIdx < 0) continue;
+
+            nameCol = employeeIdx;
+
+            for (int k = employeeIdx + 1; k < cells.Length; k++)
             {
-                if (member.Name.Contains(csvFirst, StringComparison.OrdinalIgnoreCase) &&
-                    (csvLast.Contains(member.Name.Split(' ', 2).ElementAtOrDefault(1) ?? "XXXX", StringComparison.OrdinalIgnoreCase) ||
-                     (member.Name.Split(' ', 2).ElementAtOrDefault(1) ?? "").Contains(csvLast.Split(' ')[0], StringComparison.OrdinalIgnoreCase)))
-                    return member;
+                string h = cells[k].Trim();
+                if (string.IsNullOrEmpty(h)) continue;
+
+                if (h.Contains("RPH", StringComparison.OrdinalIgnoreCase) && rphCol == 4)
+                    rphCol = k;
+                else if ((h.Contains("App", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                         || h.StartsWith("Apps", StringComparison.OrdinalIgnoreCase))
+                    appEffCol = k + 1;
+                else if ((h.Contains("PM", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                         || h.StartsWith("PMs", StringComparison.OrdinalIgnoreCase))
+                    pmEffCol = k + 1;
+                else if (h.Contains("Surveys", StringComparison.OrdinalIgnoreCase) || h.Contains("5 Star", StringComparison.OrdinalIgnoreCase)
+                         || h.Contains("5-Star", StringComparison.OrdinalIgnoreCase))
+                    fiveStarCol = k + 1;
+                else if (h.Contains("Warranty", StringComparison.OrdinalIgnoreCase))
+                    warCol = k;
+                else if (h.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
+                    accCol = k;
             }
+            return i;
+        }
+        return -1;
+    }
+
+    // ── Pod section header detection ──
+    private string? DetectPodHeader(string[] cells, int nameCol)
+    {
+        int nonEmptyCount = cells.Count(c => !string.IsNullOrWhiteSpace(c));
+
+        // Pod headers typically have 1-3 non-empty cells (the name and maybe a couple merged cell remnants)
+        if (nonEmptyCount > 5) return null;
+
+        // Find a cell that looks like a pod name
+        foreach (var cell in cells)
+        {
+            string val = cell?.Trim() ?? "";
+            if (string.IsNullOrEmpty(val)) continue;
+            if (val.Length < 4) continue;
+            if (_skipKeywords.Contains(val)) continue;
+            if (val.StartsWith("$") || val.StartsWith("#") || val.EndsWith("%")) continue;
+            if (double.TryParse(val.Replace(",", ""), NumberStyles.Any, CultureInfo.InvariantCulture, out _)) continue;
+
+            // Looks like a name/label - check if it could be a pod
+            if (LooksLikePodName(val))
+                return val;
         }
         return null;
     }
 
+    private bool LooksLikePodName(string val)
+    {
+        // Known pods or aliases
+        if (_podAliases.ContainsKey(val)) return true;
+        if (PodExistsInSystem(val)) return true;
+
+        // Heuristic: contains a dash or common pod-name words, multiple words, etc.
+        if (val.Contains("-") || val.Contains("Pod") || val.Contains("Front") ||
+            val.Contains("Advisors") || val.Contains("Computing") || val.Contains("Beast") ||
+            val.Contains("Flex") || val.Contains("Mobile") || val.Contains("Category") ||
+            val.Contains("Crew") || val.Contains("End"))
+            return true;
+
+        // Multi-word name that doesn't look like a metric
+        if (val.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
+        {
+            bool hasDigitsOnly = val.All(c => char.IsDigit(c) || c == '.' || c == ',' || c == '$' || c == '%');
+            if (!hasDigitsOnly) return true;
+        }
+
+        return false;
+    }
+
+    private string ResolvePodName(string excelName)
+    {
+        if (_podAliases.TryGetValue(excelName, out var systemName))
+            return systemName;
+        return excelName;
+    }
+
+    private bool PodExistsInSystem(string name)
+    {
+        return _allPodMembers?.Any(m => m.Department.Equals(name, StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
+    // ── Row classification ──
+    private bool IsNARow(string[] cells)
+    {
+        int naCount = cells.Count(c => (c?.Trim() ?? "").Equals("#N/A", StringComparison.OrdinalIgnoreCase));
+        return naCount >= 3;
+    }
+
+    private int CountNumericCells(string[] cells, int startCol)
+    {
+        int count = 0;
+        for (int i = startCol; i < cells.Length; i++)
+        {
+            string val = (cells[i] ?? "").Trim().Replace("$", "").Replace(",", "").Replace("%", "");
+            if (double.TryParse(val, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                count++;
+        }
+        return count;
+    }
+
+    // ── Member matching ──
+    private TeamMember? MatchMember(string csvName, List<TeamMember> members)
+    {
+        if (!members.Any()) return null;
+        csvName = csvName.Trim();
+
+        // Exact match
+        var match = members.FirstOrDefault(m => m.Name.Equals(csvName, StringComparison.OrdinalIgnoreCase));
+        if (match != null) return match;
+
+        // First + last name match (handles slight differences)
+        var csvParts = csvName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (csvParts.Length >= 2)
+        {
+            string csvFirst = csvParts[0];
+            string csvLast = csvParts[^1];
+
+            match = members.FirstOrDefault(m =>
+            {
+                var mParts = m.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (mParts.Length < 2) return false;
+                return mParts[0].Equals(csvFirst, StringComparison.OrdinalIgnoreCase)
+                    && mParts[^1].Equals(csvLast, StringComparison.OrdinalIgnoreCase);
+            });
+            if (match != null) return match;
+        }
+
+        // First name only match (if unique in pod)
+        if (csvParts.Length >= 1)
+        {
+            string csvFirst = csvParts[0];
+            var firstNameMatches = members
+                .Where(m => m.Name.Split(' ')[0].Equals(csvFirst, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (firstNameMatches.Count == 1) return firstNameMatches[0];
+        }
+
+        // Contains match (catches partial names, nicknames, etc.)
+        if (csvParts.Length >= 2)
+        {
+            foreach (var m in members)
+            {
+                bool firstMatch = m.Name.Contains(csvParts[0], StringComparison.OrdinalIgnoreCase);
+                bool lastMatch = csvParts.Length > 1 && m.Name.Contains(csvParts[^1], StringComparison.OrdinalIgnoreCase);
+                if (firstMatch && lastMatch) return m;
+            }
+        }
+
+        return null;
+    }
+
+    // ── Value extraction helpers ──
+    private static string SafeGet(string[] cells, int idx)
+    {
+        return idx >= 0 && idx < cells.Length ? (cells[idx] ?? "") : "";
+    }
+
+    private static string CleanCurrency(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        raw = raw.Trim();
+        if (raw.Equals("On Track", StringComparison.OrdinalIgnoreCase) ||
+            raw.Equals("Off Track", StringComparison.OrdinalIgnoreCase) ||
+            raw.Equals("#N/A", StringComparison.OrdinalIgnoreCase))
+            return "";
+        return raw.Replace("$", "").Replace(",", "").Trim();
+    }
+
+    private static string CleanPercentage(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        raw = raw.Trim();
+        if (raw.Equals("On Track", StringComparison.OrdinalIgnoreCase) ||
+            raw.Equals("Off Track", StringComparison.OrdinalIgnoreCase) ||
+            raw.Equals("#N/A", StringComparison.OrdinalIgnoreCase))
+            return "";
+        return raw.Replace("%", "").Trim();
+    }
+
+    // ── Auth ──
+    private async Task CheckPassword()
+    {
+        if (_passwordInput == CorrectPassword)
+        {
+            _passwordError = string.Empty; _isAuthenticated = true; _showPasswordModal = false;
+            try { await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true"); } catch { }
+        }
+        else
+        {
+            _passwordError = "Incorrect password."; _passwordInput = string.Empty;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePasswordKeydown(KeyboardEventArgs e) { if (e.Key == "Enter") await CheckPassword(); }
+
+    // ── Save: current pod ──
     private async Task SaveMetrics()
     {
         if (_isSaving) return;
@@ -541,83 +921,140 @@
 
         try
         {
-            var updateTasks = new List<Task>();
+            await SavePodMembers(_currentPodMembers, _inputValues);
+            CalculateAllRankings();
+            await AppState.NotifyMetricsUpdatedAsync();
+            _saveSuccessMessage = $"Saved metrics for {_selectedPod}!";
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Error: {ex.Message}";
+        }
+        finally { _isSaving = false; StateHasChanged(); }
+    }
 
-            foreach (var member in _currentPodMembers)
+    // ── Save: all parsed pods at once ──
+    private async Task SaveAllPods()
+    {
+        if (_isSaving || string.IsNullOrEmpty(_selectedPeriod)) return;
+        _isSaving = true; _saveError = null; _saveSuccessMessage = null;
+        StateHasChanged();
+
+        int savedPods = 0;
+        int savedMembers = 0;
+        var errors = new List<string>();
+
+        try
+        {
+            foreach (var (podName, podData) in _parsedPodData)
             {
-                if (!_inputValues.TryGetValue(member.Id, out var memberInputs)) continue;
+                var podMembers = _allPodMembers?
+                    .Where(m => m.Department.Equals(podName, StringComparison.OrdinalIgnoreCase))
+                    .ToList() ?? new();
 
-                var records = new List<MetricRecord>();
-                double totalWeightedScore = 0;
-                int applicableWeight = 0;
+                if (!podMembers.Any()) continue;
 
-                foreach (var metricKey in _podMetricKeys)
+                var podInputs = new Dictionary<int, Dictionary<string, string>>();
+                foreach (var (memberId, values) in podData)
                 {
-                    string rawVal = memberInputs.GetValueOrDefault(metricKey, "")?.Trim() ?? "";
-                    records.Add(new MetricRecord { TeamMemberId = member.Id, Period = _selectedPeriod, MetricKey = metricKey, Value = rawVal });
-
-                    if (double.TryParse(rawVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
-                    {
-                        int weight = _metricWeights.GetValueOrDefault(metricKey, 0);
-                        double normalized;
-
-                        if (metricKey == "Surveys" && numVal == 0)
-                        {
-                            normalized = 100.0;
-                        }
-                        else if (metricKey == "AppEff" || metricKey == "PMEff")
-                        {
-                            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
-                            normalized = target > 0 && numVal > 0 && numVal < 90000 ? (target / numVal) * 100.0 : 0;
-                        }
-                        else
-                        {
-                            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
-                            normalized = target > 0 ? (numVal / target) * 100.0 : 0;
-                        }
-
-                        normalized = Math.Clamp(normalized, 0, 150);
-                        totalWeightedScore += normalized * weight;
-                        applicableWeight += weight;
-                    }
+                    if (podMembers.Any(m => m.Id == memberId))
+                        podInputs[memberId] = values;
                 }
 
-                updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod, records));
-
-                if (applicableWeight > 0)
+                try
                 {
-                    double avgScore = totalWeightedScore / applicableWeight;
-                    member.TotalExperience += avgScore;
-                    updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
+                    await SavePodMembers(podMembers.Where(m => podInputs.ContainsKey(m.Id)).ToList(), podInputs);
+                    savedPods++;
+                    savedMembers += podInputs.Count;
                 }
-            }
-
-            await Task.WhenAll(updateTasks);
-
-            // Sync XP to global list
-            if (_allPodMembers != null && _currentPodMembers != null)
-            {
-                foreach (var updated in _currentPodMembers)
+                catch (Exception ex)
                 {
-                    var global = _allPodMembers.FirstOrDefault(m => m.Id == updated.Id);
-                    if (global != null) global.TotalExperience = updated.TotalExperience;
+                    errors.Add($"{podName}: {ex.Message}");
                 }
             }
 
             CalculateAllRankings();
             await AppState.NotifyMetricsUpdatedAsync();
-            _saveSuccessMessage = "Pod metrics saved successfully!";
+
+            _saveSuccessMessage = $"Saved {savedMembers} members across {savedPods} pods!";
+            if (errors.Any())
+                _saveError = $"Errors in: {string.Join("; ", errors)}";
         }
         catch (Exception ex)
         {
-            _saveError = $"Error saving: {ex.Message}";
+            _saveError = $"Error: {ex.Message}";
         }
-        finally
+        finally { _isSaving = false; StateHasChanged(); }
+    }
+
+    private async Task SavePodMembers(List<TeamMember> members, Dictionary<int, Dictionary<string, string>> inputValues)
+    {
+        var updateTasks = new List<Task>();
+
+        foreach (var member in members)
         {
-            _isSaving = false; StateHasChanged();
+            if (!inputValues.TryGetValue(member.Id, out var memberInputs)) continue;
+
+            bool hasAnyValue = memberInputs.Values.Any(v => !string.IsNullOrWhiteSpace(v));
+            if (!hasAnyValue) continue;
+
+            var records = new List<MetricRecord>();
+            double totalWeightedScore = 0;
+            int applicableWeight = 0;
+
+            foreach (var metricKey in _podMetricKeys)
+            {
+                string rawVal = memberInputs.GetValueOrDefault(metricKey, "")?.Trim() ?? "";
+                records.Add(new MetricRecord { TeamMemberId = member.Id, Period = _selectedPeriod!, MetricKey = metricKey, Value = rawVal });
+
+                if (double.TryParse(rawVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
+                {
+                    int weight = _metricWeights.GetValueOrDefault(metricKey, 0);
+                    double normalized;
+
+                    if (metricKey == "Surveys" && numVal == 0)
+                        normalized = 100.0;
+                    else if ((metricKey == "AppEff" || metricKey == "PMEff"))
+                    {
+                        double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
+                        normalized = target > 0 && numVal > 0 && numVal < 90000 ? (target / numVal) * 100.0 : 0;
+                    }
+                    else
+                    {
+                        double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
+                        normalized = target > 0 ? (numVal / target) * 100.0 : 0;
+                    }
+
+                    normalized = Math.Clamp(normalized, 0, 100);
+                    totalWeightedScore += normalized * weight;
+                    applicableWeight += weight;
+                }
+            }
+
+            updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod!, records));
+
+            if (applicableWeight > 0)
+            {
+                double avgScore = totalWeightedScore / applicableWeight;
+                member.TotalExperience += avgScore;
+                updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
+            }
+        }
+
+        await Task.WhenAll(updateTasks);
+
+        // Sync XP to master list
+        if (_allPodMembers != null)
+        {
+            foreach (var updated in members)
+            {
+                var global = _allPodMembers.FirstOrDefault(m => m.Id == updated.Id);
+                if (global != null) global.TotalExperience = updated.TotalExperience;
+            }
         }
     }
 
+    // ── Rankings ──
     private void CalculateAllRankings()
     {
         if (_allPodMembers == null || !_allPodMembers.Any()) return;
@@ -639,6 +1076,8 @@
         InvokeAsync(StateHasChanged);
     }
 
+    // ── Clear / Nav ──
+    private void ClearInputs() { InitializeInputValues(); _saveError = null; _saveSuccessMessage = null; StateHasChanged(); }
+    private void ClearParseResults() { _parseResults = null; _parseLog.Clear(); _parsedPodData.Clear(); StateHasChanged(); }
     private void NavigateBack() => NavigationManager.NavigateTo("/pods");
-    private void ClearInputs() { _inputValues.Clear(); _saveError = null; _saveSuccessMessage = null; StateHasChanged(); }
 }

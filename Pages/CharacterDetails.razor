@@ -825,9 +825,9 @@
          };
     }
 
-    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
+        "front", "computers", "warehouse"
     };
 
     private static readonly Dictionary<string, double> _podMetricTargets = new(StringComparer.OrdinalIgnoreCase)
@@ -837,7 +837,7 @@
     };
 
     private bool IsPodMember() =>
-        _teamMember != null && PodDepartments.Contains(_teamMember.Department);
+        _teamMember != null && !_regularDepartments.Contains(_teamMember.Department);
 
     private object GenerateRadarChartData()
     {

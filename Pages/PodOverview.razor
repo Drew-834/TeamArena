@@ -319,10 +319,12 @@
         { "AccAttach", 20.0 }
     };
 
-    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
+        "front", "computers", "warehouse"
     };
+
+    private static bool IsPodDepartment(string dept) => !_regularDepartments.Contains(dept);
 
     private static bool IsLowerBetter(string metricKey) =>
         metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
@@ -433,7 +435,7 @@
     private void CalculatePodLeaderboard(List<TeamMember> allMembers)
     {
         var podGroups = allMembers
-            .Where(m => PodDepartments.Contains(m.Department))
+            .Where(m => IsPodDepartment(m.Department))
             .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

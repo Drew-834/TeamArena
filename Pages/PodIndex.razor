@@ -57,10 +57,12 @@
     private string _loadingStatus = "Connecting to server...";
     private int _loadingProgress = 10;
 
-    private static readonly HashSet<string> PodDepartments = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Matt-Category Advisors", "Luis the Beast", "Drews Crew-Computing", "Pod-Front End"
+        "front", "computers", "warehouse"
     };
+
+    private static bool IsPodDepartment(string dept) => !_regularDepartments.Contains(dept);
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,13 +76,13 @@
         await UpdateLoading("Identifying pods...", 70);
 
         _pods = (_allMembers ?? new())
-            .Where(m => PodDepartments.Contains(m.Department))
+            .Where(m => IsPodDepartment(m.Department))
             .Select(m => m.Department)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(d => d)
             .ToList();
 
-        await UpdateLoading($"Found {_pods.Count} pods with {_allMembers?.Count(m => PodDepartments.Contains(m.Department)) ?? 0} members", 100);
+        await UpdateLoading($"Found {_pods.Count} pods with {_allMembers?.Count(m => IsPodDepartment(m.Department)) ?? 0} members", 100);
         await Task.Delay(300);
 
         _isLoading = false;
