@@ -4,10 +4,6 @@ using System.Net.Http.Json;
 
 namespace GameScoreboard.Services
 {
-    /// <summary>
-    /// HTTP-based data service that communicates with the backend API.
-    /// Used in production to persist data to Azure SQL via the API.
-    /// </summary>
     public class HttpDataService : IDataService
     {
         private readonly HttpClient _http;
@@ -23,34 +19,28 @@ namespace GameScoreboard.Services
             {
                 var url = "api/members";
                 if (!string.IsNullOrWhiteSpace(department))
-                {
                     url += $"?department={Uri.EscapeDataString(department)}";
-                }
+
+                Console.WriteLine($"[HttpDataService] GET {url}");
+                var sw = System.Diagnostics.Stopwatch.StartNew();
 
                 var members = await _http.GetFromJsonAsync<List<TeamMember>>(url);
-                
-                if (members != null && members.Any())
+                sw.Stop();
+
+                if (members == null || !members.Any())
                 {
-                    // Fetch metric records for each member and populate
-                    var allRecords = await GetMetricRecordsAsync();
-                    var latestPeriod = GetLatestPeriod(allRecords.Select(r => r.Period).Distinct());
-                    
-                    if (!string.IsNullOrEmpty(latestPeriod))
-                    {
-                        foreach (var member in members)
-                        {
-                            member.MetricRecords = allRecords
-                                .Where(r => r.TeamMemberId == member.Id && r.Period == latestPeriod)
-                                .ToList();
-                        }
-                    }
+                    Console.WriteLine($"[HttpDataService] GET {url} returned 0 members in {sw.ElapsedMilliseconds}ms");
+                    return new List<TeamMember>();
                 }
 
-                return members ?? new List<TeamMember>();
+                var withMetrics = members.Count(m => m.MetricRecords?.Any() == true);
+                Console.WriteLine($"[HttpDataService] GET {url} returned {members.Count} members ({withMetrics} with metrics) in {sw.ElapsedMilliseconds}ms");
+
+                return members;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.GetTeamMembersAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] GetTeamMembersAsync FAILED: {ex.Message}");
                 return new List<TeamMember>();
             }
         }
@@ -59,11 +49,12 @@ namespace GameScoreboard.Services
         {
             try
             {
+                Console.WriteLine($"[HttpDataService] GET api/members/{id}");
                 return await _http.GetFromJsonAsync<TeamMember>($"api/members/{id}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.GetTeamMemberByIdAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] GetTeamMemberByIdAsync({id}) FAILED: {ex.Message}");
                 return null;
             }
         }
@@ -72,11 +63,26 @@ namespace GameScoreboard.Services
         {
             try
             {
-                await _http.PostAsJsonAsync("api/members", member);
+                Console.WriteLine($"[HttpDataService] POST api/members: {member.Name} ({member.Department})");
+                var response = await _http.PostAsJsonAsync("api/members", member);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var created = await response.Content.ReadFromJsonAsync<TeamMember>();
+                    if (created != null)
+                    {
+                        member.Id = created.Id;
+                        Console.WriteLine($"[HttpDataService] Created member '{member.Name}' with Id={member.Id}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[HttpDataService] AddTeamMember FAILED: {response.StatusCode}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.AddTeamMemberAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] AddTeamMemberAsync FAILED: {ex.Message}");
             }
         }
 
@@ -84,11 +90,14 @@ namespace GameScoreboard.Services
         {
             try
             {
-                await _http.PutAsJsonAsync($"api/members/{member.Id}", member);
+                Console.WriteLine($"[HttpDataService] PUT api/members/{member.Id}: {member.Name}");
+                var response = await _http.PutAsJsonAsync($"api/members/{member.Id}", member);
+                if (!response.IsSuccessStatusCode)
+                    Console.WriteLine($"[HttpDataService] UpdateTeamMember FAILED: {response.StatusCode}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.UpdateTeamMemberAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] UpdateTeamMemberAsync FAILED: {ex.Message}");
             }
         }
 
@@ -96,11 +105,12 @@ namespace GameScoreboard.Services
         {
             try
             {
+                Console.WriteLine($"[HttpDataService] DELETE api/members/{id}");
                 await _http.DeleteAsync($"api/members/{id}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.DeleteTeamMemberAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] DeleteTeamMemberAsync FAILED: {ex.Message}");
             }
         }
 
@@ -108,8 +118,7 @@ namespace GameScoreboard.Services
         {
             try
             {
-                // Convert to API-compatible format (without navigation property)
-                var apiRecords = records.Select(r => new 
+                var apiRecords = records.Select(r => new
                 {
                     TeamMemberId = memberId,
                     Period = period,
@@ -117,11 +126,18 @@ namespace GameScoreboard.Services
                     Value = r.Value
                 }).ToList();
 
-                await _http.PostAsJsonAsync($"api/metrics/{memberId}/{Uri.EscapeDataString(period)}", apiRecords);
+                var url = $"api/metrics/{memberId}/{Uri.EscapeDataString(period)}";
+                Console.WriteLine($"[HttpDataService] POST {url}: {apiRecords.Count} records");
+
+                var response = await _http.PostAsJsonAsync(url, apiRecords);
+                if (!response.IsSuccessStatusCode)
+                    Console.WriteLine($"[HttpDataService] SaveMetrics FAILED for member {memberId}: {response.StatusCode}");
+                else
+                    Console.WriteLine($"[HttpDataService] SaveMetrics OK for member {memberId}, period={period}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.SaveMetricRecordsForPeriodAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] SaveMetricRecordsForPeriodAsync FAILED: {ex.Message}");
             }
         }
 
@@ -131,57 +147,24 @@ namespace GameScoreboard.Services
             {
                 var url = "api/metrics";
                 var queryParams = new List<string>();
-                
+
                 if (memberId.HasValue)
                     queryParams.Add($"memberId={memberId.Value}");
                 if (!string.IsNullOrWhiteSpace(period))
                     queryParams.Add($"period={Uri.EscapeDataString(period)}");
-                
+
                 if (queryParams.Any())
                     url += "?" + string.Join("&", queryParams);
 
+                Console.WriteLine($"[HttpDataService] GET {url}");
                 var records = await _http.GetFromJsonAsync<List<MetricRecord>>(url);
+                Console.WriteLine($"[HttpDataService] GET {url} returned {records?.Count ?? 0} records");
                 return records ?? new List<MetricRecord>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.GetMetricRecordsAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] GetMetricRecordsAsync FAILED: {ex.Message}");
                 return new List<MetricRecord>();
-            }
-        }
-
-        // Helper to get the latest period from a list of period strings
-        private string? GetLatestPeriod(IEnumerable<string?> periodStrings)
-        {
-            return periodStrings
-                .Where(p => !string.IsNullOrEmpty(p))
-                .Select(p => new { Period = p, EndDate = GetPeriodEndDate(p!) })
-                .OrderByDescending(x => x.EndDate)
-                .FirstOrDefault()?.Period;
-        }
-
-        private DateTime GetPeriodEndDate(string period)
-        {
-            try
-            {
-                string[] parts = period.Split('-');
-                if (parts.Length < 2) return DateTime.MinValue;
-                string monthYear = parts[1];
-                DateTime monthStartDate = DateTime.ParseExact("01-" + monthYear, "dd-MMM yyyy", 
-                    System.Globalization.CultureInfo.InvariantCulture);
-
-                if (parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase))
-                {
-                    return monthStartDate.AddDays(14);
-                }
-                else // EOM
-                {
-                    return monthStartDate.AddMonths(1).AddDays(-1);
-                }
-            }
-            catch
-            {
-                return DateTime.MinValue;
             }
         }
 
@@ -189,11 +172,12 @@ namespace GameScoreboard.Services
         {
             try
             {
+                Console.WriteLine($"[HttpDataService] POST api/snapshot: {snapshot.PodName}");
                 await _http.PostAsJsonAsync("api/snapshot", snapshot);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.SavePodSnapshotAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] SavePodSnapshotAsync FAILED: {ex.Message}");
             }
         }
 
@@ -209,7 +193,7 @@ namespace GameScoreboard.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.GetPodSnapshotsAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] GetPodSnapshotsAsync FAILED: {ex.Message}");
                 return new();
             }
         }
@@ -222,10 +206,9 @@ namespace GameScoreboard.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"HttpDataService.GetPodSnapshotByIdAsync error: {ex.Message}");
+                Console.WriteLine($"[HttpDataService] GetPodSnapshotByIdAsync FAILED: {ex.Message}");
                 return null;
             }
         }
     }
 }
-

@@ -25,6 +25,22 @@
                 </div>
             </div>
         }
+        else if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="flex flex-col items-center justify-center mt-24">
+                <p class="text-red-400 text-lg font-semibold mb-4">@_errorMessage</p>
+                <button @onclick="RetryLoad" class="px-6 py-2 bg-yellow-500 text-gray-900 rounded font-semibold hover:bg-yellow-400 transition-colors">
+                    Retry
+                </button>
+            </div>
+        }
+        else if (!_pods.Any())
+        {
+            <div class="flex flex-col items-center justify-center mt-24">
+                <p class="text-gray-400 text-lg">No pods with performance data found.</p>
+                <p class="text-gray-500 text-sm mt-2">Use the Pod Tracker to enter metrics first.</p>
+            </div>
+        }
         else
         {
             <p class="text-gray-400 text-center mb-12">Select a pod to view individual KPI performance</p>
@@ -35,7 +51,7 @@
                     <div @onclick="() => NavigateToPod(pod)"
                          class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-40 flex flex-col justify-center">
                         <h2 class="text-2xl font-semibold mb-2">@pod</h2>
-                        <p class="text-gray-400">@GetPodMemberCount(pod) members</p>
+                        <p class="text-gray-400">@GetPodMemberCount(pod) members with data</p>
                     </div>
                 }
             </div>
@@ -56,36 +72,68 @@
     private bool _isLoading = true;
     private string _loadingStatus = "Connecting to server...";
     private int _loadingProgress = 10;
+    private string? _errorMessage;
 
     private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
         "front", "computers", "warehouse"
     };
 
-    private static bool IsPodDepartment(string dept) => !_regularDepartments.Contains(dept);
+    private static bool IsPodDepartment(string dept) =>
+        !string.IsNullOrWhiteSpace(dept) && !_regularDepartments.Contains(dept);
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadPodsAsync();
+    }
+
+    private async Task LoadPodsAsync()
+    {
         _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
 
-        await UpdateLoading("Connecting to server...", 20);
-        await UpdateLoading("Fetching team data...", 40);
+        try
+        {
+            await UpdateLoading("Connecting to server...", 20);
+            await UpdateLoading("Fetching team data...", 40);
 
-        _allMembers = await DataService.GetTeamMembersAsync();
+            Console.WriteLine("[PodIndex] Fetching all team members...");
+            _allMembers = await DataService.GetTeamMembersAsync();
+            Console.WriteLine($"[PodIndex] Received {_allMembers?.Count ?? 0} members total");
 
-        await UpdateLoading("Identifying pods...", 70);
+            await UpdateLoading("Identifying pods...", 70);
 
-        _pods = (_allMembers ?? new())
-            .Where(m => IsPodDepartment(m.Department))
-            .Select(m => m.Department)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(d => d)
-            .ToList();
+            _pods = (_allMembers ?? new())
+                .Where(m => IsPodDepartment(m.Department) && m.MetricRecords?.Any() == true)
+                .Select(m => m.Department)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(d => d)
+                .ToList();
 
-        await UpdateLoading($"Found {_pods.Count} pods with {_allMembers?.Count(m => IsPodDepartment(m.Department)) ?? 0} members", 100);
-        await Task.Delay(300);
+            var totalPodMembers = _allMembers?
+                .Count(m => _pods.Any(p => p.Equals(m.Department, StringComparison.OrdinalIgnoreCase))) ?? 0;
 
-        _isLoading = false;
+            Console.WriteLine($"[PodIndex] Found {_pods.Count} pods with data: [{string.Join(", ", _pods)}]");
+
+            await UpdateLoading($"Found {_pods.Count} pods with {totalPodMembers} members", 100);
+            await Task.Delay(300);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PodIndex] LoadPodsAsync FAILED: {ex.Message}");
+            _errorMessage = $"Failed to load pod data: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadPodsAsync();
     }
 
     private async Task UpdateLoading(string status, int progress)
@@ -106,7 +154,9 @@
 
     private int GetPodMemberCount(string pod)
     {
-        return _allMembers?.Count(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)) ?? 0;
+        return _allMembers?.Count(m =>
+            m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)
+            && m.MetricRecords?.Any() == true) ?? 0;
     }
 
     private void NavigateToPod(string podName)

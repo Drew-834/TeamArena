@@ -334,6 +334,7 @@
     {
         AppState.OnMetricsUpdatedAsync += HandleMetricsUpdated;
         _currentPodName = PodName;
+        Console.WriteLine($"[PodOverview] OnInitializedAsync for pod: {PodName}");
         await LoadPodData();
     }
 
@@ -341,6 +342,7 @@
     {
         if (!string.Equals(_currentPodName, PodName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(PodName))
         {
+            Console.WriteLine($"[PodOverview] Pod changed: {_currentPodName} → {PodName}");
             _currentPodName = PodName;
             await LoadPodDataFromCache();
         }
@@ -348,11 +350,16 @@
 
     private async Task HandleMetricsUpdated()
     {
+        Console.WriteLine("[PodOverview] Metrics updated notification received, reloading...");
         await InvokeAsync(async () =>
         {
             _isLoading = true;
             StateHasChanged();
-            try { await LoadPodData(); }
+            try
+            {
+                _allMembersCache.Clear();
+                await LoadPodData();
+            }
             finally { StateHasChanged(); }
         });
     }
@@ -361,22 +368,26 @@
     {
         _isLoading = true;
         ResetState();
+        StateHasChanged();
 
         if (string.IsNullOrEmpty(PodName)) { _isLoading = false; return; }
 
         try
         {
+            Console.WriteLine($"[PodOverview] Loading fresh data for pod: {PodName}");
             _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+            Console.WriteLine($"[PodOverview] Fetched {_allMembersCache.Count} total members");
             PopulateFromCache();
             await LoadSnapshots();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading pod data: {ex.Message}");
+            Console.WriteLine($"[PodOverview] LoadPodData FAILED: {ex.Message}");
         }
         finally
         {
             _isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -390,7 +401,12 @@
 
         if (!_allMembersCache.Any())
         {
+            Console.WriteLine($"[PodOverview] Cache empty, fetching fresh for pod switch to: {PodName}");
             _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+        }
+        else
+        {
+            Console.WriteLine($"[PodOverview] Using cached data ({_allMembersCache.Count} members) for pod: {PodName}");
         }
 
         PopulateFromCache();
@@ -416,12 +432,18 @@
             .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
+        Console.WriteLine($"[PodOverview] Found {_teamMembers.Count} members for pod '{PodName}'");
+
         if (_teamMembers.Any())
         {
             _latestPeriod = _teamMembers
                 .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
                 .Select(r => r.Period)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Distinct()
                 .FirstOrDefault();
+
+            Console.WriteLine($"[PodOverview] Latest period: {_latestPeriod ?? "none"}, members with metrics: {_teamMembers.Count(m => m.MetricRecords?.Any() == true)}");
 
             if (!string.IsNullOrEmpty(_latestPeriod))
             {
@@ -429,7 +451,13 @@
             }
         }
 
-        CalculatePodLeaderboard(_allMembersCache);
+        var podsWithData = _allMembersCache
+            .Where(m => IsPodDepartment(m.Department) && m.MetricRecords?.Any() == true)
+            .Select(m => m.Department)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        CalculatePodLeaderboard(_allMembersCache.Where(m => podsWithData.Contains(m.Department)).ToList());
     }
 
     private void CalculatePodLeaderboard(List<TeamMember> allMembers)
