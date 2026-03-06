@@ -75,6 +75,12 @@ public class MembersController : ControllerBase
     {
         try
         {
+            // New format: ISO date "yyyy-MM-dd"
+            if (DateTime.TryParseExact(period, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var isoDate))
+                return isoDate;
+
+            // Legacy format: "Mid-Feb 2026" or "EOM-Feb 2026"
             var parts = period.Split('-');
             if (parts.Length < 2) return DateTime.MinValue;
             var monthStartDate = DateTime.ParseExact(

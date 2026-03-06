@@ -18,7 +18,7 @@
 
     <h1 class="text-4xl font-bold text-yellow-400 mb-2 text-center">@PodName</h1>
     <h2 class="text-xl text-center text-gray-400 mb-2">Pod Performance Overview</h2>
-    <p class="text-center text-sm text-gray-500 mb-4">Latest Data: @(_latestPeriod ?? "No Data Available")</p>
+    <p class="text-center text-sm text-gray-500 mb-4">Latest Data: @FormatPeriodDisplay(_latestPeriod)</p>
 
     <!-- Backup & History Controls -->
     <div class="flex justify-center items-center gap-4 mb-8">
@@ -655,6 +655,14 @@
         if (progress >= 75) return "text-green-400";
         if (progress >= 50) return "text-blue-400";
         return "text-red-400";
+    }
+
+    private string FormatPeriodDisplay(string? period)
+    {
+        if (string.IsNullOrEmpty(period)) return "No Data Available";
+        if (DateTime.TryParseExact(period, "yyyy-MM-dd", CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt))
+            return dt.ToString("MMMM d, yyyy");
+        return period;
     }
 
     private string FormatMetricValue(double value, string metricKey)

@@ -44,17 +44,14 @@
         <div class="mb-8 p-5 bg-gray-800 rounded-lg border border-gray-700">
             <h2 class="text-xl font-semibold text-yellow-400 mb-4">Import Pod Tracker Data</h2>
 
-            <div class="flex flex-wrap gap-4 mb-4">
-                <div class="flex-1 min-w-[200px]">
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Period</label>
-                    <select class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500" @onchange="OnPeriodChanged">
-                        <option value="">Select Period...</option>
-                        @foreach (var period in _periods)
-                        {
-                            <option value="@period" selected="@(period == _selectedPeriod)">@period</option>
-                        }
-                    </select>
+            <div class="flex flex-wrap gap-4 mb-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Upload Date</label>
+                    <div class="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-yellow-400 font-semibold">
+                        @_selectedPeriod
+                    </div>
                 </div>
+                <p class="text-xs text-gray-500 pb-2">Period is auto-set to today's date. Data will be backed up automatically on save.</p>
             </div>
 
             <div class="mb-3">
@@ -313,9 +310,8 @@
 
     // ── Data ──
     private List<string> _pods = new();
-    private List<string> _periods = new();
     private string? _selectedPod;
-    private string? _selectedPeriod;
+    private string _selectedPeriod = DateTime.Today.ToString("yyyy-MM-dd");
     private List<TeamMember>? _currentPodMembers;
     private Dictionary<int, Dictionary<string, string>> _inputValues = new();
     private List<TeamMember>? _allPodMembers;
@@ -381,7 +377,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _periods = GeneratePeriods(6);
         try
         {
             var allMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
@@ -417,21 +412,7 @@
         }
     }
 
-    // ── Period + Pod selection ──
-    private List<string> GeneratePeriods(int monthsBack)
-    {
-        var periods = new List<string>();
-        var today = DateTime.Today;
-        for (int i = monthsBack; i >= -1; i--)
-        {
-            var monthStart = new DateTime(today.Year, today.Month, 1).AddMonths(-i);
-            periods.Add($"Mid-{monthStart:MMM yyyy}");
-            periods.Add($"EOM-{monthStart:MMM yyyy}");
-        }
-        return periods.OrderByDescending(p => p).ToList();
-    }
-
-    private void OnPeriodChanged(ChangeEventArgs e) { _selectedPeriod = e.Value?.ToString(); }
+    // ── Pod selection ──
 
     private void OnPodChanged(ChangeEventArgs e)
     {
@@ -502,12 +483,6 @@
         _isParsing = true;
         StateHasChanged();
 
-        if (string.IsNullOrEmpty(_selectedPeriod))
-        {
-            _uploadStatusMessage = "Please select a period first.";
-            _isParsing = false;
-            return;
-        }
         if (string.IsNullOrWhiteSpace(_pastedData))
         {
             _uploadStatusMessage = "Paste area is empty.";
@@ -966,15 +941,19 @@
         if (_isSaving) return;
         _isSaving = true; _saveError = null; _saveSuccessMessage = null;
 
-        if (_currentPodMembers == null || string.IsNullOrEmpty(_selectedPod) || string.IsNullOrEmpty(_selectedPeriod))
-        { _saveError = "Pod and Period must be selected."; _isSaving = false; StateHasChanged(); return; }
+        if (_currentPodMembers == null || string.IsNullOrEmpty(_selectedPod))
+        { _saveError = "Pod must be selected."; _isSaving = false; StateHasChanged(); return; }
 
         try
         {
             await SavePodMembers(_currentPodMembers, _inputValues);
             CalculateAllRankings();
             await AppState.NotifyMetricsUpdatedAsync();
-            _saveSuccessMessage = $"Saved metrics for {_selectedPod}!";
+
+            // Auto-backup
+            await AutoBackupPod(_selectedPod);
+
+            _saveSuccessMessage = $"Saved and backed up metrics for {_selectedPod}!";
         }
         catch (Exception ex)
         {
@@ -1026,7 +1005,44 @@
             CalculateAllRankings();
             await AppState.NotifyMetricsUpdatedAsync();
 
-            _saveSuccessMessage = $"Saved {savedMembers} members across {savedPods} pods!";
+            // Auto-backup: create snapshot for each saved pod
+            int backupCount = 0;
+            try
+            {
+                var freshMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new();
+                foreach (var podName in _parsedPodData.Keys)
+                {
+                    var podMembers = freshMembers
+                        .Where(m => m.Department.Equals(podName, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    if (!podMembers.Any()) continue;
+
+                    var snapshotData = podMembers.Select(m => new
+                    {
+                        m.Name, m.Id,
+                        WeightedScore = GetWeightedScoreForMember(m).ToString("F1", CultureInfo.InvariantCulture),
+                        Metrics = _podMetricKeys.ToDictionary(k => k, k =>
+                        {
+                            var rec = m.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(k, StringComparison.OrdinalIgnoreCase));
+                            return rec?.Value ?? "—";
+                        })
+                    }).ToList();
+
+                    await DataService.SavePodSnapshotAsync(new GameScoreboard.Models.PodSnapshot
+                    {
+                        PodName = podName,
+                        Label = _selectedPeriod,
+                        JsonData = System.Text.Json.JsonSerializer.Serialize(snapshotData)
+                    });
+                    backupCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PodTracker] Auto-backup error: {ex.Message}");
+            }
+
+            _saveSuccessMessage = $"Saved {savedMembers} members across {savedPods} pods! Auto-backed up {backupCount} pods.";
             if (errors.Any())
                 _saveError = $"Errors in: {string.Join("; ", errors)}";
         }
@@ -1102,6 +1118,66 @@
                 if (global != null) global.TotalExperience = updated.TotalExperience;
             }
         }
+    }
+
+    private async Task AutoBackupPod(string podName)
+    {
+        try
+        {
+            var freshMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new();
+            var podMembers = freshMembers
+                .Where(m => m.Department.Equals(podName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (!podMembers.Any()) return;
+
+            var snapshotData = podMembers.Select(m => new
+            {
+                m.Name, m.Id,
+                WeightedScore = GetWeightedScoreForMember(m).ToString("F1", CultureInfo.InvariantCulture),
+                Metrics = _podMetricKeys.ToDictionary(k => k, k =>
+                {
+                    var rec = m.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(k, StringComparison.OrdinalIgnoreCase));
+                    return rec?.Value ?? "—";
+                })
+            }).ToList();
+
+            await DataService.SavePodSnapshotAsync(new GameScoreboard.Models.PodSnapshot
+            {
+                PodName = podName,
+                Label = _selectedPeriod,
+                JsonData = System.Text.Json.JsonSerializer.Serialize(snapshotData)
+            });
+            Console.WriteLine($"[PodTracker] Auto-backup saved for pod '{podName}'");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[PodTracker] Auto-backup error for '{podName}': {ex.Message}");
+        }
+    }
+
+    private double GetWeightedScoreForMember(TeamMember member)
+    {
+        double totalWeightedScore = 0;
+        int applicableWeight = 0;
+        foreach (var kvp in _metricWeights)
+        {
+            var rec = member.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+            if (rec?.Value == null || !double.TryParse(rec.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
+                continue;
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && numVal >= 90000) continue;
+            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+            double normalized;
+            if (kvp.Key == "Surveys" && numVal == 0)
+                normalized = 100.0;
+            else if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
+                normalized = target > 0 && numVal > 0 ? (target / numVal) * 100.0 : 0;
+            else
+                normalized = target > 0 ? (numVal / target) * 100.0 : 0;
+            normalized = Math.Clamp(normalized, 0, 100);
+            totalWeightedScore += normalized * kvp.Value;
+            applicableWeight += kvp.Value;
+        }
+        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 100) : 0;
     }
 
     // ── Rankings ──
