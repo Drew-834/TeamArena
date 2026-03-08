@@ -13,11 +13,11 @@
 
 <div class="bg-gray-900 min-h-screen text-white p-8">
     <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-        &lt; Back to Pods
+        &lt; Back to Teams
     </button>
 
     <h1 class="text-4xl font-bold text-yellow-400 mb-2 text-center">@PodName</h1>
-    <h2 class="text-xl text-center text-gray-400 mb-2">Pod Performance Overview</h2>
+    <h2 class="text-xl text-center text-gray-400 mb-2">Team Performance Overview</h2>
     <p class="text-center text-sm text-gray-500 mb-4">Latest Data: @FormatPeriodDisplay(_latestPeriod)</p>
 
     <!-- Backup & History Controls -->
@@ -140,7 +140,7 @@
     }
     else if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod))
     {
-        <p class="text-center text-gray-500">No metric data available for this pod.</p>
+        <p class="text-center text-gray-500">No metric data available for this team.</p>
     }
     else
     {
@@ -148,7 +148,7 @@
         @if (_podLeaderboard != null && _podLeaderboard.Any())
         {
             <div class="mb-10 bg-gray-800 rounded-lg border border-gray-700 p-6">
-                <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Pod Leaderboard</h2>
+                <h2 class="text-2xl font-bold text-yellow-400 mb-4 text-center">Team Leaderboard</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     @foreach (var pod in _podLeaderboard)
                     {
@@ -220,7 +220,7 @@
         </div>
 
         <!-- Team Member Cards -->
-        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Pod Members</h2>
+        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Team Members</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             @foreach (var member in _teamMembers.OrderByDescending(m => GetWeightedScore(m)))
             {

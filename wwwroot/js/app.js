@@ -38,8 +38,8 @@ window.initKeySequenceDetector = () => {
                     weeklyTrackerCard.classList.remove('hidden');
                 }
 
-                // Reveal the Pod Tracker card on Pod Index page
-                const podTrackerCard = document.getElementById('pod-tracker-card');
+                // Reveal the Team Tracker card on Team Index page
+                const podTrackerCard = document.getElementById('team-tracker-card');
                 if (podTrackerCard) {
                     podTrackerCard.classList.remove('hidden');
                 }

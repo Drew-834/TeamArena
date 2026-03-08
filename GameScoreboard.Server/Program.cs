@@ -52,11 +52,12 @@ public class Program
             options.AddDefaultPolicy(policy =>
                 policy.WithOrigins(
                     "http://localhost:5117",
-                    "https://localhost:5117", 
-                    "http://localhost:5172", 
+                    "https://localhost:5117",
+                    "http://localhost:5172",
                     "https://localhost:5172",
                     "https://drew-834.github.io",
-                    "https://teamarena-client-start.azurestaticapps.net"  // Azure Static Web App
+                    "https://red-ocean-08c63b90f.1.azurestaticapps.net",
+                    "https://teamarena-client-start.azurestaticapps.net"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod());

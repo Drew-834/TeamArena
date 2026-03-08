@@ -46,6 +46,31 @@ public class SeedController : ControllerBase
         return Ok(new { Message = $"Successfully seeded {members.Count} team members with metric records" });
     }
 
+    [HttpDelete("department/{departmentName}")]
+    public async Task<IActionResult> DeleteDepartment(string departmentName, [FromHeader(Name = "X-Admin-Key")] string? adminKey)
+    {
+        var expectedKey = _configuration["AdminKey"] ?? "TeamArena2025!";
+        if (adminKey != expectedKey)
+            return Unauthorized("Invalid admin key");
+
+        var members = await _db.TeamMembers
+            .Where(m => m.Department.ToLower() == departmentName.ToLower())
+            .ToListAsync();
+
+        if (!members.Any())
+            return NotFound(new { Message = $"No members found in department '{departmentName}'" });
+
+        var metrics = await _db.MetricRecords
+            .Where(r => members.Select(m => m.Id).Contains(r.TeamMemberId))
+            .ToListAsync();
+
+        _db.MetricRecords.RemoveRange(metrics);
+        _db.TeamMembers.RemoveRange(members);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { Message = $"Deleted {members.Count} members and {metrics.Count} metric records from '{departmentName}'" });
+    }
+
     [HttpPost("pods")]
     public async Task<IActionResult> SeedPodData([FromHeader(Name = "X-Admin-Key")] string? adminKey)
     {
