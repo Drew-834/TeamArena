@@ -102,8 +102,15 @@ public class MembersController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, TeamMember update)
     {
-        if (id != update.Id) return BadRequest();
-        _db.Entry(update).State = EntityState.Modified;
+        var existing = await _db.TeamMembers.FindAsync(id);
+        if (existing == null) return NotFound();
+
+        existing.Name = update.Name;
+        existing.Department = update.Department;
+        existing.Role = update.Role;
+        existing.AvatarUrl = update.AvatarUrl;
+        existing.TotalExperience = update.TotalExperience;
+
         await _db.SaveChangesAsync();
         return NoContent();
     }

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GameScoreboard.Server.Models
 {
     public class MetricRecord
@@ -7,6 +9,7 @@ namespace GameScoreboard.Server.Models
         public required string MetricKey { get; set; }
         public string? Value { get; set; }
 
-        public TeamMember TeamMember { get; set; } = null!;
+        [JsonIgnore]
+        public TeamMember? TeamMember { get; set; }
     }
 } 

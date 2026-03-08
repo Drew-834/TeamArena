@@ -91,9 +91,21 @@ namespace GameScoreboard.Services
             try
             {
                 Console.WriteLine($"[HttpDataService] PUT api/members/{member.Id}: {member.Name}");
-                var response = await _http.PutAsJsonAsync($"api/members/{member.Id}", member);
+                var payload = new
+                {
+                    member.Id,
+                    member.Name,
+                    member.Department,
+                    member.Role,
+                    member.AvatarUrl,
+                    member.TotalExperience
+                };
+                var response = await _http.PutAsJsonAsync($"api/members/{member.Id}", payload);
                 if (!response.IsSuccessStatusCode)
-                    Console.WriteLine($"[HttpDataService] UpdateTeamMember FAILED: {response.StatusCode}");
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[HttpDataService] UpdateTeamMember FAILED: {response.StatusCode} - {body}");
+                }
             }
             catch (Exception ex)
             {
@@ -131,7 +143,10 @@ namespace GameScoreboard.Services
 
                 var response = await _http.PostAsJsonAsync(url, apiRecords);
                 if (!response.IsSuccessStatusCode)
-                    Console.WriteLine($"[HttpDataService] SaveMetrics FAILED for member {memberId}: {response.StatusCode}");
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[HttpDataService] SaveMetrics FAILED for member {memberId}: {response.StatusCode} - {body}");
+                }
                 else
                     Console.WriteLine($"[HttpDataService] SaveMetrics OK for member {memberId}, period={period}");
             }

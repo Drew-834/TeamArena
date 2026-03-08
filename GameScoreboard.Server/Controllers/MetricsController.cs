@@ -15,16 +15,24 @@ public class MetricsController : ControllerBase
     [HttpPost("{memberId:int}/{period}")]
     public async Task<IActionResult> Save(int memberId, string period, [FromBody] List<MetricRecord> records)
     {
-        var existing = _db.MetricRecords.Where(r => r.TeamMemberId == memberId && r.Period == period);
-        _db.MetricRecords.RemoveRange(existing);
-        foreach (var r in records)
+        try
         {
-            r.TeamMemberId = memberId;
-            r.Period = period;
+            var existing = _db.MetricRecords.Where(r => r.TeamMemberId == memberId && r.Period == period);
+            _db.MetricRecords.RemoveRange(existing);
+            foreach (var r in records)
+            {
+                r.TeamMemberId = memberId;
+                r.Period = period;
+            }
+            await _db.MetricRecords.AddRangeAsync(records);
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
-        await _db.MetricRecords.AddRangeAsync(records);
-        await _db.SaveChangesAsync();
-        return NoContent();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MetricsController.Save error for member {memberId}, period {period}: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     [HttpGet]
