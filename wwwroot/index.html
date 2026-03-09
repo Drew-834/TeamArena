@@ -3,21 +3,14 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>GameScoreboard</title>
+    <title>Team Arena</title>
     <base href="/" />
-    <meta name="description" content="Game-inspired performance scoreboard for tracking team metrics. Press '.' three times to reveal the Weekly Tracker feature." />
-    <!-- Tailwind CSS via CDN -->
+    <meta name="description" content="Team Arena - Performance scoreboard forged in the fires of competition." />
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Custom CSS - Relative Path -->
+    <link href="css/elden-ring.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
-    <!-- Favicon - Relative Path -->
     <link href="favicon.png" rel="icon" type="image/png" />
-    
-    <!-- GitHub Pages SPA routing -->
     <script type="text/javascript">
-        // Single Page Apps for GitHub Pages
-        // MIT License
-        // https://github.com/rafgraph/spa-github-pages
         (function(l) {
             if (l.search[1] === '/' ) {
                 var decoded = l.search.slice(1).split('&').map(function(s) { 
@@ -32,23 +25,21 @@
 </head>
 <body>
     <div id="app">
-        <div class="flex items-center justify-center h-screen bg-gray-900 text-white">
-            <div class="text-center">
-                <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400 mb-4"></div>
-                <h2 class="text-xl">Loading champions...</h2>
-            </div>
+        <div class="elden-loading">
+            <div class="elden-loading-rune"></div>
+            <div class="elden-loading-text">Entering the Realm...</div>
         </div>
     </div>
 
-    <div id="blazor-error-ui" class="hidden fixed bottom-0 w-full z-50 bg-red-600 text-white p-4">
+    <div id="blazor-error-ui" class="hidden fixed bottom-0 w-full z-50 p-4" style="background: rgba(139,32,32,0.9); color: #e8e6e0; border-top: 1px solid #c43030;">
         An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
+        <a href="" class="reload" style="color: #e8d282; text-decoration: underline;">Reload</a>
+        <a class="dismiss" style="color: #7a7768; margin-left: 1rem; cursor: pointer;">Dismiss</a>
     </div>
 
-    <!-- Custom JS - Relative Path (Load BEFORE Blazor) -->
     <script src="js/app.js"></script>
-    <!-- Blazor JS - Relative Path (Framework handles this) -->
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

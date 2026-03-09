@@ -11,127 +11,124 @@
 @inject AppState AppState
 @implements IDisposable
 
-<div class="bg-gray-900 min-h-screen text-white p-8">
-    <button @onclick="NavigateHome" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-        &lt; Back to Home
-    </button>
+<div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+    <button @onclick="NavigateHome" class="elden-btn mb-6">&larr; Back to Home</button>
 
-    <h1 class="text-4xl font-bold text-yellow-400 mb-8 text-center">@DepartmentName Performance Overview</h1>
-    <h2 class="text-xl text-center text-gray-400 mb-8">Latest Data: @(_latestPeriod ?? "No Data Available")</h2>
+    <div class="text-center mb-8">
+        <h1 class="title-glow text-3xl md:text-4xl mb-1">@DepartmentName</h1>
+        <p class="font-body" style="color: var(--er-text-dim);">Performance Overview</p>
+        <p class="font-mono text-xs mt-1" style="color: var(--er-text-muted);">@(_latestPeriod ?? "No Data Available")</p>
+        <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 300px;"></div>
+    </div>
 
     @if (_isLoading)
     {
-        <p class="text-center text-gray-500">Loading...</p>
+        <div class="flex flex-col items-center mt-16">
+            <div class="elden-loading-rune mb-4"></div>
+            <p class="font-heading text-sm" style="color: var(--er-gold-dim);">Loading...</p>
+        </div>
     }
     else if (_teamMembers == null || !_teamMembers.Any() || string.IsNullOrEmpty(_latestPeriod))
     {
-         <p class="text-center text-gray-500">No metric data available for the latest period in this department.</p>
+        <p class="text-center font-body" style="color: var(--er-text-muted);">No metric data available for the latest period in this department.</p>
     }
     else
     {
-        <!-- Department Metric Summaries -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            @foreach (var metricKey in GetDisplayableMetricKeys()) // Use helper to get keys
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
+            @foreach (var metricKey in GetDisplayableMetricKeys())
             {
-                 var avgData = _departmentAverages.GetValueOrDefault(metricKey);
-                 var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
-                 var lowPerformer = _lowPerformerNames.GetValueOrDefault(metricKey);
-                 var goal = GetMetricGoal(metricKey); // Helper to get goal
-                 
-                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">@TeamMember.GetMetricDisplayName(metricKey)</h3>
+                var avgData = _departmentAverages.GetValueOrDefault(metricKey);
+                var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
+                var lowPerformer = _lowPerformerNames.GetValueOrDefault(metricKey);
+                var goal = GetMetricGoal(metricKey);
+
+                <div class="elden-panel elden-panel-gold">
+                    <h3 class="font-heading text-sm tracking-wide mb-2" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(metricKey)</h3>
                     <div class="flex justify-between items-baseline mb-3">
                         @{ var statusColor = GetAverageStatusColor(avgData.Average, goal); }
-                        <span class="text-3xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
+                        <span class="font-mono text-2xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
                         @if (goal.HasValue)
                         {
-                            <span class="text-sm text-gray-400">Goal: @FormatMetricValue(goal.Value, metricKey)</span>
+                            <span class="font-body text-xs" style="color: var(--er-text-dim);">Goal: @FormatMetricValue(goal.Value, metricKey)</span>
                         }
                         else if (avgData.Average > 0)
                         {
-                             <span class="text-sm text-gray-400">Avg: @FormatMetricValue(avgData.Average, metricKey)</span>
+                            <span class="font-body text-xs" style="color: var(--er-text-dim);">Avg</span>
                         }
                     </div>
-                    <div class="text-xs text-gray-400 mb-1">Low: @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
-                    <div class="text-xs text-gray-400 mb-3">Best: @(highPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_highPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
-                    
-                    @* --- Progress Bar Moved Here --- *@
+                    <div class="font-body text-xs mb-1" style="color: var(--er-text-dim);">Low: @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+                    <div class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Best: @(highPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_highPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+
                     @if (goal.HasValue && goal.Value > 0)
                     {
-                         double progress = goal.Value > 0 ? (avgData.Average / goal.Value) * 100 : 0;
-                         progress = Math.Clamp(progress, 0, 100);
-                         <div class="w-full bg-gray-600 rounded-full h-2.5 dark:bg-gray-700 mb-1">
-                             <div class="bg-blue-500 h-2.5 rounded-full" style="width: @(progress.ToString("F0", CultureInfo.InvariantCulture))%"></div>
-                         </div>
-                         <div class="text-xs text-right text-gray-400">@progress.ToString("F0")% of goal</div>
+                        double progress = goal.Value > 0 ? (avgData.Average / goal.Value) * 100 : 0;
+                        progress = Math.Clamp(progress, 0, 100);
+                        string barClass = progress >= 100 ? "" : progress >= 75 ? "bar-green" : progress >= 50 ? "bar-blue" : "bar-red";
+                        <div class="elden-progress elden-progress-shimmer mb-1">
+                            <div class="elden-progress-bar @barClass" style="width: @(progress.ToString("F0", CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                        <div class="font-mono text-xs text-right" style="color: var(--er-text-dim);">@progress.ToString("F0")%</div>
                     }
-                    @* --- End Progress Bar --- *@
                 </div>
             }
         </div>
 
-        <!-- Character Cards -->
-        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Team Members</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <!-- Team Member Cards -->
+        <div class="text-center mb-6">
+            <h2 class="font-heading text-2xl" style="color: var(--er-gold);">Team Members</h2>
+            <div class="elden-divider-ornate mx-auto mt-2" style="max-width: 200px;"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 justify-items-center">
             @foreach (var member in _teamMembers.OrderByDescending(m => m.TotalExperience))
             {
                 var strongestAreaInfo = GetStrongestAreaForMember(member);
                 bool isDeptBest = strongestAreaInfo.HasValue && _highPerformerNames.TryGetValue(strongestAreaInfo.Value.MetricKey, out var best) && best?.Contains(member.Name) == true;
-                string cardBorder = isDeptBest ? "border-yellow-500" : "border-gray-700"; // Keep dynamic border
-                string valueColor = isDeptBest ? "text-yellow-400" : "text-white"; // Keep dynamic color
 
-                // --- Reverted Card Structure --- 
-                @* BUG B06: Fallback to "default.png" but file may not exist in wwwroot/images/avatars/ *@
-                <div @key="member.Id" class="character-card cursor-pointer flex-shrink-0 relative bg-gray-800 border-2 @cardBorder rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105 m-2" 
-                     style="width: 200px; height: 320px;" 
+                <div @key="member.Id"
+                     class="elden-character-card @(isDeptBest ? "elden-border-gold" : "")"
+                     style="width: 200px; height: 320px;"
                      @onclick="() => NavigateToMember(member.Id)">
-                    <div class="absolute inset-0 opacity-20 z-0">
-                        <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="@member.Name" class="w-full h-full object-cover" />
+                    <div class="card-bg-avatar">
+                        <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="" class="w-full h-full object-cover" />
                     </div>
-                    
-                    <div class="relative z-10 p-3 flex flex-col h-full justify-between">
-                        <div>
-                            <h3 class="text-xl font-bold text-center mt-2">@member.Name</h3>
-                            <p class="text-yellow-400 text-center text-sm mt-1">@member.Role</p>
+                    <div class="card-content">
+                        <div class="mt-2">
+                            <h3 class="card-name">@member.Name</h3>
+                            <p class="card-title mt-1">@member.Role</p>
                         </div>
 
-                        <div class="pt-4">
-                             <div class="metric-highlight bg-gray-800 bg-opacity-80 border border-gray-600 rounded-md p-3 text-center">
-                                <div class="text-xs text-gray-400">Strongest Area</div>
-                                @if (strongestAreaInfo != null)
-                                {
-                                    <div class="text-sm font-semibold @valueColor">@TeamMember.GetMetricDisplayName(strongestAreaInfo.Value.MetricKey)</div>
-                                    <div class="text-lg font-bold @valueColor">
-                                        @FormatMetricValue(strongestAreaInfo.Value.Value, strongestAreaInfo.Value.MetricKey)
-                                        @if(isDeptBest) { <span class="text-xs ml-1">★</span> }
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="text-sm text-gray-500">N/A</div>
-                                }
-                             </div>
+                        <div class="card-score">
+                            <div class="card-score-label">Strongest Area</div>
+                            @if (strongestAreaInfo != null)
+                            {
+                                <div class="font-body text-xs" style="color: @(isDeptBest ? "var(--er-gold-bright)" : "var(--er-text)");">@TeamMember.GetMetricDisplayName(strongestAreaInfo.Value.MetricKey)</div>
+                                <div class="card-score-value" style="color: @(isDeptBest ? "var(--er-gold-bright)" : "var(--er-text)");">
+                                    @FormatMetricValue(strongestAreaInfo.Value.Value, strongestAreaInfo.Value.MetricKey)
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="font-body text-xs" style="color: var(--er-text-muted);">N/A</div>
+                            }
                         </div>
 
                         <div>
-                             <div class="flex justify-between items-center text-sm mb-1 px-1">
-                                 @{ 
-                                     // Simplified Level Display (can be enhanced later)
-                                     int level = (int)(member.TotalExperience / 100) + 1;
-                                     double xpInLevel = member.TotalExperience % 100;
-                                     double xpForNext = 100;
-                                     double progressPercent = (xpInLevel / xpForNext) * 100;
-                                 }
-                                <span class="font-bold text-purple-400">Level @level</span>
-                                <span class="text-xs text-gray-400">@xpInLevel.ToString("F0") / @xpForNext.ToString("F0") XP</span>
-                             </div>
-                             <div class="h-2 bg-gray-600 bg-opacity-50 rounded-full overflow-hidden mx-1">
-                                 <div class="h-full bg-purple-500 rounded-full" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
-                             </div>
-                         </div>
+                            <div class="flex justify-between items-center text-xs mb-1 px-1">
+                                @{
+                                    int level = (int)(member.TotalExperience / 100) + 1;
+                                    double xpInLevel = member.TotalExperience % 100;
+                                    double progressPercent = (xpInLevel / 100.0) * 100;
+                                }
+                                <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
+                                <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/100</span>
+                            </div>
+                            <div class="elden-xp-bar mx-1">
+                                <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                // --- End Reverted Card Structure --- 
             }
         </div>
     }

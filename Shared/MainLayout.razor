@@ -1,17 +1,22 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 
-<div class="relative min-h-screen bg-gray-900">
-    
-    @* Always render the body - blur it if modal is showing *@
-    <main class="@(_showTermsModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
+<div class="relative min-h-screen" style="background-color: var(--er-bg-primary);">
+    <div class="elden-atmosphere"></div>
+    <canvas id="elden-particles-canvas"></canvas>
+
+    <main class="relative z-10 @(_showTermsModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
         @Body
     </main>
 
     <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
 
-    @* Copyright footer *@
-    <footer class="absolute bottom-2 left-0 w-full text-center text-gray-600 text-xs p-2 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300">
+    <button class="elden-mute-btn" @onclick="ToggleMute" title="@(_isMuted ? "Unmute" : "Mute")">
+        @(_isMuted ? "🔇" : "🔊")
+    </button>
+
+    <footer class="relative z-10 text-center text-xs p-3 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300"
+            style="color: var(--er-text-muted);">
         &copy; @DateTime.Now.Year Drew Carrillo. All Rights Reserved.
     </footer>
 </div>
@@ -19,31 +24,50 @@
 @code {
     private bool _showTermsModal = false;
     private bool _termsChecked = false;
+    private bool _audioInitialized = false;
+    private bool _isMuted = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_termsChecked)
+        if (firstRender)
         {
-            _termsChecked = true;
-            try
+            await JSRuntime.InvokeVoidAsync("eldenParticles.init", "elden-particles-canvas");
+
+            if (!_termsChecked)
             {
-                // Check if terms have been accepted in this session
-                var accepted = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "termsAccepted");
-                
-                if (accepted != "true")
+                _termsChecked = true;
+                try
+                {
+                    var accepted = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "termsAccepted");
+                    if (accepted != "true")
+                    {
+                        _showTermsModal = true;
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        await InitAudio();
+                    }
+                }
+                catch
                 {
                     _showTermsModal = true;
                     StateHasChanged();
                 }
             }
-            catch (Exception ex) 
-            {
-                Console.WriteLine($"Error checking session storage: {ex.Message}");
-                // On error, show terms modal to be safe
-                _showTermsModal = true;
-                StateHasChanged();
-            }
         }
+    }
+
+    private async Task InitAudio()
+    {
+        if (_audioInitialized) return;
+        _audioInitialized = true;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eldenAudio.init");
+            await JSRuntime.InvokeVoidAsync("eldenAudio.startAmbient");
+        }
+        catch { }
     }
 
     private async Task HandleTermsAccepted()
@@ -52,11 +76,19 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "termsAccepted", "true");
+            await InitAudio();
         }
-        catch (Exception ex) 
-        {
-            Console.WriteLine($"Error setting session storage: {ex.Message}");
-        }
+        catch { }
         StateHasChanged();
+    }
+
+    private async Task ToggleMute()
+    {
+        try
+        {
+            _isMuted = await JSRuntime.InvokeAsync<bool>("eldenAudio.toggleMute");
+            StateHasChanged();
+        }
+        catch { }
     }
 }

@@ -2,61 +2,97 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
-<div class="bg-gray-900 min-h-screen text-white">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-yellow-400 text-center mb-12">Select Department</h1>
+<div class="min-h-screen flex flex-col items-center justify-center px-4 py-12" style="background-color: var(--er-bg-primary);">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Store Card (Landscape) -->
-            <div @onclick='() => NavigateTo("/departments/store")' 
-                 class="department-card md:col-span-3 bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
-                <h2 class="text-2xl font-semibold mb-2">Store</h2>
-                <p class="text-gray-400">Overall store performance metrics.</p>
+    <div class="text-center mb-12 animate-fade-in">
+        <h1 class="title-glow text-5xl md:text-6xl mb-3">Team Arena</h1>
+        <p class="font-body text-lg" style="color: var(--er-text-dim); letter-spacing: 0.05em;">
+            Forge your legend through performance
+        </p>
+        <div class="elden-divider-ornate mx-auto mt-6" style="max-width: 400px;"></div>
+    </div>
+
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Team Performance (Boss Gate - Full Width) -->
+        <div @onclick='() => Navigate("/pods")'
+             @onmouseover="PlayHover"
+             class="elden-card elden-card-ornate md:col-span-3 p-8 cursor-pointer text-center group">
+            <div class="elden-corners-inner relative">
+                <h2 class="font-heading text-2xl mb-2 transition-colors duration-300" style="color: var(--er-gold);">
+                    Team Performance
+                </h2>
+                <p class="font-body text-sm" style="color: var(--er-text-dim);">
+                    Individual team KPI tracking with weighted scoring
+                </p>
+                <div class="mt-4 flex justify-center gap-1">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full" style="background: var(--er-gold-dim); opacity: 0.6;"></span>
+                    <span class="inline-block w-1.5 h-1.5 rounded-full" style="background: var(--er-gold); opacity: 0.8;"></span>
+                    <span class="inline-block w-1.5 h-1.5 rounded-full" style="background: var(--er-gold-dim); opacity: 0.6;"></span>
                 </div>
-
-            <!-- Front Card -->
-            <div @onclick='() => NavigateTo("/departments/front")'
-                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
-                <h2 class="text-2xl font-semibold mb-2">Front End</h2>
-                <p class="text-gray-400">Checkout and service metrics.</p>
             </div>
+        </div>
 
-            <!-- Computers Card -->
-            <div @onclick='() => NavigateTo("/departments/computers")'
-                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
-                <h2 class="text-2xl font-semibold mb-2">Computers</h2>
-                <p class="text-gray-400">Sales and performance for the computer department.</p>
+        <!-- Store Card -->
+        <div @onclick='() => Navigate("/departments/store")'
+             @onmouseover="PlayHover"
+             class="elden-card elden-card-ornate md:col-span-3 p-6 cursor-pointer text-center">
+            <div class="elden-corners-inner">
+                <h2 class="font-heading text-xl mb-1" style="color: var(--er-text);">Store</h2>
+                <p class="font-body text-sm" style="color: var(--er-text-dim);">Overall store performance metrics</p>
             </div>
+        </div>
 
-            <!-- Warehouse Card -->
-            <div @onclick='() => NavigateTo("/departments/warehouse")'
-                 class="department-card bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center h-48 flex flex-col justify-center">
-                <h2 class="text-2xl font-semibold mb-2">Warehouse</h2>
-                <p class="text-gray-400">Pick/pack efficiency and accuracy.</p>
+        <!-- Front End Card -->
+        <div @onclick='() => Navigate("/departments/front")'
+             @onmouseover="PlayHover"
+             class="elden-card elden-card-ornate p-6 cursor-pointer text-center h-40 flex flex-col justify-center">
+            <div class="elden-corners-inner h-full flex flex-col justify-center">
+                <h2 class="font-heading text-xl mb-1" style="color: var(--er-text);">Front End</h2>
+                <p class="font-body text-sm" style="color: var(--er-text-dim);">Checkout and service</p>
             </div>
+        </div>
 
-            <!-- Team Performance Card -->
-            <div @onclick='() => NavigateTo("/pods")'
-                 class="department-card md:col-span-3 bg-gray-800 border-2 border-blue-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
-                <h2 class="text-2xl font-semibold mb-2 text-blue-400">Team Performance</h2>
-                <p class="text-gray-400">Individual team KPI tracking with weighted scoring.</p>
+        <!-- Computers Card -->
+        <div @onclick='() => Navigate("/departments/computers")'
+             @onmouseover="PlayHover"
+             class="elden-card elden-card-ornate p-6 cursor-pointer text-center h-40 flex flex-col justify-center">
+            <div class="elden-corners-inner h-full flex flex-col justify-center">
+                <h2 class="font-heading text-xl mb-1" style="color: var(--er-text);">Computers</h2>
+                <p class="font-body text-sm" style="color: var(--er-text-dim);">Sales and performance</p>
             </div>
+        </div>
 
-            <!-- Hidden Weekly Tracker Card -->
-            <div id="weekly-tracker-card" @onclick='() => NavigateTo("/weeklytracker")'
-                 class="hidden department-card md:col-span-3 bg-gray-800 border-2 border-purple-500 rounded-lg p-6 shadow-lg cursor-pointer hover:bg-gray-700 transition-colors text-center">
-                <h2 class="text-2xl font-semibold mb-2 text-purple-400">Weekly Tracker</h2>
-                <p class="text-gray-400">Input and update team metrics.</p>
+        <!-- Warehouse Card -->
+        <div @onclick='() => Navigate("/departments/warehouse")'
+             @onmouseover="PlayHover"
+             class="elden-card elden-card-ornate p-6 cursor-pointer text-center h-40 flex flex-col justify-center">
+            <div class="elden-corners-inner h-full flex flex-col justify-center">
+                <h2 class="font-heading text-xl mb-1" style="color: var(--er-text);">Warehouse</h2>
+                <p class="font-body text-sm" style="color: var(--er-text-dim);">Pick/pack efficiency</p>
             </div>
+        </div>
 
+        <!-- Hidden Weekly Tracker Card -->
+        <div id="weekly-tracker-card" @onclick='() => Navigate("/weeklytracker")'
+             @onmouseover="PlayHover"
+             class="hidden elden-card md:col-span-3 p-6 cursor-pointer text-center" style="border-color: var(--er-purple);">
+            <h2 class="font-heading text-xl mb-1" style="color: var(--er-purple);">Weekly Tracker</h2>
+            <p class="font-body text-sm" style="color: var(--er-text-dim);">Input and update team metrics</p>
         </div>
     </div>
 </div>
 
 @code {
-    private void NavigateTo(string path)
+    private async Task Navigate(string path)
     {
+        try { await JSRuntime.InvokeVoidAsync("eldenAudio.playClick"); } catch { }
         NavigationManager.NavigateTo(path);
+    }
+
+    private async Task PlayHover()
+    {
+        try { await JSRuntime.InvokeVoidAsync("eldenAudio.playHover"); } catch { }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

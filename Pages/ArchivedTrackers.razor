@@ -5,23 +5,23 @@
 @namespace GameScoreboard.Pages
 @inject NavigationManager NavigationManager
 
-<div class="bg-gray-900 min-h-screen text-white p-8">
-    <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-        &lt; Back to Weekly Tracker
-    </button>
+<div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+    <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Weekly Tracker</button>
 
-    <h1 class="text-4xl font-bold text-yellow-400 mb-8 text-center">Archived Metrics</h1>
+    <div class="text-center mb-8">
+        <h1 class="title-glow text-3xl">Archived Metrics</h1>
+        <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 250px;"></div>
+    </div>
 
-    <div class="bg-gray-800 rounded-lg border border-gray-700 p-6 max-w-4xl mx-auto">
-        <h2 class="text-2xl font-semibold text-yellow-400 mb-4">Archived Data</h2>
-        
-        <p class="text-gray-400 mb-4">
+    <div class="elden-panel max-w-4xl mx-auto">
+        <h2 class="font-heading text-xl mb-4" style="color: var(--er-gold);">Archived Data</h2>
+
+        <p class="font-body mb-4" style="color: var(--er-text-dim);">
             This page will display historical metric data that is older than two weeks.
             Functionality to filter by department and period will be added here.
         </p>
 
-        <!-- Placeholder for future filters and data display -->
-        <div class="border border-dashed border-gray-600 rounded p-8 text-center text-gray-500">
+        <div class="p-8 text-center" style="border: 1px dashed var(--er-border); color: var(--er-text-muted);">
             Archived Data Grid/View Will Go Here
         </div>
     </div>

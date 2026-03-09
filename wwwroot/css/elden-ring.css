@@ -1,0 +1,807 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fira+Code:wght@400;500;600&display=swap');
+
+:root {
+    --er-bg-primary: #0a0a0f;
+    --er-bg-secondary: #12121a;
+    --er-bg-card: #1a1a2e;
+    --er-bg-card-hover: #222240;
+    --er-bg-panel: #151520;
+    --er-bg-input: #0d0d15;
+
+    --er-gold: #c8a94e;
+    --er-gold-bright: #e8d282;
+    --er-gold-dim: #8a7535;
+    --er-gold-dark: #5c4e24;
+    --er-gold-muted: #a08c3a;
+
+    --er-red: #8b2020;
+    --er-red-bright: #c43030;
+    --er-green: #2d6b3f;
+    --er-green-bright: #4a9e68;
+    --er-blue: #2a4a7a;
+    --er-blue-bright: #4a7ab8;
+    --er-silver: #8a8a8a;
+    --er-bronze: #a0724a;
+    --er-purple: #6a3a8a;
+
+    --er-text: #e8e6e0;
+    --er-text-dim: #7a7768;
+    --er-text-muted: #4a4840;
+    --er-text-gold: var(--er-gold);
+
+    --er-border: #2a2a3a;
+    --er-border-gold: rgba(200, 169, 78, 0.3);
+    --er-border-gold-bright: rgba(200, 169, 78, 0.6);
+
+    --er-glow-gold: 0 0 15px rgba(200, 169, 78, 0.3);
+    --er-glow-gold-strong: 0 0 25px rgba(200, 169, 78, 0.5), 0 0 50px rgba(200, 169, 78, 0.2);
+    --er-glow-red: 0 0 15px rgba(139, 32, 32, 0.4);
+
+    --er-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --er-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --er-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'EB Garamond', serif;
+    --font-mono: 'Fira Code', monospace;
+}
+
+/* ===== BASE STYLES ===== */
+
+html, body {
+    font-family: var(--font-body);
+    background-color: var(--er-bg-primary);
+    color: var(--er-text);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+::selection {
+    background: rgba(200, 169, 78, 0.3);
+    color: var(--er-gold-bright);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--er-bg-primary);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--er-gold-dark);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--er-gold-dim);
+}
+
+/* ===== TYPOGRAPHY ===== */
+
+.font-heading { font-family: var(--font-heading); }
+.font-body { font-family: var(--font-body); }
+.font-mono { font-family: var(--font-mono); }
+
+.text-gold { color: var(--er-gold) !important; }
+.text-gold-bright { color: var(--er-gold-bright) !important; }
+.text-gold-dim { color: var(--er-gold-dim) !important; }
+.text-rune {
+    font-family: var(--font-heading);
+    color: var(--er-gold);
+    text-shadow: 0 0 10px rgba(200, 169, 78, 0.4);
+    letter-spacing: 0.05em;
+}
+
+.title-glow {
+    font-family: var(--font-heading);
+    color: var(--er-gold-bright);
+    text-shadow:
+        0 0 10px rgba(200, 169, 78, 0.6),
+        0 0 30px rgba(200, 169, 78, 0.3),
+        0 0 60px rgba(200, 169, 78, 0.1);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* ===== ELDEN CARD ===== */
+
+.elden-card {
+    background: linear-gradient(165deg, var(--er-bg-card) 0%, var(--er-bg-primary) 100%);
+    border: 1px solid var(--er-border);
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+}
+
+.elden-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.4s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.elden-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--er-border-gold);
+    box-shadow: var(--er-glow-gold);
+    background: linear-gradient(165deg, var(--er-bg-card-hover) 0%, var(--er-bg-secondary) 100%);
+}
+
+.elden-card:hover::before {
+    border-color: var(--er-border-gold-bright);
+}
+
+/* Ornate corner decorations */
+.elden-card-ornate {
+    position: relative;
+}
+
+.elden-card-ornate::before,
+.elden-card-ornate::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--er-gold-dim);
+    border-style: solid;
+    z-index: 2;
+    transition: border-color 0.4s ease, width 0.4s ease, height 0.4s ease;
+    pointer-events: none;
+}
+
+.elden-card-ornate::before {
+    top: 6px;
+    left: 6px;
+    border-width: 2px 0 0 2px;
+}
+
+.elden-card-ornate::after {
+    bottom: 6px;
+    right: 6px;
+    border-width: 0 2px 2px 0;
+}
+
+.elden-card-ornate:hover::before,
+.elden-card-ornate:hover::after {
+    border-color: var(--er-gold);
+    width: 28px;
+    height: 28px;
+}
+
+/* Additional corners via inner element */
+.elden-corners-inner::before,
+.elden-corners-inner::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--er-gold-dim);
+    border-style: solid;
+    z-index: 2;
+    transition: border-color 0.4s ease, width 0.4s ease, height 0.4s ease;
+    pointer-events: none;
+}
+
+.elden-corners-inner::before {
+    top: 6px;
+    right: 6px;
+    border-width: 2px 2px 0 0;
+}
+
+.elden-corners-inner::after {
+    bottom: 6px;
+    left: 6px;
+    border-width: 0 0 2px 2px;
+}
+
+/* ===== ELDEN BORDER ===== */
+
+.elden-border {
+    border: 1px solid var(--er-border);
+    position: relative;
+}
+
+.elden-border-gold {
+    border: 1px solid var(--er-border-gold);
+}
+
+.elden-border-bright {
+    border: 1px solid var(--er-border-gold-bright);
+    box-shadow: var(--er-glow-gold);
+}
+
+/* ===== GLOW EFFECTS ===== */
+
+.gold-glow {
+    box-shadow: var(--er-glow-gold);
+}
+
+.gold-glow-strong {
+    box-shadow: var(--er-glow-gold-strong);
+}
+
+.gold-glow-text {
+    text-shadow: 0 0 10px rgba(200, 169, 78, 0.5);
+}
+
+/* ===== ELDEN BUTTONS ===== */
+
+.elden-btn {
+    font-family: var(--font-heading);
+    background: linear-gradient(180deg, rgba(200, 169, 78, 0.15) 0%, rgba(200, 169, 78, 0.05) 100%);
+    border: 1px solid var(--er-border-gold);
+    color: var(--er-gold);
+    padding: 0.6rem 1.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.elden-btn:hover {
+    background: linear-gradient(180deg, rgba(200, 169, 78, 0.25) 0%, rgba(200, 169, 78, 0.1) 100%);
+    border-color: var(--er-gold);
+    box-shadow: var(--er-glow-gold);
+    color: var(--er-gold-bright);
+}
+
+.elden-btn:active {
+    transform: scale(0.98);
+}
+
+.elden-btn-primary {
+    background: linear-gradient(180deg, rgba(200, 169, 78, 0.3) 0%, rgba(200, 169, 78, 0.15) 100%);
+    border-color: var(--er-gold);
+}
+
+.elden-btn-danger {
+    border-color: var(--er-red);
+    color: var(--er-red-bright);
+    background: linear-gradient(180deg, rgba(139, 32, 32, 0.15) 0%, rgba(139, 32, 32, 0.05) 100%);
+}
+
+.elden-btn-danger:hover {
+    border-color: var(--er-red-bright);
+    box-shadow: var(--er-glow-red);
+}
+
+/* ===== PROGRESS BARS ===== */
+
+.elden-progress {
+    height: 6px;
+    background: rgba(42, 42, 58, 0.8);
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+}
+
+.elden-progress-bar {
+    height: 100%;
+    border-radius: 1px;
+    background: linear-gradient(90deg, var(--er-gold-dark) 0%, var(--er-gold) 100%);
+    position: relative;
+    transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.elden-progress-bar::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(90deg, transparent, rgba(232, 210, 130, 0.6));
+    filter: blur(2px);
+}
+
+.elden-progress-bar.bar-red {
+    background: linear-gradient(90deg, #5c1a1a 0%, var(--er-red-bright) 100%);
+}
+.elden-progress-bar.bar-red::after {
+    background: linear-gradient(90deg, transparent, rgba(196, 48, 48, 0.6));
+}
+
+.elden-progress-bar.bar-blue {
+    background: linear-gradient(90deg, #1a2a4a 0%, var(--er-blue-bright) 100%);
+}
+
+.elden-progress-bar.bar-green {
+    background: linear-gradient(90deg, #1a3a2a 0%, var(--er-green-bright) 100%);
+}
+
+/* Shimmer animation on progress bars */
+.elden-progress-shimmer .elden-progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 3s infinite;
+}
+
+/* ===== PANELS & SECTIONS ===== */
+
+.elden-panel {
+    background: linear-gradient(180deg, var(--er-bg-panel) 0%, var(--er-bg-primary) 100%);
+    border: 1px solid var(--er-border);
+    border-radius: 2px;
+    padding: 1.5rem;
+}
+
+.elden-panel-gold {
+    border-left: 3px solid var(--er-gold-dim);
+}
+
+.elden-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--er-gold-dim), transparent);
+    margin: 1.5rem 0;
+    border: none;
+}
+
+.elden-divider-ornate {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--er-gold-dark) 20%, var(--er-gold) 50%, var(--er-gold-dark) 80%, transparent 100%);
+    margin: 2rem 0;
+    border: none;
+    position: relative;
+}
+
+.elden-divider-ornate::after {
+    content: '◆';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--er-bg-primary);
+    padding: 0 0.75rem;
+    color: var(--er-gold);
+    font-size: 0.6rem;
+}
+
+/* ===== CHARACTER CARD (Elden Ring Class Select Style) ===== */
+
+.elden-character-card {
+    background: linear-gradient(180deg, #1a1a28 0%, #0e0e18 60%, #0a0a10 100%);
+    border: 1px solid var(--er-border);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: hidden;
+}
+
+.elden-character-card::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgba(200, 169, 78, 0.08);
+    border-radius: 1px;
+    pointer-events: none;
+    transition: border-color 0.5s ease;
+    z-index: 1;
+}
+
+.elden-character-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--er-gold);
+    box-shadow:
+        0 0 20px rgba(200, 169, 78, 0.3),
+        0 15px 40px rgba(0, 0, 0, 0.5),
+        inset 0 0 30px rgba(200, 169, 78, 0.05);
+}
+
+.elden-character-card:hover::before {
+    border-color: rgba(200, 169, 78, 0.25);
+}
+
+.elden-character-card .card-bg-avatar {
+    position: absolute;
+    inset: 0;
+    opacity: 0.12;
+    transition: opacity 0.5s ease;
+    z-index: 0;
+}
+
+.elden-character-card:hover .card-bg-avatar {
+    opacity: 0.2;
+}
+
+.elden-character-card .card-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.elden-character-card .card-name {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    color: var(--er-text);
+    text-align: center;
+    letter-spacing: 0.02em;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.elden-character-card:hover .card-name {
+    color: var(--er-gold-bright);
+    text-shadow: 0 0 8px rgba(200, 169, 78, 0.4);
+}
+
+.elden-character-card .card-title {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    color: var(--er-gold-dim);
+    text-align: center;
+    font-style: italic;
+}
+
+.elden-character-card .card-score {
+    text-align: center;
+    padding: 0.75rem;
+    background: rgba(10, 10, 15, 0.7);
+    border: 1px solid rgba(200, 169, 78, 0.15);
+    border-radius: 2px;
+}
+
+.elden-character-card .card-score-value {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.elden-character-card .card-score-label {
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    color: var(--er-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.25rem;
+}
+
+/* XP bar */
+.elden-xp-bar {
+    height: 4px;
+    background: rgba(42, 42, 58, 0.6);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.elden-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--er-purple) 0%, #9a5aca 100%);
+    border-radius: 1px;
+    transition: width 0.6s ease;
+}
+
+/* ===== LEADERBOARD / RANK ===== */
+
+.elden-rank-gold { color: var(--er-gold-bright); text-shadow: 0 0 10px rgba(200, 169, 78, 0.5); }
+.elden-rank-silver { color: #c0c0c0; text-shadow: 0 0 8px rgba(192, 192, 192, 0.4); }
+.elden-rank-bronze { color: var(--er-bronze); text-shadow: 0 0 8px rgba(160, 114, 74, 0.4); }
+
+.elden-rank-card {
+    background: linear-gradient(165deg, var(--er-bg-card) 0%, var(--er-bg-primary) 100%);
+    border: 1px solid var(--er-border);
+    border-radius: 2px;
+    padding: 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.elden-rank-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--er-glow-gold);
+}
+
+.elden-rank-card.rank-1 { border-color: var(--er-gold); }
+.elden-rank-card.rank-2 { border-color: #808080; }
+.elden-rank-card.rank-3 { border-color: var(--er-bronze); }
+
+/* ===== TABLES (Tracker Pages) ===== */
+
+.elden-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-body);
+}
+
+.elden-table th {
+    background: var(--er-bg-secondary);
+    color: var(--er-gold);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--er-gold-dark);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.elden-table td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--er-border);
+    font-size: 0.9rem;
+    color: var(--er-text);
+}
+
+.elden-table tr:hover td {
+    background: rgba(200, 169, 78, 0.03);
+}
+
+/* ===== INPUTS & FORMS ===== */
+
+.elden-input {
+    background: var(--er-bg-input);
+    border: 1px solid var(--er-border);
+    color: var(--er-text);
+    font-family: var(--font-body);
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    outline: none;
+}
+
+.elden-input:focus {
+    border-color: var(--er-gold-dim);
+    box-shadow: 0 0 8px rgba(200, 169, 78, 0.2);
+}
+
+.elden-select {
+    background: var(--er-bg-input);
+    border: 1px solid var(--er-border);
+    color: var(--er-text);
+    font-family: var(--font-body);
+    padding: 0.5rem 0.75rem;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+/* ===== MODAL (Sealed Door) ===== */
+
+.elden-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in 0.3s ease;
+}
+
+.elden-modal {
+    background: linear-gradient(180deg, var(--er-bg-secondary) 0%, var(--er-bg-primary) 100%);
+    border: 1px solid var(--er-border-gold);
+    border-radius: 2px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: var(--er-glow-gold-strong);
+    animation: modal-enter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.elden-modal-title {
+    font-family: var(--font-heading);
+    color: var(--er-gold);
+    font-size: 1.25rem;
+    text-align: center;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.5rem;
+}
+
+/* ===== NOTIFICATION / MESSAGE ===== */
+
+.elden-notification {
+    background: linear-gradient(180deg, var(--er-bg-card) 0%, var(--er-bg-primary) 100%);
+    border: 1px solid var(--er-border);
+    border-left: 3px solid var(--er-gold);
+    padding: 0.75rem 1rem;
+    border-radius: 2px;
+    font-family: var(--font-body);
+    animation: fade-in-up 0.4s ease;
+}
+
+.elden-notification.success {
+    border-left-color: var(--er-green-bright);
+}
+
+.elden-notification.error {
+    border-left-color: var(--er-red-bright);
+}
+
+/* ===== ATMOSPHERE ===== */
+
+.elden-atmosphere {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(ellipse at 50% 30%, rgba(200, 169, 78, 0.03) 0%, transparent 60%);
+}
+
+.elden-vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* ===== KEYFRAME ANIMATIONS ===== */
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes modal-enter {
+    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes gold-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+}
+
+@keyframes ember-float {
+    0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-100vh) translateX(30px) scale(0.5); opacity: 0; }
+}
+
+@keyframes rune-glow {
+    0%, 100% {
+        text-shadow: 0 0 5px rgba(200, 169, 78, 0.3);
+        filter: brightness(1);
+    }
+    50% {
+        text-shadow: 0 0 15px rgba(200, 169, 78, 0.6), 0 0 30px rgba(200, 169, 78, 0.3);
+        filter: brightness(1.1);
+    }
+}
+
+@keyframes loading-rune-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===== LOADING SCREEN ===== */
+
+.elden-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: var(--er-bg-primary);
+    color: var(--er-text-dim);
+    font-family: var(--font-heading);
+}
+
+.elden-loading-rune {
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--er-gold-dark);
+    border-top-color: var(--er-gold);
+    border-radius: 50%;
+    animation: loading-rune-spin 1.5s linear infinite;
+    margin-bottom: 1.5rem;
+}
+
+.elden-loading-text {
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+    animation: gold-pulse 2s ease infinite;
+    color: var(--er-gold-dim);
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+.animate-fade-in {
+    animation: fade-in 0.8s ease forwards;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.6s ease forwards;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+    .elden-character-card {
+        width: 160px !important;
+        height: 260px !important;
+    }
+
+    .title-glow {
+        font-size: 1.5rem;
+    }
+}
+
+/* ===== REDUCED MOTION ===== */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===== MUTE BUTTON ===== */
+
+.elden-mute-btn {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9998;
+    background: rgba(10, 10, 15, 0.8);
+    border: 1px solid var(--er-border);
+    color: var(--er-text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.elden-mute-btn:hover {
+    border-color: var(--er-gold-dim);
+    color: var(--er-gold);
+}
+
+/* ===== PARTICLE CANVAS ===== */
+
+#elden-particles-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}

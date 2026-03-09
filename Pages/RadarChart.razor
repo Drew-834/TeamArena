@@ -5,32 +5,49 @@
     @if (Labels != null && NormalizedData != null && Labels.Count > 2 && NormalizedData.Count == Labels.Count)
     {
         <svg width="@Width" height="@Height" viewBox="0 0 250 250" class="radar-chart">
-            <!-- Grid (scaled to 150 max) -->
+            <defs>
+                <radialGradient id="goldFill" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(200, 169, 78, 0.25)" />
+                    <stop offset="100%" stop-color="rgba(200, 169, 78, 0.05)" />
+                </radialGradient>
+                <filter id="goldGlow">
+                    <feGaussianBlur stdDeviation="2" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <!-- Ornate outer ring -->
+            <circle cx="125" cy="125" r="108" fill="none" stroke="rgba(200,169,78,0.15)" stroke-width="1" />
+            <circle cx="125" cy="125" r="110" fill="none" stroke="rgba(200,169,78,0.08)" stroke-width="0.5" stroke-dasharray="3,3" />
+
+            <!-- Grid lines -->
             <g class="grid-lines">
                 @for (int i = 1; i <= 5; i++)
                 {
-                    var points = GetPolygonPoints(i * 20); // 5 lines, up to 100%
-                    <polygon points="@points" 
-                             fill="none" 
-                             stroke="#555555" 
-                             stroke-width="0.5" 
-                             stroke-opacity="0.7" />
+                    var points = GetPolygonPoints(i * 20);
+                    var opacity = (0.15 + i * 0.06).ToString("F2");
+                    <polygon points="@points"
+                             fill="none"
+                             stroke="rgba(200,169,78,@opacity)"
+                             stroke-width="0.5" />
                 }
             </g>
 
-            <!-- Axis Lines -->
+            <!-- Axis lines -->
             @for (int i = 0; i < Labels.Count; i++)
             {
                 var x2 = GetAxisEndX(i);
                 var y2 = GetAxisEndY(i);
-                <line x1="125" y1="125" 
-                      x2="@x2" y2="@y2" 
-                      stroke="#666666" 
-                      stroke-width="0.7" 
-                      stroke-opacity="0.7" />
+                <line x1="125" y1="125"
+                      x2="@x2" y2="@y2"
+                      stroke="rgba(200,169,78,0.2)"
+                      stroke-width="0.7" />
             }
 
-            <!-- Metric Labels -->
+            <!-- Metric labels -->
             @for (int i = 0; i < Labels.Count; i++)
             {
                 var x = GetLabelX(i);
@@ -40,38 +57,44 @@
                 var metricName = GetMetricShortName(Labels[i]);
 
                 <g>
-                    <text x="@x" 
-                          y="@y" 
-                          font-size="10" 
-                          fill="#a3a3a3" 
-                          text-anchor="@anchor" 
+                    <text x="@x" y="@y"
+                          font-size="9"
+                          fill="#c8a94e"
+                          font-family="'EB Garamond', serif"
+                          text-anchor="@anchor"
                           dominant-baseline="@baseline">@metricName</text>
                 </g>
             }
 
-            <!-- Data Polygon -->
-            <polygon points="@GetDataPoints()" 
-                     fill="rgba(255, 193, 7, 0.1)" 
-                     stroke="#ffc107" 
-                     stroke-width="2" />
+            <!-- Data polygon with golden gradient -->
+            <polygon points="@GetDataPoints()"
+                     fill="url(#goldFill)"
+                     stroke="#c8a94e"
+                     stroke-width="1.5"
+                     filter="url(#goldGlow)" />
 
-            <!-- Data Points -->
+            <!-- Data points as golden orbs -->
             @for (int i = 0; i < Labels.Count; i++)
             {
                 var cx = GetDataPointX(i);
                 var cy = GetDataPointY(i);
-                <circle cx="@cx" 
-                        cy="@cy" 
-                        r="3" 
-                        fill="rgba(255, 193, 7, 0.4)" />
+                <circle cx="@cx" cy="@cy" r="4"
+                        fill="rgba(200,169,78,0.8)"
+                        stroke="#e8d282"
+                        stroke-width="1">
+                    <animate attributeName="r" values="3;4.5;3" dur="3s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite" />
+                </circle>
             }
+
+            <!-- Center point -->
+            <circle cx="125" cy="125" r="2" fill="rgba(200,169,78,0.3)" />
         </svg>
     }
     else
     {
-        <!-- Optional: Placeholder if data is insufficient -->
-        <div style="width:@Width; height:@Height; display:flex; align-items:center; justify-content:center; color:#555;">
-             <p>Chart data not available.</p>
+        <div style="width:@Width; height:@Height; display:flex; align-items:center; justify-content:center; color: var(--er-text-muted);">
+            <p class="font-body">Chart data not available.</p>
         </div>
     }
 </div>
@@ -80,16 +103,11 @@
     [Parameter] public string CssClass { get; set; } = "";
     [Parameter] public string Width { get; set; } = "250px";
     [Parameter] public string Height { get; set; } = "250px";
-
-    // New Parameters
     [Parameter] public List<string>? Labels { get; set; }
     [Parameter] public List<double>? NormalizedData { get; set; }
 
     private string ChartId = $"radar-chart-{Guid.NewGuid()}";
-
-    // Scale Factor: Map 100% normalized score to radius 100.
-    // Scores > 100 will extend beyond the main grid.
-    private double RadiusScaleFactor => 100.0 / 100.0; // Now 1.0
+    private double RadiusScaleFactor => 100.0 / 100.0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -99,15 +117,11 @@
         }
     }
 
-    // --- SVG Calculation Helpers (Adjusted for new parameters and scaling) --- 
-
     private string GetPolygonPoints(int radius)
     {
-        // Grid lines now represent 20, 40, 60, 80, 100 percent/score
         if (Labels == null || !Labels.Any()) return "";
         var points = new List<string>();
         int count = Labels.Count;
-
         for (int i = 0; i < count; i++)
         {
             double angle = 2 * Math.PI * i / count - Math.PI / 2;
@@ -122,9 +136,7 @@
     {
         if (Labels == null || NormalizedData == null || Labels.Count != NormalizedData.Count) return "";
         var points = new List<string>();
-        int count = Labels.Count;
-
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < Labels.Count; i++)
         {
             var x = GetDataPointX(i);
             var y = GetDataPointY(i);
@@ -138,9 +150,7 @@
         if (Labels == null || NormalizedData == null || index >= Labels.Count) return 125;
         int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        double normalizedValue = NormalizedData[index]; 
-        // Use the scale factor directly, score is already capped at 100
-        double radius = normalizedValue * RadiusScaleFactor; 
+        double radius = NormalizedData[index] * RadiusScaleFactor;
         return 125 + radius * Math.Cos(angle);
     }
 
@@ -149,42 +159,40 @@
         if (Labels == null || NormalizedData == null || index >= Labels.Count) return 125;
         int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        double normalizedValue = NormalizedData[index]; 
-         // Use the scale factor directly, score is already capped at 100
-        double radius = normalizedValue * RadiusScaleFactor; 
+        double radius = NormalizedData[index] * RadiusScaleFactor;
         return 125 + radius * Math.Sin(angle);
     }
 
     private double GetAxisEndX(int index)
     {
-         if (Labels == null || !Labels.Any()) return 125;
-         int count = Labels.Count;
+        if (Labels == null || !Labels.Any()) return 125;
+        int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        return 125 + 100 * Math.Cos(angle); // Max radius of 100
+        return 125 + 100 * Math.Cos(angle);
     }
 
     private double GetAxisEndY(int index)
     {
-         if (Labels == null || !Labels.Any()) return 125;
-         int count = Labels.Count;
+        if (Labels == null || !Labels.Any()) return 125;
+        int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        return 125 + 100 * Math.Sin(angle); // Max radius of 100
+        return 125 + 100 * Math.Sin(angle);
     }
 
     private double GetLabelX(int index)
     {
-         if (Labels == null || !Labels.Any()) return 125;
-         int count = Labels.Count;
+        if (Labels == null || !Labels.Any()) return 125;
+        int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        return 125 + 115 * Math.Cos(angle); // Offset labels slightly outside grid
+        return 125 + 115 * Math.Cos(angle);
     }
 
     private double GetLabelY(int index)
     {
-         if (Labels == null || !Labels.Any()) return 125;
-         int count = Labels.Count;
+        if (Labels == null || !Labels.Any()) return 125;
+        int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
-        return 125 + 115 * Math.Sin(angle); // Offset labels slightly outside grid
+        return 125 + 115 * Math.Sin(angle);
     }
 
     private string GetTextAnchor(int index)
@@ -193,7 +201,6 @@
         int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
         double x = Math.Cos(angle);
-
         if (Math.Abs(x) < 0.3) return "middle";
         return x > 0 ? "start" : "end";
     }
@@ -204,16 +211,14 @@
         int count = Labels.Count;
         double angle = 2 * Math.PI * index / count - Math.PI / 2;
         double y = Math.Sin(angle);
-
         if (Math.Abs(y) < 0.3) return "middle";
         return y > 0 ? "hanging" : "auto";
     }
 
     private string GetMetricShortName(string metricName)
     {
-         // Simple shortening logic (take first word or abbreviation)
-         if (metricName.Contains(" ")) return metricName.Split(' ')[0];
-         if (metricName.Length > 6) return metricName.Substring(0, 4) + "."; // Shorten further
-         return metricName;
+        if (metricName.Contains(" ")) return metricName.Split(' ')[0];
+        if (metricName.Length > 6) return metricName.Substring(0, 4) + ".";
+        return metricName;
     }
 }

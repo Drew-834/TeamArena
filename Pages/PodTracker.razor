@@ -10,129 +10,113 @@
 @inject IJSRuntime JSRuntime
 @inject AppState AppState
 
-<div class="bg-gray-900 min-h-screen text-white p-8">
+<div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
 
     @if (!_isAuthenticated)
     {
-        <div id="password-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-500 @(_showPasswordModal ? "opacity-100" : "opacity-0 pointer-events-none")">
-            <div class="bg-gray-800 p-8 rounded-lg shadow-xl border border-purple-500 transform transition-transform duration-300 ease-out @(_showPasswordModal ? "scale-100 opacity-100" : "scale-95 opacity-0")">
-                <h2 class="text-2xl font-bold text-purple-400 mb-4">Enter Admin Password</h2>
+        <div id="password-modal" class="elden-modal-backdrop @(_showPasswordModal ? "" : "hidden")">
+            <div class="elden-modal">
+                <h2 class="elden-modal-title">Sealed Passage</h2>
+                <div class="elden-divider-ornate mb-4"></div>
                 <div class="mb-4">
                     <input type="password" @bind="PasswordInputValue" @bind:event="oninput" @onkeydown="HandlePasswordKeydown"
-                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
+                           class="elden-input w-full"
                            placeholder="Password" />
                 </div>
                 @if (!string.IsNullOrEmpty(_passwordError))
                 {
-                    <p class="text-red-500 text-sm mb-4">@_passwordError</p>
+                    <p class="text-sm mb-4" style="color: var(--er-red-bright);">@_passwordError</p>
                 }
-                <button @onclick="CheckPassword"
-                        class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-semibold transition-colors">
-                    Authenticate
-                </button>
+                <button @onclick="CheckPassword" class="elden-btn elden-btn-primary w-full text-center">Authenticate</button>
             </div>
         </div>
     }
     else
     {
-        <h1 class="text-4xl font-bold text-yellow-400 mb-8">Team Metrics Tracker</h1>
-        <button @onclick="NavigateBack" class="absolute top-4 left-4 px-4 py-2 bg-gray-700 text-yellow-400 rounded font-semibold hover:bg-gray-600 transition-colors z-10">
-            &lt; Back to Teams
-        </button>
+        <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Teams</button>
+        <h1 class="font-heading text-3xl mb-6" style="color: var(--er-gold);">Team Metrics Tracker</h1>
 
-        <!-- Import Section -->
-        <div class="mb-8 p-5 bg-gray-800 rounded-lg border border-gray-700">
-            <h2 class="text-xl font-semibold text-yellow-400 mb-4">Import Team Tracker Data</h2>
+        <div class="mb-8 elden-panel">
+            <h2 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Import Team Tracker Data</h2>
 
             <div class="flex flex-wrap gap-4 mb-4 items-end">
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">Upload Date</label>
-                    <div class="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-yellow-400 font-semibold">
+                    <label class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">Upload Date</label>
+                    <div class="px-4 py-2 font-mono font-semibold" style="background: var(--er-bg-card); border: 1px solid var(--er-border); color: var(--er-gold);">
                         @_selectedPeriod
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 pb-2">Period is auto-set to today's date. Data will be backed up automatically on save.</p>
+                <p class="text-xs pb-2" style="color: var(--er-text-muted);">Period is auto-set to today's date.</p>
             </div>
 
             <div class="mb-3">
-                <label class="block text-sm font-medium text-gray-300 mb-1">
+                <label class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">
                     Paste Full Excel Sheet
-                    <span class="text-gray-500">(copy all rows from the team tracker including team headers)</span>
+                    <span style="color: var(--er-text-muted);">(copy all rows including team headers)</span>
                 </label>
                 <textarea @bind="_pastedData" @bind:event="oninput" rows="10"
-                          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500"
-                          placeholder="Select all data in the Excel tracker (Ctrl+A) and paste here (Ctrl+V)...&#10;&#10;The parser will auto-detect:&#10;  - Team section headers (Matt-Category Advisors, etc.)&#10;  - Employee names and all KPI columns&#10;  - New teams and new advisors"></textarea>
+                          class="elden-input w-full font-mono text-sm"
+                          placeholder="Select all data in the Excel tracker (Ctrl+A) and paste here (Ctrl+V)..."></textarea>
             </div>
 
             <div class="flex items-center gap-4">
-                <button @onclick="HandlePastedData" disabled="@_isParsing"
-                        class="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors">
+                <button @onclick="HandlePastedData" disabled="@_isParsing" class="elden-btn elden-btn-primary">
                     @(_isParsing ? "Processing..." : "Process Pasted Data")
                 </button>
-
                 @if (!string.IsNullOrEmpty(_uploadStatusMessage))
                 {
-                    <span class="text-sm @(_uploadSuccess ? "text-green-400" : "text-red-400")">@_uploadStatusMessage</span>
+                    <span class="text-sm" style="color: @(_uploadSuccess ? "var(--er-green-bright)" : "var(--er-red-bright)");">@_uploadStatusMessage</span>
                 }
             </div>
 
-            @* Parse Results Panel *@
             @if (_parseResults != null && _parseResults.Any())
             {
-                <div class="mt-5 p-4 bg-gray-700 rounded-lg border border-gray-600">
-                    <h3 class="text-lg font-semibold text-yellow-400 mb-3">Parse Results</h3>
+                <div class="mt-5 p-4 rounded-lg" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">
+                    <h3 class="font-heading text-sm mb-3" style="color: var(--er-gold);">Parse Results</h3>
 
-                    <div class="flex flex-wrap gap-3 mb-4">
-                        <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                            <span class="text-yellow-400 font-bold">@_parseResults.Count</span> teams detected
-                        </span>
-                        <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                            <span class="text-green-400 font-bold">@_parseResults.Sum(r => r.MatchedMembers.Count)</span> matched
-                        </span>
+                    <div class="flex flex-wrap gap-3 mb-4 font-mono text-sm">
+                        <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-gold);">@_parseResults.Count</span> teams</span>
+                        <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-green-bright);">@_parseResults.Sum(r => r.MatchedMembers.Count)</span> matched</span>
                         @{ var newCount = _parseResults.Sum(r => r.NewMembers.Count); }
                         @if (newCount > 0)
                         {
-                            <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                                <span class="text-blue-400 font-bold">@newCount</span> new members created
-                            </span>
+                            <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-blue-bright);">@newCount</span> new</span>
                         }
                         @{ var unmatchedCount = _parseResults.Sum(r => r.UnmatchedNames.Count); }
                         @if (unmatchedCount > 0)
                         {
-                            <span class="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                                <span class="text-orange-400 font-bold">@unmatchedCount</span> unmatched
-                            </span>
+                            <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-bronze);">@unmatchedCount</span> unmatched</span>
                         }
                     </div>
 
                     @foreach (var pod in _parseResults)
                     {
-                        <div class="mb-2 p-3 bg-gray-800 rounded cursor-pointer hover:bg-gray-750"
+                        <div class="mb-2 p-3 rounded cursor-pointer" style="background: var(--er-bg-primary); border: 1px solid var(--er-border);"
                              @onclick="() => SelectPodFromResults(pod.SystemName)">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="@(pod.IsNew ? "text-blue-400" : "text-green-400") text-lg">@(pod.IsNew ? "★" : "✓")</span>
+                                <span style="color: @(pod.IsNew ? "var(--er-blue-bright)" : "var(--er-green-bright)");" class="text-lg">@(pod.IsNew ? "★" : "✓")</span>
                                 <span class="font-semibold">@pod.ExcelName</span>
                                 @if (pod.ExcelName != pod.SystemName)
                                 {
-                                    <span class="text-gray-500">→</span>
-                                    <span class="text-yellow-400">@pod.SystemName</span>
+                                    <span style="color: var(--er-text-muted);">→</span>
+                                    <span style="color: var(--er-gold);">@pod.SystemName</span>
                                 }
                                 @if (pod.IsNew)
                                 {
-                                    <span class="text-xs bg-blue-600 px-2 py-0.5 rounded">NEW TEAM</span>
+                                    <span class="text-xs px-2 py-0.5 rounded" style="background: var(--er-blue); color: var(--er-text);">NEW TEAM</span>
                                 }
-                                <span class="text-gray-400 text-sm ml-auto">
+                                <span class="text-sm ml-auto" style="color: var(--er-text-dim);">
                                     @(pod.MatchedMembers.Count + pod.NewMembers.Count) members
-                                    @if (pod.NewMembers.Any()) { <span class="text-blue-400">(@pod.NewMembers.Count new)</span> }
+                                    @if (pod.NewMembers.Any()) { <span style="color: var(--er-blue-bright);">(@pod.NewMembers.Count new)</span> }
                                 </span>
                             </div>
                             @if (pod.NewMembers.Any())
                             {
-                                <div class="text-xs text-blue-300 mt-1 ml-7">New: @string.Join(", ", pod.NewMembers)</div>
+                                <div class="text-xs mt-1 ml-7" style="color: var(--er-blue-bright);">New: @string.Join(", ", pod.NewMembers)</div>
                             }
                             @if (pod.UnmatchedNames.Any())
                             {
-                                <div class="text-xs text-orange-300 mt-1 ml-7">Could not match: @string.Join(", ", pod.UnmatchedNames)</div>
+                                <div class="text-xs mt-1 ml-7" style="color: var(--er-bronze);">Could not match: @string.Join(", ", pod.UnmatchedNames)</div>
                             }
                         </div>
                     }
@@ -140,12 +124,12 @@
                     @if (_parseLog.Any())
                     {
                         <details class="mt-3">
-                            <summary class="text-sm text-gray-400 cursor-pointer hover:text-gray-200">Detailed parse log (@_parseLog.Count entries)</summary>
-                            <div class="mt-2 p-3 bg-gray-900 rounded text-xs font-mono max-h-48 overflow-y-auto space-y-0.5">
+                            <summary class="text-sm cursor-pointer" style="color: var(--er-text-dim);">Detailed parse log (@_parseLog.Count entries)</summary>
+                            <div class="mt-2 p-3 rounded text-xs font-mono max-h-48 overflow-y-auto space-y-0.5" style="background: var(--er-bg-primary);">
                                 @foreach (var log in _parseLog)
                                 {
-                                    string logClass = log.StartsWith("⚠") ? "text-yellow-400" : log.StartsWith("★") ? "text-blue-400" : log.StartsWith("✗") ? "text-red-400" : "text-green-400";
-                                    <div class="@logClass">@log</div>
+                                    string logColor = log.StartsWith("⚠") ? "var(--er-gold)" : log.StartsWith("★") ? "var(--er-blue-bright)" : log.StartsWith("✗") ? "var(--er-red-bright)" : "var(--er-green-bright)";
+                                    <div style="color: @logColor;">@log</div>
                                 }
                             </div>
                         </details>
@@ -154,33 +138,28 @@
                     @if (_parsedPodData.Any())
                     {
                         <div class="mt-4 flex gap-3">
-                            <button @onclick="SaveAllPods" disabled="@_isSaving"
-                                    class="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white rounded-lg font-semibold transition-colors">
+                            <button @onclick="SaveAllPods" disabled="@_isSaving" class="elden-btn elden-btn-primary">
                                 @(_isSaving ? "Saving All..." : $"Save All {_parsedPodData.Count} Teams")
                             </button>
-                            <button @onclick="ClearParseResults"
-                                    class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg text-sm transition-colors">
-                                Clear Results
-                            </button>
+                            <button @onclick="ClearParseResults" class="elden-btn">Clear Results</button>
                         </div>
                     }
                 </div>
             }
         </div>
 
-        <!-- Data Grid Section -->
         <div class="flex flex-col md:flex-row gap-8">
             <div class="flex-grow md:w-3/4">
-                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4 overflow-x-auto">
+                <div class="elden-panel overflow-x-auto">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-xl font-semibold text-yellow-400">
+                        <h2 class="font-heading text-lg" style="color: var(--er-gold);">
                             @(_selectedPod ?? "Select a Team")
                             @if (_parsedPodData.ContainsKey(_selectedPod ?? ""))
                             {
-                                <span class="text-sm text-green-400 ml-2">(data loaded)</span>
+                                <span class="text-sm ml-2" style="color: var(--er-green-bright);">(data loaded)</span>
                             }
                         </h2>
-                        <select class="px-3 py-1 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-yellow-500 text-sm" @onchange="OnPodChanged">
+                        <select class="elden-select text-sm" @onchange="OnPodChanged">
                             <option value="">Select Team...</option>
                             @foreach (var pod in _pods)
                             {
@@ -189,37 +168,37 @@
                         </select>
                     </div>
 
-                    <div class="mb-3 flex flex-wrap gap-2 text-xs">
-                        <span class="px-2 py-1 bg-gray-700 rounded">RPH: <strong class="text-yellow-400">7</strong></span>
-                        <span class="px-2 py-1 bg-gray-700 rounded">App Eff: <strong class="text-yellow-400">7</strong></span>
-                        <span class="px-2 py-1 bg-gray-700 rounded">PM Eff: <strong class="text-yellow-400">5</strong></span>
-                        <span class="px-2 py-1 bg-gray-700 rounded">Warranty: <strong class="text-yellow-400">5</strong></span>
-                        <span class="px-2 py-1 bg-gray-700 rounded">Acc Attach: <strong class="text-yellow-400">5</strong></span>
-                        <span class="px-2 py-1 bg-gray-700 rounded">Surveys: <strong class="text-yellow-400">3</strong></span>
+                    <div class="mb-3 flex flex-wrap gap-2 text-xs font-mono">
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">RPH: <strong style="color: var(--er-gold);">7</strong></span>
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">App Eff: <strong style="color: var(--er-gold);">7</strong></span>
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">PM Eff: <strong style="color: var(--er-gold);">5</strong></span>
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Warranty: <strong style="color: var(--er-gold);">5</strong></span>
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Acc Attach: <strong style="color: var(--er-gold);">5</strong></span>
+                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Surveys: <strong style="color: var(--er-gold);">3</strong></span>
                     </div>
 
                     @if (_currentPodMembers != null && _currentPodMembers.Any() && !string.IsNullOrEmpty(_selectedPod))
                     {
-                        <table class="w-full min-w-[900px] border-collapse">
+                        <table class="elden-table min-w-[900px]">
                             <thead>
-                                <tr class="bg-gray-700">
-                                    <th class="p-3 text-left sticky left-0 bg-gray-700 z-10">Name</th>
+                                <tr>
+                                    <th class="text-left sticky left-0 z-10" style="background: var(--er-bg-secondary);">Name</th>
                                     @foreach (var metricKey in _podMetricKeys)
                                     {
-                                        <th class="p-3 text-center">@TeamMember.GetMetricDisplayName(metricKey)</th>
+                                        <th class="text-center">@TeamMember.GetMetricDisplayName(metricKey)</th>
                                     }
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var member in _currentPodMembers.OrderBy(m => m.Name))
                                 {
-                                    <tr class="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
-                                        <td class="p-3 font-medium sticky left-0 bg-gray-800 hover:bg-gray-700/50 z-10">@member.Name</td>
+                                    <tr>
+                                        <td class="font-medium sticky left-0 z-10" style="background: var(--er-bg-panel);">@member.Name</td>
                                         @foreach (var metricKey in _podMetricKeys)
                                         {
                                             <td>
                                                 <input type="text"
-                                                       class="w-full px-2 py-1 bg-gray-600 border border-gray-500 rounded focus:outline-none focus:border-yellow-500 focus:bg-gray-500 text-center"
+                                                       class="elden-input w-full text-center font-mono"
                                                        placeholder="-"
                                                        @bind="_inputValues[member.Id][metricKey]"
                                                        @bind:event="oninput" />
@@ -232,47 +211,43 @@
                     }
                     else if (!string.IsNullOrEmpty(_selectedPod))
                     {
-                        <p class="text-gray-500">No team members found for this team.</p>
+                        <p class="font-body" style="color: var(--er-text-muted);">No team members found for this team.</p>
                     }
                     else
                     {
-                        <p class="text-gray-500">Select a team above or paste data to get started.</p>
+                        <p class="font-body" style="color: var(--er-text-muted);">Select a team above or paste data to get started.</p>
                     }
                 </div>
 
                 <div class="mt-6 flex items-center justify-end gap-4">
-                    <button @onclick="SaveMetrics" disabled="@(_isSaving || string.IsNullOrEmpty(_selectedPod))"
-                            class="px-6 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 rounded font-semibold transition-colors">
+                    <button @onclick="SaveMetrics" disabled="@(_isSaving || string.IsNullOrEmpty(_selectedPod))" class="elden-btn elden-btn-primary">
                         @(_isSaving ? "Saving..." : "Save Current Team")
                     </button>
-                    <button @onclick="ClearInputs" class="text-sm text-gray-400 hover:text-gray-200 underline focus:outline-none">
-                        Clear Inputs
-                    </button>
+                    <button @onclick="ClearInputs" class="text-sm underline" style="color: var(--er-text-dim);">Clear Inputs</button>
                 </div>
                 @if (!string.IsNullOrEmpty(_saveSuccessMessage))
                 {
-                    <div class="mt-3 p-2 bg-green-800 border border-green-600 text-green-200 rounded text-sm text-right">@_saveSuccessMessage</div>
+                    <div class="elden-notification success mt-3 text-sm">@_saveSuccessMessage</div>
                 }
                 @if (!string.IsNullOrEmpty(_saveError))
                 {
-                    <p class="text-red-500 text-sm mt-2 text-right">@_saveError</p>
+                    <div class="elden-notification error mt-2 text-sm">@_saveError</div>
                 }
             </div>
 
-            <!-- Right Side Panel: Team Rankings -->
-            <div class="md:w-1/4 bg-gray-800 rounded-lg border border-gray-700 p-6 self-start sticky top-8">
-                <h2 class="text-2xl font-semibold text-yellow-400 mb-4 border-b border-gray-700 pb-2">Team Rankings</h2>
+            <div class="md:w-1/4 elden-panel self-start sticky top-8">
+                <h2 class="font-heading text-xl mb-4 pb-2" style="color: var(--er-gold); border-bottom: 1px solid var(--er-gold-dark);">Team Rankings</h2>
                 @if (_podRankings != null && _podRankings.Any())
                 {
                     <div class="space-y-4">
                         @foreach (var kvp in _podRankings.OrderBy(kv => kv.Key))
                         {
                             <div>
-                                <h4 class="font-semibold text-gray-300 mb-1 text-sm">@kvp.Key</h4>
-                                <ul class="space-y-1 text-sm">
+                                <h4 class="font-heading text-xs mb-1" style="color: var(--er-text);">@kvp.Key</h4>
+                                <ul class="space-y-1 text-sm font-body">
                                     @foreach (var rm in kvp.Value.Take(5))
                                     {
-                                        <li class="flex justify-between items-center @(rm.Rank == 1 ? "text-yellow-400" : rm.Rank <= 3 ? "text-gray-200" : "text-gray-400")">
+                                        <li class="flex justify-between items-center" style="color: @(rm.Rank == 1 ? "var(--er-gold-bright)" : rm.Rank <= 3 ? "var(--er-text)" : "var(--er-text-dim)");">
                                             <span>@rm.Rank. @rm.Name</span>
                                             <span class="font-mono text-xs">@rm.Score.ToString("F0")</span>
                                         </li>
@@ -284,7 +259,7 @@
                 }
                 else
                 {
-                    <p class="text-gray-500 italic">No ranking data yet.</p>
+                    <p class="font-body italic" style="color: var(--er-text-muted);">No ranking data yet.</p>
                 }
             </div>
         </div>

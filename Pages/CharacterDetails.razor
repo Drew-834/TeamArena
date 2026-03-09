@@ -12,190 +12,170 @@
    across CharacterDetails, DepartmentOverview, and WeeklyTracker.
    TODO: Extract to a shared utility class in Services/ *@
 
-<div class="bg-gray-900 min-h-screen text-white">
-    <div class="container mx-auto px-4 py-8">
+<div class="min-h-screen px-4 py-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+    <div class="container mx-auto max-w-6xl">
         @if (_teamMember == null)
         {
-            <div class="text-center py-12">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
-                <p class="mt-2">Loading champion data...</p>
+            <div class="flex flex-col items-center justify-center mt-20">
+                <div class="elden-loading-rune mb-4"></div>
+                <p class="font-heading text-sm" style="color: var(--er-gold-dim);">Loading champion data...</p>
             </div>
         }
         else
         {
-            <div class="mb-4">
-                <button @onclick="NavigateBack" class="flex items-center text-yellow-400 hover:text-yellow-300 transition-colors duration-200">
-                    <span class="mr-2">←</span> @(IsPodMember() ? "Back to Team" : "Back to Champions")
-                </button>
-            </div>
+            <button @onclick="NavigateBack" class="elden-btn mb-6">
+                &larr; @(IsPodMember() ? "Back to Team" : "Back to Champions")
+            </button>
 
-            <div @ref="detailsContainer" id="character-details-container" class="bg-gray-800 border-2 border-yellow-500 rounded-lg overflow-hidden shadow-lg relative">
-                <!-- Full-size background avatar with low opacity -->
+            <div @ref="detailsContainer" id="character-details-container"
+                 class="elden-card elden-card-ornate overflow-hidden relative" style="border-color: var(--er-border-gold);">
                 <div class="absolute top-0 right-0 w-1/2 h-full opacity-10 z-0">
                     @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
                     {
                         <img src="@_teamMember.AvatarUrl" alt="" class="w-full h-full object-cover" />
                     }
-                    else
-                    {
-                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-9xl font-bold text-gray-600">
-                            @_teamMember.Name[0]
-                        </div>
-                    }
                 </div>
-                
-                <div class="p-6 flex flex-col md:flex-row relative z-10">
-                    <!-- Metrics Section - Left Side -->
+
+                <div class="elden-corners-inner p-6 flex flex-col md:flex-row relative z-10">
+                    <!-- Metrics Section - Left -->
                     <div class="md:w-3/5 pr-8">
                         <div class="flex items-center mb-6">
                             <div class="mr-4">
-                                <div class="rounded-full overflow-hidden w-16 h-16 bg-gray-700 border-2 border-yellow-400">
+                                <div class="rounded-full overflow-hidden w-16 h-16" style="border: 2px solid var(--er-gold-dim); background: var(--er-bg-card);">
                                     @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
                                     {
                                         <img src="@_teamMember.AvatarUrl" alt="@_teamMember.Name" class="w-full h-full object-cover" />
                                     }
                                     else
                                     {
-                                        <div class="w-full h-full flex items-center justify-center bg-gray-700 text-2xl font-bold">
+                                        <div class="w-full h-full flex items-center justify-center font-heading text-2xl font-bold" style="color: var(--er-gold-dim);">
                                             @_teamMember.Name[0]
                                         </div>
                                     }
                                 </div>
                             </div>
                             <div>
-                                <h1 class="text-3xl font-bold">@_teamMember.Name</h1>
-                                <p class="text-xl text-yellow-400">@_teamMember.GetChampionTitle(_allTeamMembers)</p>
+                                <h1 class="font-heading text-3xl" style="color: var(--er-text);">@_teamMember.Name</h1>
+                                <p class="font-body text-lg italic" style="color: var(--er-gold-dim);">@_teamMember.GetChampionTitle(_allTeamMembers)</p>
                             </div>
                         </div>
-                        
-                        <h2 class="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-500 pb-2">Performance Metrics (@_latestPeriod)</h2>
-                        
-                        <div class="space-y-6">
+
+                        <h2 class="font-heading text-xl mb-4 pb-2" style="color: var(--er-gold); border-bottom: 1px solid var(--er-gold-dark);">
+                            Performance Metrics <span class="font-mono text-sm" style="color: var(--er-text-dim);">(@_latestPeriod)</span>
+                        </h2>
+
+                        <div class="space-y-4">
                             @foreach (var metric in _latestMetricsDict.OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
                             {
                                 var numericValue = GetMetricDoubleValue(metric.Key);
-                                
+
                                 @if (numericValue.HasValue)
                                 {
-                                    <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 @GetMetricBorderClass(metric.Key, numericValue)">
+                                    <div class="elden-panel elden-panel-gold" style="border-left-color: @GetMetricBorderColor(metric.Key, numericValue);">
                                         <div class="flex justify-between items-center mb-2">
                                             <div>
-                                                <div class="text-lg font-semibold flex items-center">
+                                                <div class="font-heading text-sm tracking-wide" style="color: var(--er-text);">
                                                     @TeamMember.GetMetricDisplayName(metric.Key)
                                                 </div>
-                                                <div class="text-sm text-gray-400">
+                                                <div class="font-body text-xs" style="color: var(--er-text-dim);">
                                                     Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
                                                 </div>
                                             </div>
-                                            <div class="text-xl font-bold @GetMetricValueClass(metric.Key, numericValue)">
+                                            <div class="font-mono text-lg font-bold" style="color: @GetMetricValueColor(metric.Key, numericValue);">
                                                 @FormatMetricValue(metric.Key, numericValue)
                                             </div>
                                         </div>
-                                        
-                                        <!-- Metric Bar with Avg Marker -->
-                                        <div class="mt-2 bg-gray-800 rounded-full h-4 overflow-hidden relative">
-                                            <div class="@GetMetricBarClass(metric.Key, numericValue) h-full rounded-full" 
+
+                                        <div class="mt-2 elden-progress relative" style="height: 10px;">
+                                            <div class="elden-progress-bar @GetMetricBarCssClass(metric.Key, numericValue)"
                                                  style="width: @GetMetricBarWidth(metric.Key, numericValue)"></div>
-                                            
-                                            <!-- Team Average Marker -->
-                                            <div class="absolute top-0 bottom-0 w-0.5 bg-white opacity-70"
-                                                 style="left: @GetAverageMarkerPosition(metric.Key)"></div>
+                                            <div class="absolute top-0 bottom-0 w-0.5 opacity-70"
+                                                 style="left: @GetAverageMarkerPosition(metric.Key); background: var(--er-text);"></div>
                                         </div>
-                                        
-                                        <!-- Performance Score -->
-                                        <div class="mt-1 flex justify-between text-xs">
+
+                                        <div class="mt-1 flex justify-between font-mono text-xs" style="color: var(--er-text-dim);">
                                             @if (IsLowerBetterMetric(metric.Key))
                                             {
                                                 <span>Best: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                                <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                                                <span>Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
                                                 <span>Worst: @FormatMetricValue(metric.Key, GetMetricMaxValue(metric.Key))</span>
                                             }
                                             else
                                             {
                                                 <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                                <span class="text-gray-400">Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
-                                                <span>Max: 
-                                                    @{
-                                                        var displayMax = GetDisplayMaxValue(metric.Key);
-                                                    }
-                                                    @FormatMetricValue(metric.Key, displayMax)
-                                                </span>
+                                                <span>Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                                                <span>Max: @{ var displayMax = GetDisplayMaxValue(metric.Key); } @FormatMetricValue(metric.Key, displayMax)</span>
                                             }
                                         </div>
                                     </div>
                                 }
                                 else
                                 {
-                                    if(metric.Key.Equals("MVP", StringComparison.OrdinalIgnoreCase) && metric.Value != null)
+                                    if (metric.Key.Equals("MVP", StringComparison.OrdinalIgnoreCase) && metric.Value != null)
                                     {
-                                        <div class="bg-gray-800 bg-opacity-80 rounded-md p-4 border-l-4 border-gray-600">
-                                             <div class="flex justify-between items-center">
-                                                <span class="text-lg font-semibold">@TeamMember.GetMetricDisplayName(metric.Key)</span>
-                                                <span class="text-xl font-bold">@FormatMetricValue(metric.Key, metric.Value)</span>
-                                             </div>
+                                        <div class="elden-panel elden-panel-gold">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-heading text-sm" style="color: var(--er-text);">@TeamMember.GetMetricDisplayName(metric.Key)</span>
+                                                <span class="font-mono text-lg font-bold" style="color: var(--er-gold);">@FormatMetricValue(metric.Key, metric.Value)</span>
+                                            </div>
                                         </div>
                                     }
                                 }
                             }
                         </div>
                     </div>
-                    
-                    <!-- Character Profile Section - Right Side -->
+
+                    <!-- Champion Stats + Radar - Right -->
                     <div class="md:w-2/5 mt-8 md:mt-0 md:pl-6">
-                        <div class="mb-8 bg-gray-800 bg-opacity-60 p-6 rounded-lg border border-gray-700">
-                            <h3 class="text-xl font-bold mb-4 text-yellow-400">Champion Stats</h3>
-                            
-                            <div class="space-y-3">
+                        <div class="mb-6 elden-panel" style="border-color: var(--er-border-gold);">
+                            <h3 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Champion Stats</h3>
+                            <div class="elden-divider mb-4"></div>
+                            <div class="space-y-3 font-body text-sm">
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Overall Rank:</span>
-                                    <span class="font-bold">#@GetOverallRank() of @_allTeamMembers.Count(m => m.Department == _teamMember.Department)</span>
+                                    <span style="color: var(--er-text-dim);">Overall Rank:</span>
+                                    <span class="font-heading font-bold" style="color: var(--er-text);">#@GetOverallRank() of @_allTeamMembers.Count(m => m.Department == _teamMember.Department)</span>
                                 </div>
-                                
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Strongest Area:</span>
-                                    @{ 
+                                    <span style="color: var(--er-text-dim);">Strongest Area:</span>
+                                    @{
                                         var strongest = _teamMember.GetStrongestMetricRelativeToTeam(_teamAverages);
                                         var strongestDisplayName = string.IsNullOrEmpty(strongest) ? "N/A" : TeamMember.GetMetricDisplayName(strongest);
                                     }
-                                    <span class="font-bold">@strongestDisplayName</span>
+                                    <span class="font-bold" style="color: var(--er-gold-bright);">@strongestDisplayName</span>
                                 </div>
-                                
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Top Categories:</span>
-                                    <span class="font-bold">@GetTopCategories()</span>
+                                    <span style="color: var(--er-text-dim);">Top Categories:</span>
+                                    <span class="font-bold" style="color: var(--er-text);">@GetTopCategories()</span>
                                 </div>
-                                
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Needs Improvement:</span>
-                                    <span class="font-bold">@GetImprovedCategories()</span>
+                                    <span style="color: var(--er-text-dim);">Needs Improvement:</span>
+                                    <span class="font-bold" style="color: var(--er-red-bright);">@GetImprovedCategories()</span>
                                 </div>
-                                
                                 <div class="flex justify-between">
-                                    <span class="text-gray-400">Performance Score:</span>
-                                    <span class="font-bold">@GetTotalPerformanceScore().ToString("F0") / 100</span>
+                                    <span style="color: var(--er-text-dim);">Performance Score:</span>
+                                    <span class="font-mono font-bold" style="color: var(--er-gold);">@GetTotalPerformanceScore().ToString("F0") / 100</span>
                                 </div>
                             </div>
                         </div>
-                         <!-- Radar chart moved to right side -->
-                        <div class="flex justify-center items-center h-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700">
-                             @if(_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2) 
-                             {
-                                // Extract labels and data from the pre-generated object
+
+                        <div class="flex justify-center items-center elden-panel" style="min-height: 320px; border-color: var(--er-border-gold);">
+                            @if (_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2)
+                            {
                                 var labels = (List<string>?)_radarChartData.GetType().GetProperty("labels")?.GetValue(_radarChartData);
                                 var datasets = (List<object>?)_radarChartData.GetType().GetProperty("datasets")?.GetValue(_radarChartData);
                                 var data = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
-                                
-                                <RadarChart 
-                                    Labels="labels" 
+
+                                <RadarChart
+                                    Labels="labels"
                                     NormalizedData="data"
                                     Width="320px"
                                     Height="320px" />
-                             }
-                             else
-                             {
-                                 <p class="text-gray-500 text-center">Not enough numeric data points for Radar Chart for period @_latestPeriod.</p>
-                             }
-                         </div>
+                            }
+                            else
+                            {
+                                <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -844,6 +824,33 @@
 
     private bool IsPodMember() =>
         _teamMember != null && !_regularDepartments.Contains(_teamMember.Department);
+
+    private string GetMetricBorderColor(string metricKey, object? value)
+    {
+        if (IsTopPerformer(metricKey)) return "var(--er-gold)";
+        if (IsBottomPerformer(metricKey)) return "var(--er-red)";
+        double? numericValue = GetDoubleValue(value);
+        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-blue-bright)";
+        return "var(--er-gold-dim)";
+    }
+
+    private string GetMetricValueColor(string metricKey, object? value)
+    {
+        if (IsTopPerformer(metricKey)) return "var(--er-gold-bright)";
+        if (IsBottomPerformer(metricKey)) return "var(--er-red-bright)";
+        double? numericValue = GetDoubleValue(value);
+        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-blue-bright)";
+        return "var(--er-text)";
+    }
+
+    private string GetMetricBarCssClass(string metricKey, object? value)
+    {
+        if (IsTopPerformer(metricKey)) return "";
+        if (IsBottomPerformer(metricKey)) return "bar-red";
+        double? numericValue = GetDoubleValue(value);
+        if (IsAboveAverage(metricKey, numericValue)) return "bar-blue";
+        return "bar-blue";
+    }
 
     private object GenerateRadarChartData()
     {
