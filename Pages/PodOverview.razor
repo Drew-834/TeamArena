@@ -208,59 +208,64 @@
             }
         </div>
 
-        <!-- Team Member Cards -->
+        <!-- Team Member Cards (Carousel) -->
         <div class="text-center mb-6">
             <h2 class="font-heading text-2xl" style="color: var(--er-gold);">Champions</h2>
             <div class="elden-divider-ornate mx-auto mt-2" style="max-width: 200px;"></div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 justify-items-center">
-            @foreach (var member in _teamMembers.OrderByDescending(m => GetWeightedScore(m)))
-            {
-                var weightedScore = GetWeightedScore(member);
-                var strongestArea = GetStrongestWeightedArea(member);
-                bool isDeptBest = strongestArea != null && _highPerformerNames.TryGetValue(strongestArea, out var best) && best?.Contains(member.Name) == true;
+        <div class="champion-carousel" id="champion-carousel">
+            <div class="carousel-track">
+                @foreach (var member in _teamMembers.OrderByDescending(m => GetWeightedScore(m)))
+                {
+                    var weightedScore = GetWeightedScore(member);
+                    var strongestArea = GetStrongestWeightedArea(member);
+                    bool isDeptBest = strongestArea != null && _highPerformerNames.TryGetValue(strongestArea, out var best) && best?.Contains(member.Name) == true;
 
-                <div @key="member.Id"
-                     class="elden-character-card @(isDeptBest ? "elden-border-gold" : "")"
-                     style="width: 200px; height: 320px;"
-                     @onclick="() => NavigateToMember(member.Id)">
-                    <div class="card-bg-avatar">
-                        <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="card-content">
-                        <div class="mt-2">
-                            <h3 class="card-name">@member.Name</h3>
-                            @if (strongestArea != null)
-                            {
-                                <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(strongestArea) Leader</p>
-                            }
+                    <div @key="member.Id"
+                         class="elden-character-card @(isDeptBest ? "elden-border-gold" : "")"
+                         style="width: 210px; min-width: 210px; height: 320px;"
+                         @onclick="() => NavigateToMember(member.Id)">
+                        <div class="card-bg-avatar">
+                            <img src="@(member.AvatarUrl ?? "images/avatars/adam1.png")" alt="" class="w-full h-full object-cover" />
                         </div>
-
-                        <div class="card-score">
-                            <div class="card-score-label">Weighted Score</div>
-                            <div class="card-score-value" style="color: @(weightedScore >= 70 ? "var(--er-gold-bright)" : weightedScore >= 50 ? "var(--er-green-bright)" : weightedScore >= 30 ? "var(--er-blue-bright)" : "var(--er-red-bright)");">
-                                @weightedScore.ToString("F1")
-                            </div>
-                            <div class="card-score-label">of 100</div>
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between items-center text-xs mb-1 px-1">
-                                @{
-                                    int level = (int)(member.TotalExperience / 100) + 1;
-                                    double xpInLevel = member.TotalExperience % 100;
-                                    double progressPercent = (xpInLevel / 100.0) * 100;
+                        <div class="card-content">
+                            <div class="mt-2">
+                                <h3 class="card-name">@member.Name</h3>
+                                @if (strongestArea != null)
+                                {
+                                    <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(strongestArea) Leader</p>
                                 }
-                                <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
-                                <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/100</span>
                             </div>
-                            <div class="elden-xp-bar mx-1">
-                                <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+
+                            <div class="card-score">
+                                <div class="card-score-label">Weighted Score</div>
+                                <div class="card-score-value" style="color: @(weightedScore >= 70 ? "var(--er-gold-bright)" : weightedScore >= 50 ? "var(--er-green-bright)" : weightedScore >= 30 ? "var(--er-blue-bright)" : "var(--er-red-bright)");">
+                                    @weightedScore.ToString("F1")
+                                </div>
+                                <div class="card-score-label">of 100</div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center text-xs mb-1 px-1">
+                                    @{
+                                        int level = (int)(member.TotalExperience / 100) + 1;
+                                        double xpInLevel = member.TotalExperience % 100;
+                                        double progressPercent = (xpInLevel / 100.0) * 100;
+                                    }
+                                    <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
+                                    <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/100</span>
+                                </div>
+                                <div class="elden-xp-bar mx-1">
+                                    <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            }
+                }
+            </div>
+            <div class="carousel-slider-wrap">
+                <input type="range" id="champion-slider" class="carousel-slider" min="0" max="1000" value="0" />
+            </div>
         </div>
     }
 </div>
@@ -338,12 +343,33 @@
         metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
         metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase);
 
+    private bool _carouselInitialized;
+
     protected override async Task OnInitializedAsync()
     {
         AppState.OnMetricsUpdatedAsync += HandleMetricsUpdated;
         _currentPodName = PodName;
         Console.WriteLine($"[PodOverview] OnInitializedAsync for pod: {PodName}");
         await LoadPodData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_isLoading && _teamMembers.Any() && !_carouselInitialized)
+        {
+            _carouselInitialized = true;
+            Console.WriteLine($"[PodOverview] Initializing carousel with {_teamMembers.Count} members...");
+            await Task.Delay(250);
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eldenCarousel.init", "champion-carousel", "champion-slider");
+                Console.WriteLine("[PodOverview] Carousel JS init call succeeded.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PodOverview] Carousel init FAILED: {ex.Message}");
+            }
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -432,6 +458,7 @@
         _highPerformerValues.Clear();
         _lowPerformerValues.Clear();
         _teamMembers.Clear();
+        _carouselInitialized = false;
     }
 
     private void PopulateFromCache()

@@ -490,43 +490,25 @@
     private string GetMetricBarClass(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
-
-        if (IsTopPerformer(metricKey))
-            return "bg-yellow-400";
-        else if (IsBottomPerformer(metricKey))
-            return "bg-red-400";
-        else if (IsAboveAverage(metricKey, numericValue))
-            return "bg-blue-500";
-        else
-            return "bg-blue-400";
+        if (IsTopPerformer(metricKey)) return "bg-yellow-400";
+        if (IsBottomPerformer(metricKey)) return "bg-red-400";
+        return "bg-gray-600";
     }
-    
+
     private string GetMetricBorderClass(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
-
-        if (IsTopPerformer(metricKey))
-            return "border-yellow-400";
-        else if (IsBottomPerformer(metricKey))
-            return "border-red-400";
-        else if (IsAboveAverage(metricKey, numericValue))
-            return "border-blue-500";
-        else
-            return "border-gray-600";
+        if (IsTopPerformer(metricKey)) return "border-yellow-400";
+        if (IsBottomPerformer(metricKey)) return "border-red-400";
+        return "border-gray-600";
     }
-    
+
     private string GetMetricValueClass(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
-
-        if (IsTopPerformer(metricKey))
-            return "text-yellow-400";
-        else if (IsBottomPerformer(metricKey))
-            return "text-red-400";
-        else if (IsAboveAverage(metricKey, numericValue))
-            return "text-blue-400";
-        else
-            return "text-white";
+        if (IsTopPerformer(metricKey)) return "text-yellow-400";
+        if (IsBottomPerformer(metricKey)) return "text-red-400";
+        return "text-white";
     }
     
     private string GetMetricBarWidth(string metricKey, object? value)
@@ -830,7 +812,7 @@
         if (IsTopPerformer(metricKey)) return "var(--er-gold)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red)";
         double? numericValue = GetDoubleValue(value);
-        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-blue-bright)";
+        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-green)";
         return "var(--er-gold-dim)";
     }
 
@@ -839,7 +821,7 @@
         if (IsTopPerformer(metricKey)) return "var(--er-gold-bright)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red-bright)";
         double? numericValue = GetDoubleValue(value);
-        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-blue-bright)";
+        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-text)";
         return "var(--er-text)";
     }
 
@@ -848,8 +830,8 @@
         if (IsTopPerformer(metricKey)) return "";
         if (IsBottomPerformer(metricKey)) return "bar-red";
         double? numericValue = GetDoubleValue(value);
-        if (IsAboveAverage(metricKey, numericValue)) return "bar-blue";
-        return "bar-blue";
+        if (IsAboveAverage(metricKey, numericValue)) return "bar-green";
+        return "";
     }
 
     private object GenerateRadarChartData()
