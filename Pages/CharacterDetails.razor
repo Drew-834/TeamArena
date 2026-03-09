@@ -276,30 +276,33 @@
             .FirstOrDefault()?.Period;
     }
 
-    // (Assumes GetPeriodEndDate helper exists, similar to WeeklyTracker's)
     private DateTime GetPeriodEndDate(string period)
     {
         try
         {
+            if (DateTime.TryParseExact(period, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var isoDate))
+                return isoDate;
+
             string[] parts = period.Split('-');
             if (parts.Length < 2) return DateTime.MinValue;
             string monthYear = parts[1]; 
-            // Adjust format to match expected input (e.g., "MMM yyyy")
             DateTime monthStartDate = DateTime.ParseExact("01-" + monthYear, "dd-MMM yyyy", System.Globalization.CultureInfo.InvariantCulture);
             
             if (parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase))
             {
-                return monthStartDate.AddDays(14); // Approx mid-month end
+                return monthStartDate.AddDays(14);
             }
-            else // EOM
+            else
             {
-                return monthStartDate.AddMonths(1).AddDays(-1); // End of month
+                return monthStartDate.AddMonths(1).AddDays(-1);
             }
         }
         catch 
         { 
             Console.WriteLine($"Warning: Could not parse period end date for '{period}'");
-            return DateTime.MinValue; // Fallback for parsing errors
+            return DateTime.MinValue;
         }
     }
     
