@@ -1054,7 +1054,7 @@
                     double normalized;
 
                     if (metricKey == "Surveys" && numVal == 0)
-                        normalized = 100.0;
+                        normalized = 0;
                     else if ((metricKey == "AppEff" || metricKey == "PMEff"))
                     {
                         double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
@@ -1072,12 +1072,18 @@
                 }
             }
 
+            var existingRecords = await DataService.GetMetricRecordsAsync(memberId: member.Id, period: _selectedPeriod!);
+            bool alreadyHadData = existingRecords != null && existingRecords.Any();
+
             updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod!, records));
 
-            if (applicableWeight > 0)
+            if (applicableWeight > 0 && !alreadyHadData)
             {
+                const double xpMultiplier = 0.25;
+                const double performanceGate = 50.0;
                 double avgScore = totalWeightedScore / applicableWeight;
-                member.TotalExperience += avgScore;
+                double xpAwarded = avgScore >= performanceGate ? avgScore * xpMultiplier : 0;
+                member.TotalExperience += xpAwarded;
                 updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
             }
         }
@@ -1143,7 +1149,7 @@
             double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
             double normalized;
             if (kvp.Key == "Surveys" && numVal == 0)
-                normalized = 100.0;
+                normalized = 0;
             else if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
                 normalized = target > 0 && numVal > 0 ? (target / numVal) * 100.0 : 0;
             else

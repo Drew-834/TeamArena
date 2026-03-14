@@ -1,5 +1,10 @@
 @inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
+@using GameScoreboard.Services
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+@inject AppState AppState
+@using GameScoreboard.Models
 
 <div class="relative min-h-screen" style="background-color: var(--er-bg-primary);">
     <div class="elden-atmosphere"></div>
@@ -10,6 +15,40 @@
     </main>
 
     <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
+
+    @if (_showSearch)
+    {
+        <div class="elden-search-backdrop" @onclick="CloseSearch"></div>
+        <div class="elden-search-panel">
+            <input @ref="_searchInputRef"
+                   type="text"
+                   class="elden-search-input"
+                   placeholder="Search champions..."
+                   @bind-value="_searchQuery"
+                   @bind-value:event="oninput"
+                   @onkeydown="HandleSearchKeydown" />
+            @if (_searchResults.Any())
+            {
+                <ul class="elden-search-results">
+                    @foreach (var member in _searchResults.Take(8))
+                    {
+                        <li class="elden-search-result-item" @onclick="() => NavigateToCharacter(member.Id)">
+                            <span class="font-heading text-sm" style="color: var(--er-gold);">@member.Name</span>
+                            <span class="font-body text-xs" style="color: var(--er-text-dim);">@member.Department</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                <div class="elden-search-empty">No champions found</div>
+            }
+        </div>
+    }
+
+    <button class="elden-search-btn" @onclick="ToggleSearch" title="Search Champions">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
 
     <button class="elden-mute-btn" @onclick="ToggleMute" title="@(_isMuted ? "Unmute" : "Mute")">
         @(_isMuted ? "🔇" : "🔊")
@@ -26,6 +65,61 @@
     private bool _termsChecked = false;
     private bool _audioInitialized = false;
     private bool _isMuted = false;
+
+    private bool _showSearch = false;
+    private string _searchQuery = string.Empty;
+    private List<TeamMember> _allMembers = new();
+    private bool _membersLoaded = false;
+    private ElementReference _searchInputRef;
+
+    private List<TeamMember> _searchResults =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? new()
+            : _allMembers
+                .Where(m => m.Name != null && m.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(m => m.Name)
+                .ToList();
+
+    private async Task ToggleSearch()
+    {
+        _showSearch = !_showSearch;
+        if (_showSearch)
+        {
+            _searchQuery = string.Empty;
+            if (!_membersLoaded)
+            {
+                try
+                {
+                    _allMembers = await AppState.GetOrFetchMembersAsync(DataService) ?? new();
+                    _membersLoaded = true;
+                }
+                catch { _allMembers = new(); }
+            }
+            StateHasChanged();
+            await Task.Yield();
+            try { await _searchInputRef.FocusAsync(); } catch { }
+        }
+    }
+
+    private void CloseSearch()
+    {
+        _showSearch = false;
+        _searchQuery = string.Empty;
+    }
+
+    private void HandleSearchKeydown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseSearch();
+        if (e.Key == "Enter" && _searchResults.Any())
+            NavigateToCharacter(_searchResults.First().Id);
+    }
+
+    private void NavigateToCharacter(int id)
+    {
+        _showSearch = false;
+        _searchQuery = string.Empty;
+        NavigationManager.NavigateTo($"/character/{id}");
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

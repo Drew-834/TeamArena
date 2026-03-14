@@ -803,6 +803,115 @@ html, body {
     color: var(--er-gold);
 }
 
+/* ===== SEARCH OVERLAY ===== */
+
+.elden-search-btn {
+    position: fixed;
+    bottom: 1rem;
+    right: 3.5rem;
+    z-index: 9998;
+    background: rgba(10, 10, 15, 0.8);
+    border: 1px solid var(--er-border);
+    color: var(--er-text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.elden-search-btn:hover {
+    border-color: var(--er-gold-dim);
+    color: var(--er-gold);
+}
+
+.elden-search-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    animation: fade-in 0.2s ease;
+}
+
+.elden-search-panel {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 420px;
+    z-index: 10000;
+    animation: fade-in-up 0.3s ease;
+}
+
+.elden-search-input {
+    width: 100%;
+    background: var(--er-bg-secondary);
+    border: 1px solid var(--er-border-gold);
+    color: var(--er-text);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    padding: 0.85rem 1.2rem;
+    border-radius: 2px;
+    outline: none;
+    box-shadow: var(--er-glow-gold);
+    letter-spacing: 0.03em;
+}
+
+.elden-search-input::placeholder {
+    color: var(--er-text-muted);
+    font-style: italic;
+}
+
+.elden-search-input:focus {
+    border-color: var(--er-gold);
+}
+
+.elden-search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--er-bg-secondary);
+    border: 1px solid var(--er-border);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.elden-search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid rgba(42, 42, 58, 0.4);
+}
+
+.elden-search-result-item:last-child {
+    border-bottom: none;
+}
+
+.elden-search-result-item:hover {
+    background: rgba(200, 169, 78, 0.08);
+}
+
+.elden-search-empty {
+    padding: 1rem 1.2rem;
+    background: var(--er-bg-secondary);
+    border: 1px solid var(--er-border);
+    border-top: none;
+    color: var(--er-text-muted);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-style: italic;
+    text-align: center;
+}
+
 /* ===== CHAMPION CAROUSEL ===== */
 
 .champion-carousel {

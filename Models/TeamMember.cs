@@ -96,12 +96,14 @@ namespace GameScoreboard.Models
             { "AccAttach", "Accessory Authority" }
         };
 
-        // --- New Leveling System Properties ---
-        public int CurrentLevel => (int)(TotalExperience / 100) + 1; // Level starts at 1
+        // --- Leveling System Properties ---
+        public const double XpPerLevel = 500;
+
+        public int CurrentLevel => (int)(TotalExperience / XpPerLevel) + 1;
         
-        public double ExperienceTowardsNextLevel => TotalExperience % 100;
+        public double ExperienceTowardsNextLevel => TotalExperience % XpPerLevel;
         
-        public double ExperienceNeededForNextLevel => 100;
+        public double ExperienceNeededForNextLevel => XpPerLevel;
 
         public double ProgressToNextLevelPercentage => (ExperienceTowardsNextLevel / ExperienceNeededForNextLevel) * 100;
         // -------------------------------------

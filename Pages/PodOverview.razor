@@ -218,11 +218,10 @@
                 @foreach (var member in _teamMembers.OrderByDescending(m => GetWeightedScore(m)))
                 {
                     var weightedScore = GetWeightedScore(member);
-                    var strongestArea = GetStrongestWeightedArea(member);
-                    bool isDeptBest = strongestArea != null && _highPerformerNames.TryGetValue(strongestArea, out var best) && best?.Contains(member.Name) == true;
+                    bool isKpiWinner = _kpiWinnerByMember.TryGetValue(member.Name, out var wonKpi);
 
                     <div @key="member.Id"
-                         class="elden-character-card @(isDeptBest ? "elden-border-gold" : "")"
+                         class="elden-character-card @(isKpiWinner ? "elden-border-gold" : "")"
                          style="width: 210px; min-width: 210px; height: 320px;"
                          @onclick="() => NavigateToMember(member.Id)">
                         <div class="card-bg-avatar">
@@ -231,9 +230,9 @@
                         <div class="card-content">
                             <div class="mt-2">
                                 <h3 class="card-name">@member.Name</h3>
-                                @if (strongestArea != null)
+                                @if (isKpiWinner)
                                 {
-                                    <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(strongestArea) Leader</p>
+                                    <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(wonKpi!) Leader</p>
                                 }
                             </div>
 
@@ -248,12 +247,12 @@
                             <div>
                                 <div class="flex justify-between items-center text-xs mb-1 px-1">
                                     @{
-                                        int level = (int)(member.TotalExperience / 100) + 1;
-                                        double xpInLevel = member.TotalExperience % 100;
-                                        double progressPercent = (xpInLevel / 100.0) * 100;
+                                        int level = member.CurrentLevel;
+                                        double xpInLevel = member.ExperienceTowardsNextLevel;
+                                        double progressPercent = member.ProgressToNextLevelPercentage;
                                     }
                                     <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
-                                    <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/100</span>
+                                    <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/@TeamMember.XpPerLevel.ToString("F0")</span>
                                 </div>
                                 <div class="elden-xp-bar mx-1">
                                     <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
@@ -291,6 +290,8 @@
     private Dictionary<string, double> _highPerformerValues = new();
     private Dictionary<string, double> _lowPerformerValues = new();
     private List<RankedMember>? _podLeaderboard;
+    private Dictionary<string, string> _kpiWinnerByMetric = new();
+    private Dictionary<string, string> _kpiWinnerByMember = new();
 
     // Pod-specific KPI keys in display order
     private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
@@ -408,8 +409,8 @@
 
         try
         {
-            Console.WriteLine($"[PodOverview] Loading fresh data for pod: {PodName}");
-            _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+            Console.WriteLine($"[PodOverview] Loading data for pod: {PodName} (using AppState cache)");
+            _allMembersCache = (await AppState.GetOrFetchMembersAsync(DataService))?.ToList() ?? new List<TeamMember>();
             Console.WriteLine($"[PodOverview] Fetched {_allMembersCache.Count} total members");
             PopulateFromCache();
             await LoadSnapshots();
@@ -435,8 +436,8 @@
 
         if (!_allMembersCache.Any())
         {
-            Console.WriteLine($"[PodOverview] Cache empty, fetching fresh for pod switch to: {PodName}");
-            _allMembersCache = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+            Console.WriteLine($"[PodOverview] Cache empty, fetching for pod switch to: {PodName}");
+            _allMembersCache = (await AppState.GetOrFetchMembersAsync(DataService))?.ToList() ?? new List<TeamMember>();
         }
         else
         {
@@ -576,6 +577,34 @@
                 }
             }
         }
+
+        AssignSuperlatives();
+    }
+
+    private void AssignSuperlatives()
+    {
+        _kpiWinnerByMetric.Clear();
+        _kpiWinnerByMember.Clear();
+        var assigned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var sortedKpis = _metricWeights.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key).Select(kv => kv.Key);
+
+        foreach (var kpi in sortedKpis)
+        {
+            if (!_highPerformerNames.TryGetValue(kpi, out var candidates) || candidates == null) continue;
+
+            var winner = candidates
+                .Where(c => !assigned.Contains(c))
+                .OrderByDescending(c => { var m = _teamMembers.FirstOrDefault(m => m.Name == c); return m != null ? GetWeightedScore(m) : 0; })
+                .FirstOrDefault();
+
+            if (winner != null)
+            {
+                _kpiWinnerByMetric[kpi] = winner;
+                _kpiWinnerByMember[winner] = kpi;
+                assigned.Add(winner);
+            }
+        }
     }
 
     private double? GetMemberMetricValue(TeamMember member, string metricKey)
@@ -601,10 +630,8 @@
             // Skip sentinel values for efficiency metrics
             if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
 
-            // Surveys of 0 means no surveys received - treat as on-track, don't penalize
             if (kvp.Key == "Surveys" && rawValue.Value == 0)
             {
-                totalWeightedScore += 100.0 * kvp.Value;
                 applicableWeight += kvp.Value;
                 continue;
             }
@@ -643,7 +670,7 @@
             double normalizedScore;
             if (kvp.Key == "Surveys" && rawValue.Value == 0)
             {
-                normalizedScore = 100.0;
+                normalizedScore = 0;
             }
             else
             {

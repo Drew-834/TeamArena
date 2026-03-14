@@ -567,10 +567,9 @@
     {
         bool lowerIsBetter = IsLowerBetterMetric(metricKey);
 
-        // For Surveys/5Star with value 0, treat as on-track
         if ((metricKey.Equals("Surveys", StringComparison.OrdinalIgnoreCase) ||
              metricKey.Equals("5Star", StringComparison.OrdinalIgnoreCase)) && numericValue == 0)
-            return 100;
+            return 0;
 
         // Sentinel values for efficiency metrics
         if (IsPodEfficiency(metricKey) && numericValue >= 90000) return 0;
@@ -865,10 +864,9 @@
                     {
                         normalizedScore = 0;
                     }
-                    // Surveys=0 means no surveys, treat as on-track
                     else if (key == "Surveys" && rawValue.HasValue && rawValue.Value == 0)
                     {
-                        normalizedScore = 100.0;
+                        normalizedScore = 0;
                     }
                     else if (rawValue.HasValue && _podMetricTargets.TryGetValue(key, out var target) && target > 0)
                     {
@@ -893,7 +891,7 @@
             else
             {
                 labels.Add(TeamMember.GetMetricDisplayName(key));
-                normalizedData.Add(isPod && key == "Surveys" ? 100.0 : 0);
+                normalizedData.Add(0);
             }
         }
 

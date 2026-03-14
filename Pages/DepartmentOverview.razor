@@ -80,13 +80,13 @@
             <div class="elden-divider-ornate mx-auto mt-2" style="max-width: 200px;"></div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 justify-items-center">
-            @foreach (var member in _teamMembers.OrderByDescending(m => m.TotalExperience))
+            @foreach (var member in _teamMembers.OrderByDescending(m => GetMemberPerformanceScore(m)))
             {
+                bool isKpiWinner = _kpiWinnerByMember.TryGetValue(member.Name, out var wonKpi);
                 var strongestAreaInfo = GetStrongestAreaForMember(member);
-                bool isDeptBest = strongestAreaInfo.HasValue && _highPerformerNames.TryGetValue(strongestAreaInfo.Value.MetricKey, out var best) && best?.Contains(member.Name) == true;
 
                 <div @key="member.Id"
-                     class="elden-character-card @(isDeptBest ? "elden-border-gold" : "")"
+                     class="elden-character-card @(isKpiWinner ? "elden-border-gold" : "")"
                      style="width: 200px; height: 320px;"
                      @onclick="() => NavigateToMember(member.Id)">
                     <div class="card-bg-avatar">
@@ -95,15 +95,22 @@
                     <div class="card-content">
                         <div class="mt-2">
                             <h3 class="card-name">@member.Name</h3>
-                            <p class="card-title mt-1">@member.Role</p>
+                            @if (isKpiWinner)
+                            {
+                                <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(wonKpi!) Leader</p>
+                            }
+                            else
+                            {
+                                <p class="card-title mt-1">@member.Role</p>
+                            }
                         </div>
 
                         <div class="card-score">
                             <div class="card-score-label">Strongest Area</div>
                             @if (strongestAreaInfo != null)
                             {
-                                <div class="font-body text-xs" style="color: @(isDeptBest ? "var(--er-gold-bright)" : "var(--er-text)");">@TeamMember.GetMetricDisplayName(strongestAreaInfo.Value.MetricKey)</div>
-                                <div class="card-score-value" style="color: @(isDeptBest ? "var(--er-gold-bright)" : "var(--er-text)");">
+                                <div class="font-body text-xs" style="color: @(isKpiWinner ? "var(--er-gold-bright)" : "var(--er-text)");">@TeamMember.GetMetricDisplayName(strongestAreaInfo.Value.MetricKey)</div>
+                                <div class="card-score-value" style="color: @(isKpiWinner ? "var(--er-gold-bright)" : "var(--er-text)");">
                                     @FormatMetricValue(strongestAreaInfo.Value.Value, strongestAreaInfo.Value.MetricKey)
                                 </div>
                             }
@@ -116,12 +123,12 @@
                         <div>
                             <div class="flex justify-between items-center text-xs mb-1 px-1">
                                 @{
-                                    int level = (int)(member.TotalExperience / 100) + 1;
-                                    double xpInLevel = member.TotalExperience % 100;
-                                    double progressPercent = (xpInLevel / 100.0) * 100;
+                                    int level = member.CurrentLevel;
+                                    double xpInLevel = member.ExperienceTowardsNextLevel;
+                                    double progressPercent = member.ProgressToNextLevelPercentage;
                                 }
                                 <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
-                                <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/100</span>
+                                <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/@TeamMember.XpPerLevel.ToString("F0")</span>
                             </div>
                             <div class="elden-xp-bar mx-1">
                                 <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
@@ -140,14 +147,13 @@
     private List<TeamMember> _teamMembers = new();
     private string? _latestPeriod;
     
-    // Dictionaries to hold calculated summary data
     private Dictionary<string, (double Average, double Min, double Max)> _departmentAverages = new();
-    // Store lists of names for ties
     private Dictionary<string, List<string>> _highPerformerNames = new(); 
     private Dictionary<string, List<string>> _lowPerformerNames = new();
-    // Store the actual high/low values separately
     private Dictionary<string, double> _highPerformerValues = new(); 
     private Dictionary<string, double> _lowPerformerValues = new();
+    private Dictionary<string, string> _kpiWinnerByMetric = new();
+    private Dictionary<string, string> _kpiWinnerByMember = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -197,7 +203,7 @@
         
         try
         {
-            _teamMembers = await DataService.GetTeamMembersAsync(DepartmentName);
+            _teamMembers = await AppState.GetOrFetchMembersAsync(DataService, DepartmentName);
             Console.WriteLine($"DepartmentOverview: LoadDepartmentData fetched {_teamMembers?.Count ?? 0} members for {DepartmentName}.");
             
             if (_teamMembers != null && _teamMembers.Any())
@@ -213,7 +219,8 @@
                 if (!string.IsNullOrEmpty(_latestPeriod))
                 {
                      Console.WriteLine("DepartmentOverview: Attempting to calculate summaries...");
-                     CalculateDepartmentMetricsSummary(); 
+                     CalculateDepartmentMetricsSummary();
+                     AssignSuperlatives();
                      Console.WriteLine($"DepartmentOverview: Summary calculation finished. Averages count: {_departmentAverages.Count}");
                 }
                 else {
@@ -348,6 +355,60 @@
         return bestMetricOverall != null ? (bestMetricOverall, bestRawValue) : null;
     }
     
+    private void AssignSuperlatives()
+    {
+        _kpiWinnerByMetric.Clear();
+        _kpiWinnerByMember.Clear();
+        var assigned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var sortedKpis = _highPerformerNames.Keys.OrderBy(k => k);
+
+        foreach (var kpi in sortedKpis)
+        {
+            if (!_highPerformerNames.TryGetValue(kpi, out var candidates) || candidates == null) continue;
+
+            var winner = candidates
+                .Where(c => !assigned.Contains(c))
+                .OrderByDescending(c => { var m = _teamMembers.FirstOrDefault(m => m.Name == c); return m != null ? GetMemberPerformanceScore(m) : 0; })
+                .FirstOrDefault();
+
+            if (winner != null)
+            {
+                _kpiWinnerByMetric[kpi] = winner;
+                _kpiWinnerByMember[winner] = kpi;
+                assigned.Add(winner);
+            }
+        }
+    }
+
+    private double GetMemberPerformanceScore(TeamMember member)
+    {
+        if (member.MetricRecords == null || !member.MetricRecords.Any() || string.IsNullOrEmpty(_latestPeriod))
+            return 0;
+
+        var periodRecords = member.MetricRecords.Where(r => r.Period == _latestPeriod).ToList();
+        if (!periodRecords.Any()) return 0;
+
+        double totalScore = 0;
+        int count = 0;
+
+        foreach (var record in periodRecords)
+        {
+            double? numVal = GetDoubleValue(record.Value);
+            if (!numVal.HasValue) continue;
+
+            double? goal = GetMetricGoal(record.MetricKey);
+            double target = goal ?? (_departmentAverages.TryGetValue(record.MetricKey, out var avgData) ? avgData.Average : 0);
+            if (target <= 0) { if (numVal.Value > 0) { totalScore += 100; count++; } continue; }
+
+            double normalized = (numVal.Value / target) * 100.0;
+            totalScore += Math.Clamp(normalized, 0, 150);
+            count++;
+        }
+
+        return count > 0 ? totalScore / count : 0;
+    }
+
     // Get metric goal (similar to WeeklyTracker logic)
     private double? GetMetricGoal(string metricKey)
     {
