@@ -32,20 +32,30 @@ namespace GameScoreboard.Services
         public void StartPreload(IDataService dataService)
         {
             if (_preloadTask != null || MemberCache != null) return;
-            _preloadTask = Task.Run(async () =>
+            _preloadTask = PreloadAsync(dataService);
+        }
+
+        private async Task PreloadAsync(IDataService dataService)
+        {
+            try
             {
-                try
+                await Task.Yield();
+                var members = await dataService.GetTeamMembersAsync();
+                if (members != null && members.Count > 0)
                 {
-                    var members = await dataService.GetTeamMembersAsync();
                     MemberCache = members;
                     CacheTimestamp = DateTime.UtcNow;
-                    Console.WriteLine($"[AppState] Preloaded {members?.Count ?? 0} members into cache.");
+                    Console.WriteLine($"[AppState] Preloaded {members.Count} members into cache.");
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"[AppState] Preload failed: {ex.Message}");
+                    Console.WriteLine("[AppState] Preload returned 0 members, not caching.");
                 }
-            });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AppState] Preload failed: {ex.Message}");
+            }
         }
 
         public async Task<List<TeamMember>> GetOrFetchMembersAsync(IDataService dataService, string? department = null)
@@ -63,7 +73,7 @@ namespace GameScoreboard.Services
             }
 
             var members = await dataService.GetTeamMembersAsync(department);
-            if (string.IsNullOrEmpty(department))
+            if (string.IsNullOrEmpty(department) && members != null && members.Count > 0)
             {
                 MemberCache = members;
                 CacheTimestamp = DateTime.UtcNow;
