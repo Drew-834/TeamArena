@@ -18,41 +18,30 @@ public class MembersController : ControllerBase
     {
         try
         {
-            IQueryable<TeamMember> query = _db.TeamMembers
-                .Include(m => m.MetricRecords)
-                .AsNoTracking();
-
+            IQueryable<MetricRecord> metricQuery = _db.MetricRecords.AsNoTracking();
             if (!string.IsNullOrWhiteSpace(department))
-                query = query.Where(m => m.Department == department);
+                metricQuery = metricQuery.Where(r => r.TeamMember!.Department == department);
 
-            var result = await query.ToListAsync();
+            var allPeriods = await metricQuery
+                .Select(r => r.Period)
+                .Where(p => p != null && p != "")
+                .Distinct()
+                .ToListAsync();
 
-            if (result.Any())
+            var latestPeriod = GetLatestPeriod(allPeriods);
+            Console.WriteLine($"MembersController: {allPeriods.Count} distinct periods, latest={latestPeriod ?? "null"}");
+
+            IQueryable<TeamMember> memberQuery = _db.TeamMembers.AsNoTracking();
+            if (!string.IsNullOrWhiteSpace(department))
+                memberQuery = memberQuery.Where(m => m.Department == department);
+
+            if (!string.IsNullOrEmpty(latestPeriod))
             {
-                var allPeriods = result
-                    .SelectMany(m => m.MetricRecords)
-                    .Select(r => r.Period)
-                    .Where(p => !string.IsNullOrEmpty(p))
-                    .Distinct()
-                    .ToList();
-
-                var latestPeriod = GetLatestPeriod(allPeriods);
-                Console.WriteLine($"MembersController: Found {result.Count} members, {allPeriods.Count} distinct periods, latest={latestPeriod ?? "null"}");
-
-                if (!string.IsNullOrEmpty(latestPeriod))
-                {
-                    foreach (var member in result)
-                    {
-                        member.MetricRecords = member.MetricRecords
-                            .Where(r => r.Period == latestPeriod)
-                            .ToList();
-                    }
-                }
+                memberQuery = memberQuery.Include(m => m.MetricRecords.Where(r => r.Period == latestPeriod));
             }
-            else
-            {
-                Console.WriteLine("MembersController: No members found in database.");
-            }
+
+            var result = await memberQuery.ToListAsync();
+            Console.WriteLine($"MembersController: Returning {result.Count} members");
 
             return Ok(result);
         }

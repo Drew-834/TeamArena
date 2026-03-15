@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using GameScoreboard.Server.Data;
+using System.IO.Compression;
 
 namespace GameScoreboard.Server;
 
@@ -63,6 +65,16 @@ public class Program
                 .AllowAnyMethod());
         });
 
+        builder.Services.AddResponseCompression(opts =>
+        {
+            opts.EnableForHttps = true;
+            opts.Providers.Add<BrotliCompressionProvider>();
+            opts.Providers.Add<GzipCompressionProvider>();
+            opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "application/json" });
+        });
+        builder.Services.Configure<BrotliCompressionProviderOptions>(opts => opts.Level = CompressionLevel.Fastest);
+        builder.Services.Configure<GzipCompressionProviderOptions>(opts => opts.Level = CompressionLevel.Fastest);
+
         var app = builder.Build();
 
         // Ensure database exists (only if using SQL Server)
@@ -83,6 +95,7 @@ public class Program
         }
 
         // Configure the HTTP request pipeline.
+        app.UseResponseCompression();
         app.UseCors();
         
         // Enable Swagger in all environments for easier debugging

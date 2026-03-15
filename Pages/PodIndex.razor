@@ -104,19 +104,15 @@
     private async Task LoadPodsAsync()
     {
         _isLoading = true;
+        _loadingStatus = "Fetching team data...";
         _errorMessage = null;
         StateHasChanged();
 
         try
         {
-            await UpdateLoading("Connecting to server...", 20);
-            await UpdateLoading("Fetching team data...", 40);
-
             Console.WriteLine("[PodIndex] Fetching all team members (using cache)...");
             _allMembers = await AppState.GetOrFetchMembersAsync(DataService);
             Console.WriteLine($"[PodIndex] Received {_allMembers?.Count ?? 0} members total");
-
-            await UpdateLoading("Identifying pods...", 70);
 
             _pods = (_allMembers ?? new())
                 .Where(m => IsPodDepartment(m.Department) && m.MetricRecords?.Any() == true)
@@ -126,9 +122,6 @@
                 .ToList();
 
             Console.WriteLine($"[PodIndex] Found {_pods.Count} teams with data: [{string.Join(", ", _pods)}]");
-
-            await UpdateLoading($"Found {_pods.Count} teams", 100);
-            await Task.Delay(300);
         }
         catch (Exception ex)
         {
@@ -143,14 +136,6 @@
     }
 
     private async Task RetryLoad() => await LoadPodsAsync();
-
-    private async Task UpdateLoading(string status, int progress)
-    {
-        _loadingStatus = status;
-        _loadingProgress = progress;
-        StateHasChanged();
-        await Task.Delay(150);
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

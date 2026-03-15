@@ -66,6 +66,11 @@
     private bool _audioInitialized = false;
     private bool _isMuted = false;
 
+    protected override void OnInitialized()
+    {
+        AppState.StartPreload(DataService);
+    }
+
     private bool _showSearch = false;
     private string _searchQuery = string.Empty;
     private List<TeamMember> _allMembers = new();

@@ -1,9 +1,6 @@
 @page "/"
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@using GameScoreboard.Services
-@inject IDataService DataService
-@inject AppState AppState
 
 <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12" style="background-color: var(--er-bg-primary);">
 
@@ -87,11 +84,6 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        AppState.StartPreload(DataService);
-    }
-
     private async Task Navigate(string path)
     {
         try { await JSRuntime.InvokeVoidAsync("eldenAudio.playClick"); } catch { }
