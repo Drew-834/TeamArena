@@ -176,6 +176,35 @@
                                 <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
                             }
                         </div>
+                        @if (_todayShiftGoals != null)
+                        {
+                            <div class="mt-4 elden-panel" style="border-color: var(--er-border-gold);">
+                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today’s Quest (8-Hour Shift)</h3>
+                                <p class="font-body text-xs mb-3" style="color: var(--er-text-muted);">Targets adjusted for your current progress.</p>
+                                <div class="space-y-1 font-mono text-sm">
+                                    <div>RPH Goal: @_todayShiftGoals.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US")) (buffed +20%)</div>
+                                    @if (_todayShiftGoals.AppGoal.HasValue)
+                                    {
+                                        <div>App Goal: @_todayShiftGoals.AppGoal.Value.ToString("N0") apps</div>
+                                    }
+                                    @if (_todayShiftGoals.PmGoal.HasValue)
+                                    {
+                                        <div>PM Goal: @_todayShiftGoals.PmGoal.Value.ToString("N0") PMs</div>
+                                    }
+                                    @if (_todayShiftGoals.WarrantyAttachGoalPercent.HasValue)
+                                    {
+                                        <div>Warranty Attach: @_todayShiftGoals.WarrantyAttachGoalPercent.Value.ToString("F1")%</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mt-4 elden-panel" style="border-color: var(--er-border-gold);">
+                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today’s Quest (8-Hour Shift)</h3>
+                                <p class="font-body text-xs" style="color: var(--er-text-muted);">Not enough goal data yet to calculate today’s targets.</p>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -238,6 +267,9 @@
             _allTeamMembers = await DataService.GetTeamMembersAsync(); 
             // 7. Recalculate averages based on the LATEST period data for the relevant department
             await CalculateTeamAveragesForLatestPeriod(); 
+
+            // 8. Compute today's shift goals for pods
+            ComputeTodayShiftGoals();
         }
         
         StateHasChanged();
@@ -802,6 +834,89 @@
         { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 },
         { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
     };
+
+    private double? GetMemberGoal(string metricKey)
+    {
+        if (_teamMember != null)
+        {
+            if (metricKey.Equals("RPH", StringComparison.OrdinalIgnoreCase) && _teamMember.RphGoal.HasValue)
+                return _teamMember.RphGoal;
+            if (metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) && _teamMember.AppEffGoal.HasValue)
+                return _teamMember.AppEffGoal;
+            if (metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase) && _teamMember.PmEffGoal.HasValue)
+                return _teamMember.PmEffGoal;
+            if (metricKey.Equals("WarrantyAttach", StringComparison.OrdinalIgnoreCase) && _teamMember.WarrantyAttachGoal.HasValue)
+                return _teamMember.WarrantyAttachGoal;
+            if (metricKey.Equals("AccAttach", StringComparison.OrdinalIgnoreCase) && _teamMember.AccAttachGoal.HasValue)
+                return _teamMember.AccAttachGoal;
+        }
+
+        if (IsPodMember() && _podMetricTargets.TryGetValue(metricKey, out var podTarget))
+            return podTarget;
+
+        return GetMetricGoal(metricKey);
+    }
+
+    private double? GetBuffedRphGoal()
+    {
+        var baseGoal = GetMemberGoal("RPH");
+        if (!baseGoal.HasValue || baseGoal.Value <= 0) return null;
+        return baseGoal.Value * 1.2;
+    }
+
+    private record DailyShiftGoals(double RphGoal, double? AppGoal, double? PmGoal, double? WarrantyAttachGoalPercent);
+    private DailyShiftGoals? _todayShiftGoals;
+
+    private void ComputeTodayShiftGoals()
+    {
+        if (!IsPodMember()) { _todayShiftGoals = null; return; }
+
+        var buffedRph = GetBuffedRphGoal();
+        if (!buffedRph.HasValue) { _todayShiftGoals = null; return; }
+
+        double baseRph = buffedRph.Value;
+        double baseRevenue = baseRph * 8.0;
+
+        double? appEffGoal = GetMemberGoal("AppEff");
+        double? pmEffGoal = GetMemberGoal("PMEff");
+        double? warrantyGoal = GetMemberGoal("WarrantyAttach");
+
+        double? baseApps = (appEffGoal.HasValue && appEffGoal.Value > 0)
+            ? baseRevenue / appEffGoal.Value
+            : null;
+        double? basePms = (pmEffGoal.HasValue && pmEffGoal.Value > 0)
+            ? baseRevenue / pmEffGoal.Value
+            : null;
+
+        double rphScore = GetPerformanceScore("RPH", _latestMetricsDict.TryGetValue("RPH", out var rphVal) ? rphVal : null);
+        double appScore = GetPerformanceScore("AppEff", _latestMetricsDict.TryGetValue("AppEff", out var appVal) ? appVal : null);
+        double pmScore = GetPerformanceScore("PMEff", _latestMetricsDict.TryGetValue("PMEff", out var pmVal) ? pmVal : null);
+        double warrantyScore = GetPerformanceScore("WarrantyAttach", _latestMetricsDict.TryGetValue("WarrantyAttach", out var warVal) ? warVal : null);
+
+        static double MultFromScore(double score, double maxMult = 2.0)
+        {
+            if (score >= 100) return 1.0;
+            var deficit = Math.Max(0.0, 100.0 - score);
+            var mult = 1.0 + (deficit / 100.0);
+            return Math.Min(mult, maxMult);
+        }
+
+        double rphMult = MultFromScore(rphScore);
+        double appMult = MultFromScore(appScore);
+        double pmMult = MultFromScore(pmScore);
+        double warrantyMult = MultFromScore(warrantyScore, 1.25); // keep warranty realistic
+
+        double todayRevenue = baseRevenue * rphMult;
+        double todayRph = todayRevenue / 8.0;
+
+        double? todayApps = baseApps.HasValue ? Math.Max(1, Math.Round(baseApps.Value * appMult)) : null;
+        double? todayPms = basePms.HasValue ? Math.Max(1, Math.Round(basePms.Value * pmMult)) : null;
+        double? todayWarranty = warrantyGoal.HasValue
+            ? Math.Min(warrantyGoal.Value * warrantyMult, Math.Max(warrantyGoal.Value + 15.0, warrantyGoal.Value))
+            : (double?)null;
+
+        _todayShiftGoals = new DailyShiftGoals(todayRph, todayApps, todayPms, todayWarranty);
+    }
 
     private bool IsPodMember() =>
         _teamMember != null && !_regularDepartments.Contains(_teamMember.Department);

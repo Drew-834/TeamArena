@@ -98,7 +98,12 @@ namespace GameScoreboard.Services
                     member.Department,
                     member.Role,
                     member.AvatarUrl,
-                    member.TotalExperience
+                    member.TotalExperience,
+                    member.RphGoal,
+                    member.AppEffGoal,
+                    member.PmEffGoal,
+                    member.WarrantyAttachGoal,
+                    member.AccAttachGoal
                 };
                 var response = await _http.PutAsJsonAsync($"api/members/{member.Id}", payload);
                 if (!response.IsSuccessStatusCode)
