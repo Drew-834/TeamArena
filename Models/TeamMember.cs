@@ -27,6 +27,13 @@ namespace GameScoreboard.Models
         
         public double TotalExperience { get; set; } = 0; // Initialize XP to 0
 
+        // Optional per-person pod metric targets (override pod defaults when present)
+        public double? RphGoal { get; set; }
+        public double? AppEffGoal { get; set; }
+        public double? PmEffGoal { get; set; }
+        public double? WarrantyAttachGoal { get; set; }
+        public double? AccAttachGoal { get; set; }
+
         // Navigation property for related metric records
         public ICollection<MetricRecord> MetricRecords { get; set; } = new List<MetricRecord>();
 

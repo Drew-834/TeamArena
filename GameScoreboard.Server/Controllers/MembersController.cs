@@ -99,6 +99,11 @@ public class MembersController : ControllerBase
         existing.Role = update.Role;
         existing.AvatarUrl = update.AvatarUrl;
         existing.TotalExperience = update.TotalExperience;
+        existing.RphGoal = update.RphGoal;
+        existing.AppEffGoal = update.AppEffGoal;
+        existing.PmEffGoal = update.PmEffGoal;
+        existing.WarrantyAttachGoal = update.WarrantyAttachGoal;
+        existing.AccAttachGoal = update.AccAttachGoal;
 
         await _db.SaveChangesAsync();
         return NoContent();
