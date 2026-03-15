@@ -780,7 +780,7 @@
     // ── Pod section header detection ──
     private string? DetectPodHeader(string[] cells, int nameCol)
     {
-        // Prefer using the \"name\" column to detect pod headers, even if
+        // Prefer using the "name" column to detect pod headers, even if
         // there are numeric target values in other columns (e.g. Luis-Front End).
         if (nameCol >= 0 && nameCol < cells.Length)
         {
@@ -788,12 +788,12 @@
             if (!string.IsNullOrEmpty(nameCell) &&
                 nameCell.Length >= 4 &&
                 !_skipKeywords.Contains(nameCell) &&
-                !nameCell.StartsWith(\"$\") &&
-                !nameCell.StartsWith(\"#\") &&
-                !nameCell.EndsWith(\"%\") &&
-                // Skip pure numbers (e.g., \"1411\")
-                !double.TryParse(nameCell.Replace(\",\", string.Empty), NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
-                // Skip short date-like strings (e.g., \"2/22/2026\") but not pod names with slashes
+                !nameCell.StartsWith("$") &&
+                !nameCell.StartsWith("#") &&
+                !nameCell.EndsWith("%") &&
+                // Skip pure numbers (e.g., "1411")
+                !double.TryParse(nameCell.Replace(",", string.Empty), NumberStyles.Any, CultureInfo.InvariantCulture, out _) &&
+                // Skip short date-like strings (e.g., "2/22/2026") but not pod names with slashes
                 !(nameCell.Length <= 12 && DateTime.TryParse(nameCell, CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) &&
                 LooksLikePodName(nameCell))
             {
