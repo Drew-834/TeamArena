@@ -465,7 +465,8 @@
     private void PopulateFromCache()
     {
         _teamMembers = _allMembersCache
-            .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase))
+            .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)
+                        && !m.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         Console.WriteLine($"[PodOverview] Found {_teamMembers.Count} members for pod '{PodName}'");

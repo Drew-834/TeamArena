@@ -146,7 +146,9 @@
     }
 
     private int GetPodMemberCount(string pod) =>
-        _allMembers?.Count(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase) && m.MetricRecords?.Any() == true) ?? 0;
+        _allMembers?.Count(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)
+                                && !m.Name.Equals(pod, StringComparison.OrdinalIgnoreCase)
+                                && m.MetricRecords?.Any() == true) ?? 0;
 
     private async Task NavigateToPod(string podName)
     {
