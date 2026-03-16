@@ -137,4 +137,41 @@ public class MembersController : ControllerBase
             .ToListAsync();
         return Ok(departments);
     }
+
+    // Removes duplicate TeamMember rows (same normalized name), keeping the highest Id.
+    // MetricRecords on the deleted rows are cascade-deleted automatically.
+    // Returns the count of deleted duplicate records.
+    [HttpPost("cleanup-duplicates")]
+    public async Task<ActionResult<int>> CleanupDuplicates()
+    {
+        try
+        {
+            var allMembers = await _db.TeamMembers.ToListAsync();
+
+            var duplicateIds = allMembers
+                .GroupBy(m => m.Name.Trim().ToLowerInvariant())
+                .Where(g => g.Count() > 1)
+                .SelectMany(g => g.OrderByDescending(m => m.Id).Skip(1))
+                .Select(m => m.Id)
+                .ToList();
+
+            if (!duplicateIds.Any())
+                return Ok(0);
+
+            var toDelete = await _db.TeamMembers
+                .Where(m => duplicateIds.Contains(m.Id))
+                .ToListAsync();
+
+            _db.TeamMembers.RemoveRange(toDelete);
+            await _db.SaveChangesAsync();
+
+            Console.WriteLine($"MembersController.CleanupDuplicates: removed {toDelete.Count} duplicate members.");
+            return Ok(toDelete.Count);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"MembersController.CleanupDuplicates error: {ex.Message}");
+            return Ok(0);
+        }
+    }
 } 

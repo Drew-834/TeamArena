@@ -26,6 +26,7 @@ namespace GameScoreboard.Services
         Task SavePodSnapshotAsync(GameScoreboard.Models.PodSnapshot snapshot);
         Task<List<GameScoreboard.Models.PodSnapshot>> GetPodSnapshotsAsync(string? podName = null);
         Task<GameScoreboard.Models.PodSnapshot?> GetPodSnapshotByIdAsync(int id);
+        Task<int> CleanupDuplicatesAsync();
     }
 
     public class MockDataService : IDataService
@@ -772,6 +773,17 @@ namespace GameScoreboard.Services
         public Task<GameScoreboard.Models.PodSnapshot?> GetPodSnapshotByIdAsync(int id)
         {
             return Task.FromResult(_podSnapshots.FirstOrDefault(s => s.Id == id));
+        }
+
+        public Task<int> CleanupDuplicatesAsync()
+        {
+            var toRemove = _teamMembers
+                .GroupBy(m => m.Name.Trim().ToLowerInvariant())
+                .Where(g => g.Count() > 1)
+                .SelectMany(g => g.OrderByDescending(m => m.Id).Skip(1))
+                .ToList();
+            foreach (var m in toRemove) _teamMembers.Remove(m);
+            return Task.FromResult(toRemove.Count);
         }
     }
 }

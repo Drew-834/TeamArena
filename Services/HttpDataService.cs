@@ -230,5 +230,26 @@ namespace GameScoreboard.Services
                 return null;
             }
         }
+
+        public async Task<int> CleanupDuplicatesAsync()
+        {
+            try
+            {
+                Console.WriteLine("[HttpDataService] POST api/members/cleanup-duplicates");
+                var response = await _http.PostAsync("api/members/cleanup-duplicates", null);
+                if (response.IsSuccessStatusCode)
+                {
+                    var count = await response.Content.ReadFromJsonAsync<int>();
+                    Console.WriteLine($"[HttpDataService] Cleanup removed {count} duplicate members.");
+                    return count;
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HttpDataService] CleanupDuplicatesAsync FAILED: {ex.Message}");
+                return 0;
+            }
+        }
     }
 }

@@ -467,6 +467,8 @@
         _teamMembers = _allMembersCache
             .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)
                         && !m.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(m => m.Name.Trim().ToLowerInvariant())
+            .Select(g => g.OrderByDescending(m => m.Id).First())
             .ToList();
 
         Console.WriteLine($"[PodOverview] Found {_teamMembers.Count} members for pod '{PodName}'");

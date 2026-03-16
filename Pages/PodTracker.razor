@@ -1186,7 +1186,16 @@
                 Console.WriteLine($"[PodTracker] Auto-backup error: {ex.Message}");
             }
 
+            // Clean up stale duplicate records from the DB so all views show accurate data
+            int removedDuplicates = await DataService.CleanupDuplicatesAsync();
+            if (removedDuplicates > 0)
+            {
+                _parseLog.Add($"Cleaned up {removedDuplicates} duplicate member record(s) from database.");
+                AppState.InvalidateCache();
+            }
+
             _saveSuccessMessage = $"Saved {savedMembers} members across {savedPods} teams! Auto-backed up {backupCount} teams.";
+            if (removedDuplicates > 0) _saveSuccessMessage += $" Removed {removedDuplicates} stale duplicates.";
             if (errors.Any())
                 _saveError = $"Errors in: {string.Join("; ", errors)}";
         }
