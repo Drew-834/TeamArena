@@ -357,6 +357,8 @@
             var allMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
             _allPodMembers = allMembers
                 .Where(m => !_regularDepartments.Contains(m.Department))
+                .GroupBy(m => m.Name.Trim().ToLowerInvariant())
+                .Select(g => g.OrderByDescending(m => m.Id).First())
                 .ToList();
             _pods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList();
             CalculateAllRankings();
@@ -784,26 +786,27 @@
 
             nameCol = employeeIdx;
 
+            bool rphSet = false, appEffSet = false, pmEffSet = false, fiveStarSet = false, warSet = false, accSet = false;
             for (int k = employeeIdx + 1; k < cells.Length; k++)
             {
                 string h = cells[k].Trim();
                 if (string.IsNullOrEmpty(h)) continue;
 
-                if (h.Contains("RPH", StringComparison.OrdinalIgnoreCase) && rphCol == 4)
-                    rphCol = k;
-                else if ((appEffCol == 7) && ((h.Contains("App", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                if (!rphSet && h.Contains("RPH", StringComparison.OrdinalIgnoreCase))
+                    { rphCol = k; rphSet = true; }
+                else if (!appEffSet && ((h.Contains("App", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
                          || h.StartsWith("Apps", StringComparison.OrdinalIgnoreCase)))
-                    appEffCol = k + 1;
-                else if ((pmEffCol == 10) && ((h.Contains("PM", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                    { appEffCol = k + 1; appEffSet = true; }
+                else if (!pmEffSet && ((h.Contains("PM", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
                          || h.StartsWith("PMs", StringComparison.OrdinalIgnoreCase)))
-                    pmEffCol = k + 1;
-                else if ((fiveStarCol == 13) && (h.Contains("Surveys", StringComparison.OrdinalIgnoreCase) || h.Contains("5 Star", StringComparison.OrdinalIgnoreCase)
+                    { pmEffCol = k + 1; pmEffSet = true; }
+                else if (!fiveStarSet && (h.Contains("Surveys", StringComparison.OrdinalIgnoreCase) || h.Contains("5 Star", StringComparison.OrdinalIgnoreCase)
                          || h.Contains("5-Star", StringComparison.OrdinalIgnoreCase)))
-                    fiveStarCol = k + 1;
-                else if (warCol == 15 && h.Contains("Warranty", StringComparison.OrdinalIgnoreCase))
-                    warCol = k;
-                else if (accCol == 17 && h.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
-                    accCol = k;
+                    { fiveStarCol = k + 1; fiveStarSet = true; }
+                else if (!warSet && h.Contains("Warranty", StringComparison.OrdinalIgnoreCase))
+                    { warCol = k; warSet = true; }
+                else if (!accSet && h.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
+                    { accCol = k; accSet = true; }
             }
             return i;
         }
@@ -855,11 +858,17 @@
 
     private bool LooksLikePodName(string val)
     {
-        // Known pods or aliases
+        // Explicit alias whitelist - no dash required
         if (_podAliases.ContainsKey(val)) return true;
+
+        // Employee names never contain a dash; all real pod headers do.
+        // Require a dash before any DB lookup or heuristic so stale DB entries
+        // (e.g. "Matthew Soto Velez" stored as a Department) are never matched.
+        if (!val.Contains("-")) return false;
+
         if (PodExistsInSystem(val)) return true;
 
-        // Fuzzy match to existing pod (handles typos)
+        // Fuzzy match to existing pod (handles typos like "Advisros")
         if (_allPodMembers != null)
         {
             var existingPods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase);
@@ -867,14 +876,13 @@
                 return true;
         }
 
-        // Heuristic: leader names only when cell looks like "Name-Category" (dash required);
-        // other pod keywords without requiring dash.
+        // Heuristic keywords - dash already confirmed above
         string lower = val.ToLowerInvariant();
-        bool leaderWithDash = val.Contains("-") && (lower.Contains("matt") || lower.Contains("drew") || lower.Contains("luis") || lower.Contains("jamie"));
-        bool otherPodKeyword = lower.Contains("pod") || lower.Contains("front") || lower.Contains("advisor") || lower.Contains("computing")
+        bool hasLeaderName = lower.Contains("matt") || lower.Contains("drew") || lower.Contains("luis") || lower.Contains("jamie");
+        bool hasPodKeyword = lower.Contains("pod") || lower.Contains("front") || lower.Contains("advisor") || lower.Contains("computing")
             || lower.Contains("beast") || lower.Contains("flex") || lower.Contains("mobile") || lower.Contains("category")
             || lower.Contains("crew") || lower.Contains("end");
-        if (leaderWithDash || otherPodKeyword)
+        if (hasLeaderName || hasPodKeyword)
             return true;
 
         return false;
