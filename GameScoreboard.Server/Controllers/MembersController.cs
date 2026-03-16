@@ -139,8 +139,9 @@ public class MembersController : ControllerBase
     }
 
     // Removes duplicate TeamMember rows (same normalized name), keeping the highest Id.
+    // Also removes any member whose Name matches a known Department (pod-label-as-member).
     // MetricRecords on the deleted rows are cascade-deleted automatically.
-    // Returns the count of deleted duplicate records.
+    // Returns the count of deleted records.
     [HttpPost("cleanup-duplicates")]
     public async Task<ActionResult<int>> CleanupDuplicates()
     {
@@ -148,24 +149,39 @@ public class MembersController : ControllerBase
         {
             var allMembers = await _db.TeamMembers.ToListAsync();
 
+            // All known department/pod names (normalized)
+            var allDepts = allMembers
+                .Select(m => m.Department.Trim().ToLowerInvariant())
+                .ToHashSet();
+
+            // 1. Duplicate rows: same normalized name, keep highest Id
             var duplicateIds = allMembers
                 .GroupBy(m => m.Name.Trim().ToLowerInvariant())
                 .Where(g => g.Count() > 1)
                 .SelectMany(g => g.OrderByDescending(m => m.Id).Skip(1))
                 .Select(m => m.Id)
-                .ToList();
+                .ToHashSet();
 
-            if (!duplicateIds.Any())
+            // 2. Pod-label-as-member: Name equals any known department/pod name
+            var podLabelIds = allMembers
+                .Where(m => !duplicateIds.Contains(m.Id)
+                            && allDepts.Contains(m.Name.Trim().ToLowerInvariant()))
+                .Select(m => m.Id)
+                .ToHashSet();
+
+            var allToDeleteIds = duplicateIds.Union(podLabelIds).ToList();
+
+            if (!allToDeleteIds.Any())
                 return Ok(0);
 
             var toDelete = await _db.TeamMembers
-                .Where(m => duplicateIds.Contains(m.Id))
+                .Where(m => allToDeleteIds.Contains(m.Id))
                 .ToListAsync();
 
             _db.TeamMembers.RemoveRange(toDelete);
             await _db.SaveChangesAsync();
 
-            Console.WriteLine($"MembersController.CleanupDuplicates: removed {toDelete.Count} duplicate members.");
+            Console.WriteLine($"MembersController.CleanupDuplicates: removed {duplicateIds.Count} duplicates + {podLabelIds.Count} pod-label records = {toDelete.Count} total.");
             return Ok(toDelete.Count);
         }
         catch (Exception ex)

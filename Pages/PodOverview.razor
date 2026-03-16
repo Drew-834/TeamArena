@@ -464,9 +464,15 @@
 
     private void PopulateFromCache()
     {
+        // Build the set of all known pod/department names so we can exclude
+        // any member whose Name was accidentally stored as a pod label.
+        var allDeptNames = _allMembersCache
+            .Select(m => m.Department.Trim().ToLowerInvariant())
+            .ToHashSet();
+
         _teamMembers = _allMembersCache
             .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)
-                        && !m.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase))
+                        && !allDeptNames.Contains(m.Name.Trim().ToLowerInvariant()))
             .GroupBy(m => m.Name.Trim().ToLowerInvariant())
             .Select(g => g.OrderByDescending(m => m.Id).First())
             .ToList();
