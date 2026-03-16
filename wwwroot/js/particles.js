@@ -87,20 +87,24 @@ window.eldenParticles = (function () {
             var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (reducedMotion) return;
 
-            canvas = document.getElementById(canvasId);
-            if (!canvas) return;
+            var self = this;
+            // Defer so Blazor-rendered canvas is in the DOM and laid out
+            requestAnimationFrame(function () {
+                canvas = document.getElementById(canvasId);
+                if (!canvas) return;
 
-            ctx = canvas.getContext('2d');
-            resize();
-            window.addEventListener('resize', resize);
+                ctx = canvas.getContext('2d');
+                resize();
+                window.addEventListener('resize', resize);
 
-            particles = [];
-            for (var i = 0; i < PARTICLE_COUNT; i++) {
-                particles.push(new Particle());
-            }
+                particles = [];
+                for (var i = 0; i < PARTICLE_COUNT; i++) {
+                    particles.push(new Particle());
+                }
 
-            isRunning = true;
-            animate();
+                isRunning = true;
+                animate();
+            });
         },
 
         stop: function () {

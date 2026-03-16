@@ -499,10 +499,13 @@
                 if (cells.Length < 2) continue;
                 if (cells.All(c => string.IsNullOrWhiteSpace(c))) continue;
 
+                int rowNum = i + 1;
+
                 // Detect pod section header
                 var detectedPodName = DetectPodHeader(cells, nameCol);
                 if (detectedPodName != null)
                 {
+                    _parseLog.Add($"Row {rowNum}: skipped (pod header)");
                     string systemName = ResolvePodName(detectedPodName);
                     bool isNew = !PodExistsInSystem(systemName);
 
@@ -520,33 +523,54 @@
                 }
 
                 // Skip rows before first pod header is detected
-                if (currentPod == null) continue;
+                if (currentPod == null)
+                {
+                    _parseLog.Add($"Row {rowNum}: skipped (no pod yet)");
+                    continue;
+                }
 
                 // Skip #N/A rows
-                if (IsNARow(cells)) continue;
+                if (IsNARow(cells))
+                {
+                    _parseLog.Add($"Row {rowNum}: skipped (#N/A)");
+                    continue;
+                }
 
                 // Extract member name
-                if (cells.Length <= nameCol) continue;
+                if (cells.Length <= nameCol)
+                {
+                    _parseLog.Add($"Row {rowNum}: skipped (no name)");
+                    continue;
+                }
                 string memberName = (cells[nameCol] ?? "").Trim();
-                if (string.IsNullOrEmpty(memberName)) continue;
+                if (string.IsNullOrEmpty(memberName))
+                {
+                    _parseLog.Add($"Row {rowNum}: skipped (no name)");
+                    continue;
+                }
 
-                // If this row just repeats the current pod label (e.g., \"Luis-Front End\"),
+                // If this row just repeats the current pod label (e.g. Luis-Front End),
                 // treat it as a pod header/label row, not a team member.
                 if (currentPod != null &&
                     (memberName.Equals(currentPod.ExcelName, StringComparison.OrdinalIgnoreCase) ||
                      memberName.Equals(currentPod.SystemName, StringComparison.OrdinalIgnoreCase)))
                 {
+                    _parseLog.Add($"Row {rowNum}: skipped (pod label row)");
                     continue;
                 }
 
                 // Skip if it looks like a sub-header or metadata row
-                if (_skipKeywords.Contains(memberName)) continue;
+                if (_skipKeywords.Contains(memberName))
+                {
+                    _parseLog.Add($"Row {rowNum}: skipped (header/metadata)");
+                    continue;
+                }
 
                 // Validate it's a real data row (needs numeric data)
                 int numericCells = CountNumericCells(cells, nameCol + 1);
                 if (numericCells < 2)
                 {
-                    _parseLog.Add($"⚠ Skipped row '{memberName}' (only {numericCells} numeric values detected)");
+                    _parseLog.Add($"Row {rowNum}: skipped (fewer than 2 numeric cells) - '{memberName}'");
                     continue;
                 }
 
@@ -562,6 +586,12 @@
                 if (nameCache.TryGetValue(normalizedName, out var cached))
                 {
                     matched = cached;
+                    if (!matched.Department.Equals(currentPod.SystemName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string prevPod = matched.Department;
+                        matched.Department = currentPod.SystemName;
+                        _parseLog.Add($"Moved '{memberName}' to '{currentPod.SystemName}' (previously in '{prevPod}')");
+                    }
                 }
                 else
                 {
@@ -574,9 +604,10 @@
                     var allMatch = MatchMember(memberName, _allPodMembers ?? new());
                     if (allMatch != null)
                     {
-                        _parseLog.Add($"⚠ '{memberName}' found in '{allMatch.Department}' → moving to '{currentPod.SystemName}'");
+                        string prevPod = allMatch.Department;
                         allMatch.Department = currentPod.SystemName;
                         matched = allMatch;
+                        _parseLog.Add($"Moved '{memberName}' to '{currentPod.SystemName}' (previously in '{prevPod}')");
                     }
                 }
 
@@ -602,7 +633,7 @@
                     catch (Exception ex)
                     {
                         currentPod.UnmatchedNames.Add(memberName);
-                        _parseLog.Add($"✗ Failed to create '{memberName}': {ex.Message}");
+                        _parseLog.Add($"Row {rowNum}: ✗ Failed to create '{memberName}': {ex.Message}");
                         continue;
                     }
                 }
@@ -629,11 +660,13 @@
                     ["AccAttach"] = CleanPercentage(SafeGet(cells, accCol))
                 };
 
+                _parseLog.Add($"Row {rowNum}: Name={memberName} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Warranty={values["WarrantyAttach"]}% | Acc={values["AccAttach"]}%");
+
                 // Extract per-person target goals from the right-hand side of the sheet
                 if (cells.Length >= 6 && matched != null)
                 {
                     int targetStart = cells.Length - 6;
-                    string rphGoalRaw = CleanCurrency(SafeGet(cells, targetStart));           // \"Revenue\" column (RPH goal)
+                    string rphGoalRaw = CleanCurrency(SafeGet(cells, targetStart));           // Revenue column (RPH goal)
                     string appEffGoalRaw = CleanCurrency(SafeGet(cells, targetStart + 2));    // App Eff target
                     string pmEffGoalRaw = CleanCurrency(SafeGet(cells, targetStart + 3));     // PM Eff target
                     string warrantyGoalRaw = CleanPercentage(SafeGet(cells, targetStart + 4)); // Warranty %
@@ -758,18 +791,18 @@
 
                 if (h.Contains("RPH", StringComparison.OrdinalIgnoreCase) && rphCol == 4)
                     rphCol = k;
-                else if ((h.Contains("App", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
-                         || h.StartsWith("Apps", StringComparison.OrdinalIgnoreCase))
+                else if ((appEffCol == 7) && ((h.Contains("App", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                         || h.StartsWith("Apps", StringComparison.OrdinalIgnoreCase)))
                     appEffCol = k + 1;
-                else if ((h.Contains("PM", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
-                         || h.StartsWith("PMs", StringComparison.OrdinalIgnoreCase))
+                else if ((pmEffCol == 10) && ((h.Contains("PM", StringComparison.OrdinalIgnoreCase) && h.Contains("Eff", StringComparison.OrdinalIgnoreCase))
+                         || h.StartsWith("PMs", StringComparison.OrdinalIgnoreCase)))
                     pmEffCol = k + 1;
-                else if (h.Contains("Surveys", StringComparison.OrdinalIgnoreCase) || h.Contains("5 Star", StringComparison.OrdinalIgnoreCase)
-                         || h.Contains("5-Star", StringComparison.OrdinalIgnoreCase))
+                else if ((fiveStarCol == 13) && (h.Contains("Surveys", StringComparison.OrdinalIgnoreCase) || h.Contains("5 Star", StringComparison.OrdinalIgnoreCase)
+                         || h.Contains("5-Star", StringComparison.OrdinalIgnoreCase)))
                     fiveStarCol = k + 1;
-                else if (h.Contains("Warranty", StringComparison.OrdinalIgnoreCase))
+                else if (warCol == 15 && h.Contains("Warranty", StringComparison.OrdinalIgnoreCase))
                     warCol = k;
-                else if (h.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
+                else if (accCol == 17 && h.Contains("Accessory", StringComparison.OrdinalIgnoreCase))
                     accCol = k;
             }
             return i;
@@ -834,13 +867,14 @@
                 return true;
         }
 
-        // Heuristic: contains a dash or common pod-name keywords
+        // Heuristic: leader names only when cell looks like "Name-Category" (dash required);
+        // other pod keywords without requiring dash.
         string lower = val.ToLowerInvariant();
-        if (val.Contains("-") || lower.Contains("pod") || lower.Contains("front") ||
-            lower.Contains("advisor") || lower.Contains("computing") || lower.Contains("beast") ||
-            lower.Contains("flex") || lower.Contains("mobile") || lower.Contains("category") ||
-            lower.Contains("crew") || lower.Contains("end") || lower.Contains("jamie") ||
-            lower.Contains("matt") || lower.Contains("luis") || lower.Contains("drew"))
+        bool leaderWithDash = val.Contains("-") && (lower.Contains("matt") || lower.Contains("drew") || lower.Contains("luis") || lower.Contains("jamie"));
+        bool otherPodKeyword = lower.Contains("pod") || lower.Contains("front") || lower.Contains("advisor") || lower.Contains("computing")
+            || lower.Contains("beast") || lower.Contains("flex") || lower.Contains("mobile") || lower.Contains("category")
+            || lower.Contains("crew") || lower.Contains("end");
+        if (leaderWithDash || otherPodKeyword)
             return true;
 
         return false;
@@ -987,7 +1021,11 @@
             raw.Equals("Off Track", StringComparison.OrdinalIgnoreCase) ||
             raw.Equals("#N/A", StringComparison.OrdinalIgnoreCase))
             return "";
-        return raw.Replace("$", "").Replace(",", "").Trim();
+        raw = raw.Replace("$", "").Replace(",", "").Trim();
+        // Accounting negative: ($54) -> -54
+        if (raw.StartsWith("(") && raw.EndsWith(")"))
+            return "-" + raw.TrimStart('(').TrimEnd(')').Trim();
+        return raw;
     }
 
     private static string CleanPercentage(string raw)
