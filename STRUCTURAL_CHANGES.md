@@ -1,7 +1,98 @@
-# TeamArena Structural Changes — March 2026
+# TeamArena Structural Changes — March 17, 2026
 
 This document records the architectural and logic changes made across the TeamArena
 codebase. Each section explains what existed before, what changed, and why.
+
+## Commit Reference
+
+| Field | Value |
+|-------|-------|
+| Commit | `f4dd824` |
+| Branch | `main` |
+| Parent | `c697208` |
+| Rollback | `git revert f4dd824 && git push origin main` |
+
+To roll back the entire changeset in one step, run the revert command above.
+This creates a clean revert commit (no history rewriting) and the changes can
+be re-applied later by reverting the revert.
+
+---
+
+## Executive Summary
+
+Eight interconnected changes were made in a single commit to avoid partial-deployment
+inconsistencies. The changes fall into three categories:
+
+**Data / Assets** — Avatar photos added for pod members; AvatarResolver service
+auto-matches names to image files so future photos require zero code changes.
+
+**Scoring Logic** — Performance scoring was rebuilt from the ground up: weighted
+by management-defined metric importance, sourced from per-person goals instead of
+hardcoded values, and rank was switched from cumulative XP to current-period
+performance. The 5-Star edge case (value=0) was softened from a total-score-killer
+to a small penalty.
+
+**UI / Presentation** — Progress bars now use a 4-tier color system that correctly
+reflects goal and average comparisons. The Today's Quest panel gained off-track
+visual urgency (red borders, exclamation icons, per-metric buff percentages).
+Panel order was swapped to put the most actionable info (Today's Quest) at the top.
+
+---
+
+## Methodology
+
+1. **Audit first** — Before writing code, every scoring function, styling helper,
+   and panel section was read and mapped. Bugs were identified by tracing real
+   member data (e.g., Seyquan's AppEff) through the existing logic to see where
+   the output diverged from the expected behavior.
+
+2. **Fix the engine, then the display** — Scoring logic was corrected before
+   touching any CSS or HTML. This ensures the tier styling and ranking changes
+   are built on accurate data, not papering over bad numbers with colors.
+
+3. **Weighted scoring from management inputs** — The metric weights (RPH 7/32,
+   AppEff 7/32, PMEff 5/32, AccAttach 5/32, WarrantyAttach 5/32, 5Star 3/32)
+   were provided directly by management and sum to exactly 1.0. They are stored
+   in a static dictionary so future weight adjustments require changing one place.
+
+4. **Goal hierarchy** — `CalculatePerformanceScore` follows a clear fallback chain:
+   per-member goal (via `GetMemberGoal()`) > pod-default target > team average.
+   This respects individual coaching while still functioning for members without
+   personal goals set.
+
+5. **Peer adjustment** — A +/-5 point nudge based on team-average comparison
+   differentiates two members who both hit 90% of their goal but one is above
+   the team average and the other below. This prevents flat ties in ranking.
+
+6. **Lower-is-better awareness** — Efficiency metrics (AppEff, PMEff, Awk) have
+   inverted comparisons throughout: goal checks, scoring ratios, and relative
+   strength calculations all flip the direction so lower values = better.
+
+7. **Modular avatar resolution** — Rather than updating 40+ hardcoded avatar
+   strings, a static resolver was created. The matching strategy (explicit map >
+   full-name > first-name > fallback) is documented in code and the file registry
+   is the single source of truth.
+
+8. **Single atomic commit** — All changes ship together because the scoring fixes,
+   tier styling, and ranking are interdependent. A partial deploy (e.g., new
+   colors without the scoring fix) would produce incorrect visuals.
+
+---
+
+## Files Changed Summary
+
+| File | Type | Changes |
+|------|------|---------|
+| `Services/AvatarResolver.cs` | NEW | Static avatar name-to-file resolver |
+| `STRUCTURAL_CHANGES.md` | NEW | This documentation |
+| `Services/MockDataService.cs` | Modified | Post-init avatar resolution |
+| `GameScoreboard.Server/Controllers/SeedController.cs` | Modified | Local `ResolveAvatar()` for pod seeding |
+| `Pages/CharacterDetails.razor` | Modified | Scoring engine, tier logic, panel layout, quest styling |
+| `Pages/DepartmentOverview.razor` | Modified | Avatar fallback to AvatarResolver |
+| `Pages/PodOverview.razor` | Modified | Avatar fallback to AvatarResolver |
+| `Models/TeamMember.cs` | Modified | Lower-is-better fix in `GetStrongestMetricRelativeToTeam` |
+| `wwwroot/css/elden-ring.css` | Modified | `.bar-dim`, quest off-track classes |
+| `wwwroot/images/avatars/*` | NEW (17 files) | Member photos and AI-generated placeholders |
 
 ---
 
