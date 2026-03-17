@@ -38,8 +38,20 @@ namespace GameScoreboard.Services
         public MockDataService()
         {
             _teamMembers = InitializeMockData();
-            // Pre-populate _metricRecords from the initialized mock data
+            ResolveAllAvatars();
             PrePopulateMetricRecords();
+        }
+
+        /// <summary>
+        /// Runs AvatarResolver against every member so name-matched photos
+        /// (e.g., seyquan.png, Jeremy.png) replace generic placeholders.
+        /// </summary>
+        private void ResolveAllAvatars()
+        {
+            foreach (var member in _teamMembers)
+            {
+                member.AvatarUrl = AvatarResolver.Resolve(member.Name, member.AvatarUrl);
+            }
         }
         
         private void PrePopulateMetricRecords()

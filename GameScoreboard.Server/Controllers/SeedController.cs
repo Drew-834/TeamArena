@@ -225,7 +225,45 @@ public class SeedController : ControllerBase
             ["WarrantyAttach"] = warranty.ToString("F1"),
             ["AccAttach"] = accAttach.ToString("F1")
         };
-        return CreateMember(0, name, department, "Pod Member", "images/avatars/adam1.png", period, metrics);
+        return CreateMember(0, name, department, "Pod Member", ResolveAvatar(name), period, metrics);
+    }
+
+    // -------------------------------------------------------------------------
+    // Lightweight avatar resolver for the server seed controller.
+    // Mirrors the matching logic in Services/AvatarResolver.cs on the client.
+    // Maps member first-name or full-name (case-insensitive) to avatar files.
+    // -------------------------------------------------------------------------
+    private static readonly Dictionary<string, string> _avatarMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Johnathon King", "images/avatars/Johnathon King.png" },
+        { "David Schunk", "images/avatars/david shunk.jpg" },
+        { "DJ Skelton", "images/avatars/dj.png" },
+        { "Jeremy", "images/avatars/Jeremy.png" },
+        { "Cesar", "images/avatars/cesar.png" },
+        { "Dakota", "images/avatars/dakota.png" },
+        { "Francisco", "images/avatars/francisco.png" },
+        { "Liz", "images/avatars/liz.png" },
+        { "Seyquan", "images/avatars/seyquan.png" },
+        { "Victor", "images/avatars/victor.png" },
+        { "Drew", "images/avatars/drew1.png" },
+        { "Jon", "images/avatars/jon1.png" },
+        { "Gustavo", "images/avatars/gustavo1.png" },
+        { "Vinny", "images/avatars/vinny1.png" },
+        { "Ishack", "images/avatars/ishack1.png" },
+        { "Kla", "images/avatars/kla1.png" },
+        { "Matthew", "images/avatars/matthew1.png" },
+        { "Adam", "images/avatars/adam1.png" },
+        { "Ruben", "images/avatars/ruben1.png" },
+    };
+
+    private static string ResolveAvatar(string memberName)
+    {
+        if (_avatarMap.TryGetValue(memberName, out var match))
+            return match;
+        var firstName = memberName.Split(' ').FirstOrDefault() ?? "";
+        if (_avatarMap.TryGetValue(firstName, out var firstMatch))
+            return firstMatch;
+        return "images/avatars/adam1.png";
     }
 
     private TeamMember CreateMember(int id, string name, string department, string role, string avatar, string period, Dictionary<string, string> metrics)

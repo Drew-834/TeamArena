@@ -1,4 +1,4 @@
-@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
+﻿@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
 @page "/character/{Id:int}"
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
@@ -125,9 +125,84 @@
                         </div>
                     </div>
 
-                    <!-- Champion Stats + Radar - Right -->
+                    <!-- Right Sidebar: Quest → Radar → Champion Stats -->
                     <div class="md:w-2/5 mt-8 md:mt-0 md:pl-6">
-                        <div class="mb-6 elden-panel" style="border-color: var(--er-border-gold);">
+
+                        @if (_todayShiftGoals != null)
+                        {
+                            <div class="mb-4 elden-panel" style="border-color: @(_todayShiftGoals.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");">
+                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
+                                @if (_todayShiftGoals.AnyBuffed)
+                                {
+                                    <p class="font-body text-xs mb-3" style="color: var(--er-red-bright);">Behind pace - targets buffed to catch up.</p>
+                                }
+                                else
+                                {
+                                    <p class="font-body text-xs mb-3" style="color: var(--er-green-bright);">On track! Keep it up.</p>
+                                }
+                                <div class="space-y-1 font-mono text-sm">
+                                    <div class="@(_todayShiftGoals.RphBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                                        @if (_todayShiftGoals.RphBuffed) { <span class="quest-exclamation">!</span> }
+                                        RPH Goal: @_todayShiftGoals.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                                        @if (_todayShiftGoals.RphBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.RphBuffPercent)%)</span> }
+                                    </div>
+                                    @if (_todayShiftGoals.AppGoal.HasValue)
+                                    {
+                                        <div class="@(_todayShiftGoals.AppBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                                            @if (_todayShiftGoals.AppBuffed) { <span class="quest-exclamation">!</span> }
+                                            App Goal: @_todayShiftGoals.AppGoal.Value.ToString("N0") apps
+                                            @if (_todayShiftGoals.AppBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.AppBuffPercent)%)</span> }
+                                        </div>
+                                    }
+                                    @if (_todayShiftGoals.PmGoal.HasValue)
+                                    {
+                                        <div class="@(_todayShiftGoals.PmBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                                            @if (_todayShiftGoals.PmBuffed) { <span class="quest-exclamation">!</span> }
+                                            PM Goal: @_todayShiftGoals.PmGoal.Value.ToString("N0") PMs
+                                            @if (_todayShiftGoals.PmBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.PmBuffPercent)%)</span> }
+                                        </div>
+                                    }
+                                    @if (_todayShiftGoals.WarrantyAttachGoalPercent.HasValue)
+                                    {
+                                        <div class="@(_todayShiftGoals.WarrantyBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                                            @if (_todayShiftGoals.WarrantyBuffed) { <span class="quest-exclamation">!</span> }
+                                            Warranty Attach: @_todayShiftGoals.WarrantyAttachGoalPercent.Value.ToString("F1")%
+                                            @if (_todayShiftGoals.WarrantyBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.WarrantyBuffPercent)%)</span> }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (IsPodMember())
+                        {
+                            <div class="mb-4 elden-panel" style="border-color: var(--er-border-gold);">
+                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
+                                <p class="font-body text-xs" style="color: var(--er-text-muted);">Not enough goal data yet to calculate today's targets.</p>
+                            </div>
+                        }
+
+                        <!-- Radar Chart -->
+                        <div class="mb-4 flex justify-center items-center elden-panel" style="min-height: 320px; border-color: var(--er-border-gold);">
+                            @if (_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2)
+                            {
+                                var labels = (List<string>?)_radarChartData.GetType().GetProperty("labels")?.GetValue(_radarChartData);
+                                var datasets = (List<object>?)_radarChartData.GetType().GetProperty("datasets")?.GetValue(_radarChartData);
+                                var data = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
+
+                                <RadarChart
+                                    Labels="labels"
+                                    NormalizedData="data"
+                                    Width="320px"
+                                    Height="320px" />
+                            }
+                            else
+                            {
+                                <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
+                            }
+                        </div>
+
+                        <!-- Champion Stats -->
+                        <div class="elden-panel" style="border-color: var(--er-border-gold);">
                             <h3 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Champion Stats</h3>
                             <div class="elden-divider mb-4"></div>
                             <div class="space-y-3 font-body text-sm">
@@ -157,54 +232,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div class="flex justify-center items-center elden-panel" style="min-height: 320px; border-color: var(--er-border-gold);">
-                            @if (_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2)
-                            {
-                                var labels = (List<string>?)_radarChartData.GetType().GetProperty("labels")?.GetValue(_radarChartData);
-                                var datasets = (List<object>?)_radarChartData.GetType().GetProperty("datasets")?.GetValue(_radarChartData);
-                                var data = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
-
-                                <RadarChart
-                                    Labels="labels"
-                                    NormalizedData="data"
-                                    Width="320px"
-                                    Height="320px" />
-                            }
-                            else
-                            {
-                                <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
-                            }
-                        </div>
-                        @if (_todayShiftGoals != null)
-                        {
-                            <div class="mt-4 elden-panel" style="border-color: var(--er-border-gold);">
-                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today’s Quest (8-Hour Shift)</h3>
-                                <p class="font-body text-xs mb-3" style="color: var(--er-text-muted);">Targets adjusted for your current progress.</p>
-                                <div class="space-y-1 font-mono text-sm">
-                                    <div>RPH Goal: @_todayShiftGoals.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US")) (buffed +20%)</div>
-                                    @if (_todayShiftGoals.AppGoal.HasValue)
-                                    {
-                                        <div>App Goal: @_todayShiftGoals.AppGoal.Value.ToString("N0") apps</div>
-                                    }
-                                    @if (_todayShiftGoals.PmGoal.HasValue)
-                                    {
-                                        <div>PM Goal: @_todayShiftGoals.PmGoal.Value.ToString("N0") PMs</div>
-                                    }
-                                    @if (_todayShiftGoals.WarrantyAttachGoalPercent.HasValue)
-                                    {
-                                        <div>Warranty Attach: @_todayShiftGoals.WarrantyAttachGoalPercent.Value.ToString("F1")%</div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="mt-4 elden-panel" style="border-color: var(--er-border-gold);">
-                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today’s Quest (8-Hour Shift)</h3>
-                                <p class="font-body text-xs" style="color: var(--er-text-muted);">Not enough goal data yet to calculate today’s targets.</p>
-                            </div>
-                        }
                     </div>
                 </div>
             </div>
@@ -594,35 +621,37 @@
                 .Min();
     }
     
-    // Updated Performance Score calculation to include goals and bonus multiplier
+    // =========================================================================
+    // PERFORMANCE SCORING ENGINE
+    // =========================================================================
+    // Computes a 0-100 score for a single metric. Uses the member's personal
+    // goal (via GetMemberGoal) first, falls back to team average as baseline.
+    // Adds a small peer-comparison adjustment (+/-5) so two members at the
+    // same goal percentage are differentiated by their team-average position.
+    //
+    // Special cases:
+    //   - Surveys/5Star = 0  -> returns a small penalty (15) instead of 0
+    //   - Efficiency sentinel (>=90000) -> returns 0 (no apps/PMs sold)
+    //   - Lower-is-better metrics invert the ratio (goal/value)
+    // =========================================================================
     private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
     {
         bool lowerIsBetter = IsLowerBetterMetric(metricKey);
 
+        // Surveys/5Star = 0 means "no data", not "bad performance".
+        // Return a small penalty so it still drags the score slightly.
         if ((metricKey.Equals("Surveys", StringComparison.OrdinalIgnoreCase) ||
              metricKey.Equals("5Star", StringComparison.OrdinalIgnoreCase)) && numericValue == 0)
-            return 0;
+            return 15;
 
-        // Sentinel values for efficiency metrics
+        // Sentinel values for efficiency metrics ($100,000 = no apps/PMs sold)
         if (IsPodEfficiency(metricKey) && numericValue >= 90000) return 0;
 
-        // Define goal targets
-        double? goal = metricKey switch
-        {
-            "PMAttach" => 25.0,
-            "M365Attach" => 30.0,
-            "GSP" => 20.0,
-            "RPH" => 920.0,
-            "AppEff" => 6500.0,
-            "PMEff" => 4000.0,
-            "Surveys" => 4.6,
-            "WarrantyAttach" => 10.0,
-            "AccAttach" => 20.0,
-            _ => null
-        };
+        // Use per-person goals first, then pod defaults, then legacy goals
+        double? goal = GetMemberGoal(metricKey);
 
         double baseScoreTarget;
-        if (goal.HasValue)
+        if (goal.HasValue && goal.Value > 0)
             baseScoreTarget = goal.Value;
         else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0)
             baseScoreTarget = average;
@@ -640,6 +669,17 @@
         else
         {
             score = (numericValue / baseScoreTarget) * 100.0;
+        }
+
+        // Peer adjustment: nudge score based on team-average comparison.
+        // Differentiates two members who both hit ~90% of goal but one is
+        // above average and the other below.
+        if (teamAverages.TryGetValue(metricKey, out double teamAvg) && teamAvg > 0)
+        {
+            bool aboveAvg = lowerIsBetter
+                ? numericValue < teamAvg
+                : numericValue > teamAvg;
+            score += aboveAvg ? 5.0 : -5.0;
         }
 
         return Math.Clamp(score, 0, 100);
@@ -682,17 +722,58 @@
         return null; 
     }
     
+    /// <summary>
+    /// Ranks the current member within their department by weighted performance
+    /// score (not XP). Builds each member's metrics dict from the shared
+    /// _allLatestPeriodDeptRecords so every member is scored identically.
+    /// </summary>
     private int GetOverallRank()
     {
         if (_teamMember == null || !_allTeamMembers.Any()) return 1;
 
-        var departmentMembers = _allTeamMembers.Where(m => m.Department == _teamMember.Department).ToList();
-        var scores = departmentMembers 
-             .OrderByDescending(m => m.TotalExperience)
-             .ToList();
+        var deptMembers = _allTeamMembers
+            .Where(m => m.Department == _teamMember.Department)
+            .ToList();
 
-        var rank = scores.FindIndex(m => m.Id == _teamMember.Id) + 1;
-        return rank > 0 ? rank : departmentMembers.Count;
+        double myScore = GetTotalPerformanceScore();
+        int rank = 1;
+
+        foreach (var m in deptMembers)
+        {
+            if (m.Id == _teamMember.Id) continue;
+            double mScore = ComputePerformanceScoreForMember(m);
+            if (mScore > myScore) rank++;
+        }
+
+        return rank;
+    }
+
+    /// <summary>
+    /// Computes the weighted performance score for any team member using their
+    /// records from _allLatestPeriodDeptRecords. This ensures ranking uses the
+    /// exact same scoring logic as GetTotalPerformanceScore.
+    /// </summary>
+    private double ComputePerformanceScoreForMember(TeamMember member)
+    {
+        var memberRecords = _allLatestPeriodDeptRecords
+            .Where(r => r.TeamMemberId == member.Id)
+            .ToList();
+
+        if (!memberRecords.Any()) return 0;
+
+        var metricsDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in memberRecords)
+        {
+            object? val = record.Value;
+            if (val != null)
+            {
+                var parsed = GetDoubleValue(val);
+                if (parsed.HasValue) val = parsed.Value;
+            }
+            metricsDict[record.MetricKey] = val;
+        }
+
+        return ComputeWeightedScore(metricsDict);
     }
     
     private string GetTopCategories(int count = 2)
@@ -725,19 +806,60 @@
         return bottomMetrics.Any() ? string.Join(", ", bottomMetrics) : "N/A";
     }
     
+    // =========================================================================
+    // POD METRIC WEIGHTS — provided by management, must sum to 32/32 = 1.0
+    // RPH and AppEff are the two heaviest KPIs (21.875% each).
+    // 5-Star carries the lightest weight (9.375%).
+    // =========================================================================
+    private static readonly Dictionary<string, double> _podMetricWeights = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "RPH",            7.0 / 32.0 },   // 21.875%
+        { "AppEff",         7.0 / 32.0 },   // 21.875%
+        { "PMEff",          5.0 / 32.0 },   // 15.625%
+        { "AccAttach",      5.0 / 32.0 },   // 15.625%
+        { "WarrantyAttach", 5.0 / 32.0 },   // 15.625%
+        { "Surveys",        3.0 / 32.0 },   // 9.375%
+    };
+
+    /// <summary>
+    /// Computes the total performance score for the current member.
+    /// Pod members use weighted scoring; regular department members use equal weighting.
+    /// </summary>
     private double GetTotalPerformanceScore()
     {
         if (_teamMember == null || !_latestMetricsDict.Any())
              return 0;
 
-        var numericScores = _latestMetricsDict
-             .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
-             .Select(kvp => GetPerformanceScore(kvp.Key, kvp.Value))
-             .ToList();
-             
-        if (!numericScores.Any()) return 0;
+        return ComputeWeightedScore(_latestMetricsDict);
+    }
 
-        return Math.Min(numericScores.Average(), 100);
+    /// <summary>
+    /// Core weighted-score calculation shared by GetTotalPerformanceScore and
+    /// ComputePerformanceScoreForMember (used for ranking).
+    /// </summary>
+    private double ComputeWeightedScore(Dictionary<string, object?> metricsDict)
+    {
+        bool isPod = IsPodMember();
+        double weightedSum = 0;
+        double totalWeight = 0;
+
+        foreach (var kvp in metricsDict)
+        {
+            double? numVal = GetDoubleValue(kvp.Value);
+            if (!numVal.HasValue) continue;
+
+            double score = CalculatePerformanceScore(kvp.Key, numVal.Value, _teamAverages);
+            double weight = 1.0;
+
+            if (isPod && _podMetricWeights.TryGetValue(kvp.Key, out var podWeight))
+                weight = podWeight;
+
+            weightedSum += score * weight;
+            totalWeight += weight;
+        }
+
+        if (totalWeight <= 0) return 0;
+        return Math.Min(weightedSum / totalWeight, 100);
     }
     
     private string GetFormattedMetricName(string metricKey)
@@ -864,7 +986,21 @@
         return baseGoal.Value * 1.2;
     }
 
-    private record DailyShiftGoals(double RphGoal, double? AppGoal, double? PmGoal, double? WarrantyAttachGoalPercent);
+    // =========================================================================
+    // TODAY'S QUEST — daily shift goal calculation with buff detection.
+    // Each metric tracks whether the member is behind pace (buffed = true)
+    // and by what percentage their target was raised. Buffed metrics carry
+    // a negative connotation: "you're behind and need to push harder."
+    // =========================================================================
+    private record DailyShiftGoals(
+        double RphGoal, bool RphBuffed, int RphBuffPercent,
+        double? AppGoal, bool AppBuffed, int AppBuffPercent,
+        double? PmGoal, bool PmBuffed, int PmBuffPercent,
+        double? WarrantyAttachGoalPercent, bool WarrantyBuffed, int WarrantyBuffPercent)
+    {
+        public bool AnyBuffed => RphBuffed || AppBuffed || PmBuffed || WarrantyBuffed;
+    }
+
     private DailyShiftGoals? _todayShiftGoals;
 
     private void ComputeTodayShiftGoals()
@@ -882,51 +1018,84 @@
         double? warrantyGoal = GetMemberGoal("WarrantyAttach");
 
         double? baseApps = (appEffGoal.HasValue && appEffGoal.Value > 0)
-            ? baseRevenue / appEffGoal.Value
-            : null;
+            ? baseRevenue / appEffGoal.Value : null;
         double? basePms = (pmEffGoal.HasValue && pmEffGoal.Value > 0)
-            ? baseRevenue / pmEffGoal.Value
-            : null;
+            ? baseRevenue / pmEffGoal.Value : null;
 
         double rphScore = GetPerformanceScore("RPH", _latestMetricsDict.TryGetValue("RPH", out var rphVal) ? rphVal : null);
         double appScore = GetPerformanceScore("AppEff", _latestMetricsDict.TryGetValue("AppEff", out var appVal) ? appVal : null);
         double pmScore = GetPerformanceScore("PMEff", _latestMetricsDict.TryGetValue("PMEff", out var pmVal) ? pmVal : null);
         double warrantyScore = GetPerformanceScore("WarrantyAttach", _latestMetricsDict.TryGetValue("WarrantyAttach", out var warVal) ? warVal : null);
 
+        // Multiplier: 1.0 when on-track (score >= 100), up to maxMult when behind.
         static double MultFromScore(double score, double maxMult = 2.0)
         {
             if (score >= 100) return 1.0;
             var deficit = Math.Max(0.0, 100.0 - score);
-            var mult = 1.0 + (deficit / 100.0);
-            return Math.Min(mult, maxMult);
+            return Math.Min(1.0 + deficit / 100.0, maxMult);
         }
 
         double rphMult = MultFromScore(rphScore);
         double appMult = MultFromScore(appScore);
         double pmMult = MultFromScore(pmScore);
-        double warrantyMult = MultFromScore(warrantyScore, 1.25); // keep warranty realistic
+        double warrantyMult = MultFromScore(warrantyScore, 1.25);
 
         double todayRevenue = baseRevenue * rphMult;
         double todayRph = todayRevenue / 8.0;
-
         double? todayApps = baseApps.HasValue ? Math.Max(1, Math.Round(baseApps.Value * appMult)) : null;
         double? todayPms = basePms.HasValue ? Math.Max(1, Math.Round(basePms.Value * pmMult)) : null;
         double? todayWarranty = warrantyGoal.HasValue
             ? Math.Min(warrantyGoal.Value * warrantyMult, Math.Max(warrantyGoal.Value + 15.0, warrantyGoal.Value))
             : (double?)null;
 
-        _todayShiftGoals = new DailyShiftGoals(todayRph, todayApps, todayPms, todayWarranty);
+        // Track which metrics are buffed and by how much
+        bool rphBuf = rphMult > 1.01;
+        bool appBuf = appMult > 1.01;
+        bool pmBuf = pmMult > 1.01;
+        bool warBuf = warrantyMult > 1.01;
+
+        _todayShiftGoals = new DailyShiftGoals(
+            todayRph, rphBuf, (int)Math.Round((rphMult - 1.0) * 100),
+            todayApps, appBuf, (int)Math.Round((appMult - 1.0) * 100),
+            todayPms, pmBuf, (int)Math.Round((pmMult - 1.0) * 100),
+            todayWarranty, warBuf, (int)Math.Round((warrantyMult - 1.0) * 100));
     }
 
     private bool IsPodMember() =>
         _teamMember != null && !_regularDepartments.Contains(_teamMember.Department);
+
+    // =========================================================================
+    // METRIC TIER CLASSIFICATION
+    // =========================================================================
+    // Four tiers determine progress-bar color, border, and value text:
+    //   Gold  — #1 in the department for this metric (elite)
+    //   Green — above team average OR meeting/exceeding goal (solid)
+    //   Dim   — below average and below goal (needs work)
+    //   Red   — worst in the department (struggling)
+    // =========================================================================
+
+    /// <summary>
+    /// Checks whether the member's value meets or exceeds the goal for this
+    /// metric, respecting lower-is-better inversion for efficiency metrics.
+    /// </summary>
+    private bool IsAtOrAboveGoal(string metricKey, double? numericValue)
+    {
+        if (!numericValue.HasValue) return false;
+        double? goal = GetMemberGoal(metricKey);
+        if (!goal.HasValue || goal.Value <= 0) return false;
+
+        if (IsLowerBetterMetric(metricKey))
+            return numericValue.Value <= goal.Value;
+        return numericValue.Value >= goal.Value;
+    }
 
     private string GetMetricBorderColor(string metricKey, object? value)
     {
         if (IsTopPerformer(metricKey)) return "var(--er-gold)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red)";
         double? numericValue = GetDoubleValue(value);
-        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-green)";
+        if (IsAboveAverage(metricKey, numericValue) || IsAtOrAboveGoal(metricKey, numericValue))
+            return "var(--er-green)";
         return "var(--er-gold-dim)";
     }
 
@@ -935,17 +1104,19 @@
         if (IsTopPerformer(metricKey)) return "var(--er-gold-bright)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red-bright)";
         double? numericValue = GetDoubleValue(value);
-        if (IsAboveAverage(metricKey, numericValue)) return "var(--er-text)";
-        return "var(--er-text)";
+        if (IsAboveAverage(metricKey, numericValue) || IsAtOrAboveGoal(metricKey, numericValue))
+            return "var(--er-green-bright)";
+        return "var(--er-text-dim)";
     }
 
     private string GetMetricBarCssClass(string metricKey, object? value)
     {
-        if (IsTopPerformer(metricKey)) return "";
+        if (IsTopPerformer(metricKey)) return "";                 // gold gradient (default)
         if (IsBottomPerformer(metricKey)) return "bar-red";
         double? numericValue = GetDoubleValue(value);
         if (IsAboveAverage(metricKey, numericValue)) return "bar-green";
-        return "";
+        if (IsAtOrAboveGoal(metricKey, numericValue)) return "bar-green";
+        return "bar-dim";                                         // below avg AND below goal
     }
 
     private object GenerateRadarChartData()

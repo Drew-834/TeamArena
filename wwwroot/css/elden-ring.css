@@ -322,6 +322,31 @@ html, body {
     background: linear-gradient(90deg, #1a3a2a 0%, var(--er-green-bright) 100%);
 }
 
+/* Dim bar for below-average but not worst performers */
+.elden-progress-bar.bar-dim {
+    background: linear-gradient(90deg, #2a2a1e 0%, #6a6a4a 100%);
+}
+.elden-progress-bar.bar-dim::after {
+    background: linear-gradient(90deg, transparent, rgba(106, 106, 74, 0.3));
+}
+
+/* Today's Quest off-track / buffed metric styling */
+.quest-metric-buffed {
+    background: rgba(196, 48, 48, 0.08);
+    border-left: 2px solid var(--er-red-bright);
+    padding-left: 0.5rem;
+    border-radius: 2px;
+}
+.quest-metric-on-track {
+    padding-left: 0.5rem;
+    border-left: 2px solid transparent;
+}
+.quest-exclamation {
+    color: var(--er-red-bright);
+    font-weight: bold;
+    margin-right: 0.25rem;
+}
+
 /* Shimmer animation on progress bars */
 .elden-progress-shimmer .elden-progress-bar::before {
     content: '';

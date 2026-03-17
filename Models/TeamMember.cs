@@ -148,36 +148,52 @@ namespace GameScoreboard.Models
             return null;
         }
 
-        // Get the strongest *numeric* metric relative to team averages
+        // Lower-is-better metrics where beating the average means having a LOWER value
+        private static readonly HashSet<string> _lowerIsBetterMetrics = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Awk", "AppEff", "PMEff"
+        };
+
+        /// <summary>
+        /// Finds the metric where this member most outperforms the team average.
+        /// For lower-is-better metrics (AppEff, PMEff, Awk) the ratio is inverted
+        /// so that a lower value yields a higher relative-strength score.
+        /// </summary>
         public string GetStrongestMetricRelativeToTeam(Dictionary<string, double> teamAverages)
         {
             if (MetricRecords == null || !MetricRecords.Any() || teamAverages == null || !teamAverages.Any())
-                return string.Empty; // Or a default metric key if appropriate
+                return string.Empty;
 
             var relativeStrengths = new Dictionary<string, double>();
 
             foreach (var record in MetricRecords)
             {
                 double? metricValue = GetMetricDoubleValue(record.MetricKey);
-                if (metricValue.HasValue) // Only consider numeric metrics
+                if (!metricValue.HasValue) continue;
+
+                if (teamAverages.TryGetValue(record.MetricKey, out var avgValue) && avgValue != 0)
                 {
-                    if (teamAverages.TryGetValue(record.MetricKey, out var avgValue) && avgValue != 0)
+                    if (_lowerIsBetterMetrics.Contains(record.MetricKey))
                     {
-                        // Calculate relative strength (handle potential division by zero)
-                        relativeStrengths[record.MetricKey] = (metricValue.Value / avgValue) * 100;
+                        // Invert: lower value = higher strength (avg/value)
+                        relativeStrengths[record.MetricKey] = metricValue.Value > 0
+                            ? (avgValue / metricValue.Value) * 100
+                            : 200; // value of 0 on lower-is-better = excellent
                     }
                     else
                     {
-                        // If no average or average is 0, use the value itself (or handle differently)
-                        relativeStrengths[record.MetricKey] = metricValue.Value;
+                        relativeStrengths[record.MetricKey] = (metricValue.Value / avgValue) * 100;
                     }
+                }
+                else
+                {
+                    relativeStrengths[record.MetricKey] = metricValue.Value;
                 }
             }
 
             if (!relativeStrengths.Any())
-                return string.Empty; // No numeric metrics found to compare
+                return string.Empty;
 
-            // Return the metric key with the highest relative strength
             return relativeStrengths.OrderByDescending(rs => rs.Value).First().Key;
         }
 
