@@ -1422,9 +1422,10 @@
         _focusFiveByKpi = new Dictionary<string, List<FocusFiveEntry>>();
         if (_allPodMembers == null || !_allPodMembers.Any()) return;
 
-        var members = string.IsNullOrEmpty(_selectedPod)
+        var allCandidates = string.IsNullOrEmpty(_selectedPod)
             ? _allPodMembers
             : _allPodMembers.Where(m => m.Department.Equals(_selectedPod, StringComparison.OrdinalIgnoreCase)).ToList();
+        var members = allCandidates.Where(m => m.MetricRecords?.Any() == true).ToList();
 
         double avgRph = members
             .Select(m => GetMemberLatestMetricValue(m, "RPH"))
@@ -1505,6 +1506,7 @@
 
             var ranked = membersInPod
                 .Select(m => new RankedMember { Id = m.Id, Name = m.Name, Department = m.Department, Score = GetWeightedScoreForMember(m) })
+                .Where(rm => rm.Score > 0)
                 .OrderByDescending(rm => rm.Score)
                 .Select((rm, idx) => { rm.Rank = idx + 1; return rm; })
                 .ToList();

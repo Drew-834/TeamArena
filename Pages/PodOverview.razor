@@ -177,7 +177,7 @@
                             bool isEfficiency = IsLowerBetter(metricKey);
                             var statusColor = GetAverageStatusColor(avgData.Average, goal, isEfficiency);
                         }
-                        <span class="font-mono text-2xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
+                        <span class="font-mono text-2xl font-bold" style="color: @statusColor;">@FormatMetricValue(avgData.Average, metricKey)</span>
                         @if (goal.HasValue)
                         {
                             <span class="font-body text-xs" style="color: var(--er-text-dim);">Target: @(isEfficiency ? "≤ " : "")@FormatMetricValue(goal.Value, metricKey)</span>
@@ -229,19 +229,35 @@
                         </div>
                         <div class="card-content">
                             <div class="mt-2">
-                                <h3 class="card-name">@member.Name</h3>
+                                <h3 class="card-name">
+                                    @member.Name
+                                    @if (isKpiWinner)
+                                    {
+                                        <span class="gold-brilliance" title="@TeamMember.GetMetricDisplayName(wonKpi!) Leader">&#x2726;</span>
+                                    }
+                                </h3>
                                 @if (isKpiWinner)
                                 {
-                                    <p class="card-title mt-1">@TeamMember.GetMetricDisplayName(wonKpi!) Leader</p>
+                                    <p class="card-title mt-1">
+                                        <span class="gold-badge">&#x2726; @TeamMember.GetMetricDisplayName(wonKpi!) Leader</span>
+                                    </p>
+                                }
+                                else
+                                {
+                                    var strongestKpi = GetStrongestWeightedArea(member);
+                                    if (strongestKpi != null)
+                                    {
+                                        <p class="card-title mt-1" style="color: var(--er-text-dim);">Best: @TeamMember.GetMetricDisplayName(strongestKpi)</p>
+                                    }
                                 }
                             </div>
 
                             <div class="card-score">
                                 <div class="card-score-label">Weighted Score</div>
-                                <div class="card-score-value" style="color: @(weightedScore >= 70 ? "var(--er-gold-bright)" : weightedScore >= 50 ? "var(--er-green-bright)" : weightedScore >= 30 ? "var(--er-blue-bright)" : "var(--er-red-bright)");">
+                                <div class="card-score-value" style="color: @(weightedScore >= 70 ? "var(--er-gold-bright)" : weightedScore >= 50 ? "var(--er-green-bright)" : weightedScore >= 30 ? "var(--er-orange-bright)" : "var(--er-red-bright)");">
                                     @weightedScore.ToString("F1")
                                 </div>
-                                <div class="card-score-label">of 100</div>
+                                <div class="card-score-label">of 125</div>
                             </div>
 
                             <div>
@@ -718,7 +734,7 @@
 
     private string GetAverageStatusColor(double average, double? goal, bool lowerIsBetter = false)
     {
-        if (!goal.HasValue || goal.Value <= 0) return "text-white";
+        if (!goal.HasValue || goal.Value <= 0) return "var(--er-text)";
 
         double progress;
         if (lowerIsBetter)
@@ -730,10 +746,10 @@
             progress = (average / goal.Value) * 100.0;
         }
 
-        if (progress >= 100) return "text-yellow-400";
-        if (progress >= 75) return "text-green-400";
-        if (progress >= 50) return "text-blue-400";
-        return "text-red-400";
+        if (progress >= 100) return "var(--er-gold-bright)";
+        if (progress >= 75) return "var(--er-green-bright)";
+        if (progress >= 50) return "var(--er-orange-bright)";
+        return "var(--er-red-bright)";
     }
 
     private string FormatPeriodDisplay(string? period)

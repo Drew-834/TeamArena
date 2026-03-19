@@ -76,6 +76,10 @@
                                             <div>
                                                 <div class="font-heading text-sm tracking-wide" style="color: var(--er-text);">
                                                     @TeamMember.GetMetricDisplayName(metric.Key)
+                                                    @if (IsTopPerformer(metric.Key))
+                                                    {
+                                                        <span class="gold-brilliance" title="Top performer">&#x2726;</span>
+                                                    }
                                                 </div>
                                                 <div class="font-body text-xs" style="color: var(--er-text-dim);">
                                                     Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))

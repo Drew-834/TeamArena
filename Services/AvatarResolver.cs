@@ -63,9 +63,13 @@ namespace GameScoreboard.Services
             "dakota.png",
             "dakota2.png",
             "david shunk.jpg",
+            "dillan.png",
             "dj.png",
             "francisco.png",
+            "jesus.png",
+            "joao.png",
             "liz.png",
+            "sebastian.png",
             "seyquan.png",
             "victor.png",
 

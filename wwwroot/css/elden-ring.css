@@ -1043,6 +1043,37 @@ html, body {
     background: linear-gradient(90deg, #a05820, #c47830, #e09040);
 }
 
+/* ===== GOLD BRILLIANCE INDICATOR ===== */
+
+@keyframes goldShimmer {
+    0%, 100% { opacity: 0.7; text-shadow: 0 0 4px rgba(232, 210, 130, 0.3); }
+    50% { opacity: 1; text-shadow: 0 0 8px rgba(232, 210, 130, 0.6), 0 0 16px rgba(200, 169, 78, 0.3); }
+}
+
+.gold-brilliance {
+    display: inline-block;
+    color: var(--er-gold-bright);
+    animation: goldShimmer 2s ease-in-out infinite;
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+.gold-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-family: var(--font-heading, 'Cinzel', serif);
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, rgba(200, 169, 78, 0.15), rgba(232, 210, 130, 0.1));
+    border: 1px solid rgba(200, 169, 78, 0.3);
+    color: var(--er-gold-bright);
+    animation: goldShimmer 2.5s ease-in-out infinite;
+}
+
 #elden-particles-canvas {
     position: fixed;
     inset: 0;
