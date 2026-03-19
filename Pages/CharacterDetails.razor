@@ -1,4 +1,4 @@
-﻿@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
+@* BUG B05 FIX: Removed duplicate method that was incorrectly placed before @page directive *@
 @page "/character/{Id:int}"
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
@@ -79,6 +79,10 @@
                                                 </div>
                                                 <div class="font-body text-xs" style="color: var(--er-text-dim);">
                                                     Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
+                                                    @if (IsMetricOffTrack(metric.Key, numericValue))
+                                                    {
+                                                        <span class="ml-1 font-bold" style="color: var(--er-orange, #c47830);" title="Off track from target">&#x26A0;</span>
+                                                    }
                                                 </div>
                                             </div>
                                             <div class="font-mono text-lg font-bold" style="color: @GetMetricValueColor(metric.Key, numericValue);">
@@ -228,7 +232,7 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span style="color: var(--er-text-dim);">Performance Score:</span>
-                                    <span class="font-mono font-bold" style="color: var(--er-gold);">@GetTotalPerformanceScore().ToString("F0") / 100</span>
+                                    <span class="font-mono font-bold" style="color: var(--er-gold);">@GetTotalPerformanceScore().ToString("F0") / 125</span>
                                 </div>
                             </div>
                         </div>
@@ -266,6 +270,8 @@
         
         if (_teamMember != null)
         {
+            _teamMember.AvatarUrl = AvatarResolver.Resolve(_teamMember.Name, _teamMember.AvatarUrl);
+
             // 2. Fetch all metric records for this member across all periods
             var allMemberRecords = await DataService.GetMetricRecordsAsync(memberId: Id);
 
@@ -402,9 +408,9 @@
                 .Select(v => v!.Value)                 
                 .ToList();
 
-            // For efficiency metrics, exclude sentinel values ($100,000)
+            // For efficiency metrics, exclude sentinel values (>= $20,000)
             if (IsPodEfficiency(key))
-                values = values.Where(v => v < 90000).ToList();
+                values = values.Where(v => v < 20000).ToList();
 
             // For Surveys/5Star, exclude 0 (no surveys received)
             if (key.Equals("Surveys", StringComparison.OrdinalIgnoreCase) || key.Equals("5Star", StringComparison.OrdinalIgnoreCase))
@@ -482,7 +488,7 @@
                      .Select(v => v!.Value);
 
         if (IsPodEfficiency(metricKey))
-            scores = scores.Where(v => v < 90000);
+            scores = scores.Where(v => v < 20000);
 
         var scoreList = scores.ToList();
         if (!scoreList.Any()) return false;
@@ -505,7 +511,7 @@
                      .Select(v => v!.Value);
 
         if (IsPodEfficiency(metricKey))
-            scores = scores.Where(v => v < 90000);
+            scores = scores.Where(v => v < 20000);
 
         var scoreList = scores.ToList();
         if (!scoreList.Any()) return false;
@@ -544,6 +550,14 @@
             return numericValue.Value < teamAverage;
         else
             return numericValue.Value > teamAverage;
+    }
+
+    private bool IsMetricOffTrack(string metricKey, object? value)
+    {
+        double? numericValue = GetDoubleValue(value);
+        if (!numericValue.HasValue) return false;
+        if (IsTopPerformer(metricKey)) return false;
+        return !IsAboveAverage(metricKey, numericValue) && !IsAtOrAboveGoal(metricKey, numericValue);
     }
 
     private string GetMetricBarClass(string metricKey, object? value)
@@ -631,7 +645,7 @@
     //
     // Special cases:
     //   - Surveys/5Star = 0  -> returns a small penalty (15) instead of 0
-    //   - Efficiency sentinel (>=90000) -> returns 0 (no apps/PMs sold)
+    //   - Efficiency sentinel (>=20000) -> returns 0 (no apps/PMs sold)
     //   - Lower-is-better metrics invert the ratio (goal/value)
     // =========================================================================
     private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
@@ -644,8 +658,8 @@
              metricKey.Equals("5Star", StringComparison.OrdinalIgnoreCase)) && numericValue == 0)
             return 15;
 
-        // Sentinel values for efficiency metrics ($100,000 = no apps/PMs sold)
-        if (IsPodEfficiency(metricKey) && numericValue >= 90000) return 0;
+        // Sentinel values for efficiency metrics (>= $20,000 = unreliable data)
+        if (IsPodEfficiency(metricKey) && numericValue >= 20000) return 0;
 
         // Use per-person goals first, then pod defaults, then legacy goals
         double? goal = GetMemberGoal(metricKey);
@@ -672,8 +686,6 @@
         }
 
         // Peer adjustment: nudge score based on team-average comparison.
-        // Differentiates two members who both hit ~90% of goal but one is
-        // above average and the other below.
         if (teamAverages.TryGetValue(metricKey, out double teamAvg) && teamAvg > 0)
         {
             bool aboveAvg = lowerIsBetter
@@ -682,7 +694,16 @@
             score += aboveAvg ? 5.0 : -5.0;
         }
 
-        return Math.Clamp(score, 0, 100);
+        // Diminishing returns for exceptional performance: logarithmic bonus
+        // above 100 rewards excellence without letting specialization dominate.
+        if (score > 100)
+        {
+            double excess = score - 100;
+            double bonus = 15.0 * Math.Log(1 + excess / 20.0);
+            score = 100 + Math.Min(bonus, 25.0);
+        }
+
+        return Math.Clamp(score, 0, 125);
     }
     
     // Overload GetPerformanceScore to fetch the current value
@@ -859,7 +880,7 @@
         }
 
         if (totalWeight <= 0) return 0;
-        return Math.Min(weightedSum / totalWeight, 100);
+        return Math.Min(weightedSum / totalWeight, 125);
     }
     
     private string GetFormattedMetricName(string metricKey)
@@ -874,27 +895,37 @@
 
         return metricKey switch
         {
-            "M365Attach" or "GSP" or "PMAttach" or "PickRate" =>
+            "M365Attach" or "GSP" or "PMAttach" or "PickRate" or "WarrantyAttach" or "AccAttach" =>
                 value is double dPercent ? $"{dPercent:F1}%" :
                 value is int iPercent ? $"{iPercent:F1}%" :
-                value.ToString() + "?%",
+                value.ToString() + "%",
             "Revenue" or "ASP" or "Basket" or "Pick$" =>
                 value is double dCurrency ? $"${dCurrency:N2}" :
                 value is int iCurrency ? $"${iCurrency:N0}" :
-                "$" + value.ToString() + "?",
+                "$" + value.ToString(),
+            "AppEff" or "PMEff" =>
+                value is double dEff ? $"${dEff:N0}" :
+                value is int iEff ? $"${iEff:N0}" :
+                "$" + value.ToString(),
+            "RPH" =>
+                value is double dRph ? $"${dRph:N0}" :
+                value is int iRph ? $"${iRph:N0}" :
+                "$" + value.ToString(),
             "BP" or "PM" or "PickQuantity" =>
                 value is int iCount ? iCount.ToString("N0") :
                 value is double dCount ? ((int)dCount).ToString("N0") :
-                value.ToString() + "?#",
-            "5Star" =>
+                value.ToString() + "#",
+            "5Star" or "Surveys" =>
                 value is double dRating ? dRating.ToString("F1") :
-                value.ToString() + "?*",
+                value.ToString(),
             "Awk" =>
                value is double dMins ? $"{dMins:F1} min" :
                value is int iMins ? $"{iMins} min" :
-               value.ToString() + "?min",
+               value.ToString() + " min",
             "MVP" => value.ToString() ?? "N/A",
-            _ => value.ToString() ?? "N/A"
+            _ => value is double dVal ? dVal.ToString("F1") :
+                 value is int iVal ? iVal.ToString() :
+                 value.ToString() ?? "N/A"
         };
     }
     
@@ -1096,7 +1127,7 @@
         double? numericValue = GetDoubleValue(value);
         if (IsAboveAverage(metricKey, numericValue) || IsAtOrAboveGoal(metricKey, numericValue))
             return "var(--er-green)";
-        return "var(--er-gold-dim)";
+        return "var(--er-orange)";
     }
 
     private string GetMetricValueColor(string metricKey, object? value)
@@ -1106,7 +1137,7 @@
         double? numericValue = GetDoubleValue(value);
         if (IsAboveAverage(metricKey, numericValue) || IsAtOrAboveGoal(metricKey, numericValue))
             return "var(--er-green-bright)";
-        return "var(--er-text-dim)";
+        return "var(--er-orange-bright)";
     }
 
     private string GetMetricBarCssClass(string metricKey, object? value)
@@ -1116,7 +1147,7 @@
         double? numericValue = GetDoubleValue(value);
         if (IsAboveAverage(metricKey, numericValue)) return "bar-green";
         if (IsAtOrAboveGoal(metricKey, numericValue)) return "bar-green";
-        return "bar-dim";                                         // below avg AND below goal
+        return "bar-orange";
     }
 
     private object GenerateRadarChartData()
@@ -1146,7 +1177,7 @@
                     bool isEfficiency = key == "AppEff" || key == "PMEff";
 
                     // Sentinel values for efficiency (no apps/PMs sold)
-                    if (isEfficiency && rawValue.HasValue && rawValue.Value >= 90000)
+                    if (isEfficiency && rawValue.HasValue && rawValue.Value >= 20000)
                     {
                         normalizedScore = 0;
                     }

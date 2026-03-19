@@ -198,7 +198,7 @@
                             progress = (avgData.Average / goal.Value) * 100.0;
                         }
                         progress = Math.Clamp(progress, 0, 100);
-                        string barClass = progress >= 100 ? "" : progress >= 75 ? "bar-green" : progress >= 50 ? "bar-blue" : "bar-red";
+                        string barClass = progress >= 100 ? "" : progress >= 75 ? "bar-green" : progress >= 50 ? "bar-orange" : "bar-red";
                         <div class="elden-progress elden-progress-shimmer mb-1">
                             <div class="elden-progress-bar @barClass" style="width: @(progress.ToString("F0", CultureInfo.InvariantCulture))%"></div>
                         </div>
@@ -547,10 +547,10 @@
                 .Select(pair => (pair.Name, Value: pair.Value!.Value))
                 .ToList();
 
-            // For AppEff/PMEff, filter out $100,000 sentinel values (means 0 apps/PMs)
+            // For AppEff/PMEff, filter out sentinel values >= $20,000
             if (key == "AppEff" || key == "PMEff")
             {
-                valuesForMetric = valuesForMetric.Where(v => v.Value < 90000).ToList();
+                valuesForMetric = valuesForMetric.Where(v => v.Value < 20000).ToList();
             }
 
             // For Surveys, 0 means no surveys received - exclude from averages
@@ -636,8 +636,7 @@
             double? rawValue = GetMemberMetricValue(member, kvp.Key);
             if (!rawValue.HasValue) continue;
 
-            // Skip sentinel values for efficiency metrics
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 20000) continue;
 
             if (kvp.Key == "Surveys" && rawValue.Value == 0)
             {
@@ -657,12 +656,19 @@
                 normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
             }
 
-            normalizedScore = Math.Clamp(normalizedScore, 0, 100);
+            if (normalizedScore > 100)
+            {
+                double excess = normalizedScore - 100;
+                double bonus = 15.0 * Math.Log(1 + excess / 20.0);
+                normalizedScore = 100 + Math.Min(bonus, 25.0);
+            }
+
+            normalizedScore = Math.Clamp(normalizedScore, 0, 125);
             totalWeightedScore += normalizedScore * kvp.Value;
             applicableWeight += kvp.Value;
         }
 
-        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 100) : 0;
+        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;
     }
 
     private string? GetStrongestWeightedArea(TeamMember member)
@@ -674,7 +680,7 @@
         {
             double? rawValue = GetMemberMetricValue(member, kvp.Key);
             if (!rawValue.HasValue) continue;
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 90000) continue;
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 20000) continue;
 
             double normalizedScore;
             if (kvp.Key == "Surveys" && rawValue.Value == 0)
