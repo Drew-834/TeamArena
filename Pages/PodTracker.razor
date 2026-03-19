@@ -36,6 +36,55 @@
         <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Teams</button>
         <h1 class="font-heading text-3xl mb-6" style="color: var(--er-gold);">Team Metrics Tracker</h1>
 
+        @if (_focusFiveByKpi != null && _focusFiveByKpi.Any())
+        {
+            <div class="mb-6">
+                <h2 class="font-heading text-lg mb-3" style="color: var(--er-gold);">
+                    Focus 5 — Highest Impact Off-Track
+                    @if (!string.IsNullOrEmpty(_selectedPod))
+                    {
+                        <span class="text-sm font-body ml-2" style="color: var(--er-text-dim);">(@_selectedPod)</span>
+                    }
+                </h2>
+                <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: thin; scrollbar-color: var(--er-gold-dark) transparent;">
+                    @foreach (var kpi in _focusFiveByKpi)
+                    {
+                        <div class="elden-panel flex-shrink-0" style="min-width: 220px; max-width: 260px; border-left: 3px solid var(--er-orange, #c47830);">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-heading text-xs tracking-wide" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(kpi.Key)</h4>
+                                <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: rgba(196, 120, 48, 0.15); color: var(--er-orange, #c47830);">
+                                    W: @_metricWeights.GetValueOrDefault(kpi.Key, 0)
+                                </span>
+                            </div>
+                            @if (kpi.Value.Any())
+                            {
+                                <ul class="space-y-1.5">
+                                    @foreach (var entry in kpi.Value)
+                                    {
+                                        var severity = Math.Abs(entry.PercentOff);
+                                        var sevColor = severity > 40 ? "var(--er-red-bright)" : severity > 20 ? "var(--er-orange, #c47830)" : "var(--er-text-dim)";
+                                        <li class="flex items-center justify-between text-xs font-body gap-2 @(severity > 40 ? "focus5-pulse" : "")">
+                                            <div class="truncate" style="max-width: 120px;">
+                                                <span style="color: var(--er-text);">@entry.Name</span>
+                                                <div class="text-xs truncate" style="color: var(--er-text-muted);">@entry.Pod</div>
+                                            </div>
+                                            <div class="text-right font-mono whitespace-nowrap">
+                                                <span style="color: @sevColor; font-weight: 600;">@entry.PercentOff.ToString("+0;-0")%</span>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-xs font-body" style="color: var(--er-green-bright);">All on track</p>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="mb-8 elden-panel">
             <h2 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Import Team Tracker Data</h2>
 
@@ -249,7 +298,7 @@
                                     {
                                         <li class="flex justify-between items-center" style="color: @(rm.Rank == 1 ? "var(--er-gold-bright)" : rm.Rank <= 3 ? "var(--er-text)" : "var(--er-text-dim)");">
                                             <span>@rm.Rank. @rm.Name</span>
-                                            <span class="font-mono text-xs">@rm.Score.ToString("F0")</span>
+                                            <span class="font-mono text-xs">@rm.Score.ToString("F1")</span>
                                         </li>
                                     }
                                 </ul>
@@ -291,6 +340,17 @@
     private Dictionary<int, Dictionary<string, string>> _inputValues = new();
     private List<TeamMember>? _allPodMembers;
     private Dictionary<string, List<RankedMember>>? _podRankings;
+
+    // ── Focus 5 ──
+    private Dictionary<string, List<FocusFiveEntry>>? _focusFiveByKpi;
+
+    private class FocusFiveEntry
+    {
+        public string Name { get; set; } = "";
+        public string Pod { get; set; } = "";
+        public double PercentOff { get; set; }
+        public double Impact { get; set; }
+    }
 
     // ── Parse results ──
     private List<PodParseInfo>? _parseResults;
@@ -362,6 +422,7 @@
                 .ToList();
             _pods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList();
             CalculateAllRankings();
+            CalculateFocusFive();
         }
         catch (Exception ex)
         {
@@ -395,6 +456,7 @@
     {
         _selectedPod = e.Value?.ToString();
         LoadMembersForSelectedPod();
+        CalculateFocusFive();
     }
 
     private void SelectPodFromResults(string podName)
@@ -1236,7 +1298,7 @@
                     else if ((metricKey == "AppEff" || metricKey == "PMEff"))
                     {
                         double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
-                        normalized = target > 0 && numVal > 0 && numVal < 90000 ? (target / numVal) * 100.0 : 0;
+                        normalized = target > 0 && numVal > 0 && numVal < 20000 ? (target / numVal) * 100.0 : 0;
                     }
                     else
                     {
@@ -1244,7 +1306,14 @@
                         normalized = target > 0 ? (numVal / target) * 100.0 : 0;
                     }
 
-                    normalized = Math.Clamp(normalized, 0, 100);
+                    if (normalized > 100)
+                    {
+                        double excess = normalized - 100;
+                        double bonus = 15.0 * Math.Log(1 + excess / 20.0);
+                        normalized = 100 + Math.Min(bonus, 25.0);
+                    }
+
+                    normalized = Math.Clamp(normalized, 0, 125);
                     totalWeightedScore += normalized * weight;
                     applicableWeight += weight;
                 }
@@ -1323,7 +1392,7 @@
             var rec = member.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
             if (rec?.Value == null || !double.TryParse(rec.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
                 continue;
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && numVal >= 90000) continue;
+            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && numVal >= 20000) continue;
             double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
             double normalized;
             if (kvp.Key == "Surveys" && numVal == 0)
@@ -1332,14 +1401,98 @@
                 normalized = target > 0 && numVal > 0 ? (target / numVal) * 100.0 : 0;
             else
                 normalized = target > 0 ? (numVal / target) * 100.0 : 0;
-            normalized = Math.Clamp(normalized, 0, 100);
+
+            if (normalized > 100)
+            {
+                double excess = normalized - 100;
+                double bonus = 15.0 * Math.Log(1 + excess / 20.0);
+                normalized = 100 + Math.Min(bonus, 25.0);
+            }
+
+            normalized = Math.Clamp(normalized, 0, 125);
             totalWeightedScore += normalized * kvp.Value;
             applicableWeight += kvp.Value;
         }
-        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 100) : 0;
+        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;
     }
 
-    // ── Rankings ──
+    // ── Focus 5: highest-impact off-track individuals per KPI ──
+    private void CalculateFocusFive()
+    {
+        _focusFiveByKpi = new Dictionary<string, List<FocusFiveEntry>>();
+        if (_allPodMembers == null || !_allPodMembers.Any()) return;
+
+        var members = string.IsNullOrEmpty(_selectedPod)
+            ? _allPodMembers
+            : _allPodMembers.Where(m => m.Department.Equals(_selectedPod, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        double avgRph = members
+            .Select(m => GetMemberLatestMetricValue(m, "RPH"))
+            .Where(v => v.HasValue && v.Value > 0)
+            .Select(v => v!.Value)
+            .DefaultIfEmpty(920)
+            .Average();
+
+        foreach (var metricKey in _podMetricKeys)
+        {
+            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
+            int weight = _metricWeights.GetValueOrDefault(metricKey, 1);
+            bool lowerIsBetter = metricKey == "AppEff" || metricKey == "PMEff";
+            var entries = new List<FocusFiveEntry>();
+
+            foreach (var m in members)
+            {
+                double? val = GetMemberLatestMetricValue(m, metricKey);
+                if (!val.HasValue) continue;
+                if (lowerIsBetter && val.Value >= 20000) continue;
+
+                double percentOff;
+                bool isOffTrack;
+                if (lowerIsBetter)
+                {
+                    percentOff = target > 0 ? ((val.Value - target) / target) * 100.0 : 0;
+                    isOffTrack = val.Value > target;
+                }
+                else
+                {
+                    percentOff = target > 0 ? ((val.Value - target) / target) * 100.0 : 0;
+                    isOffTrack = val.Value < target;
+                }
+
+                if (!isOffTrack) continue;
+
+                double memberRph = GetMemberLatestMetricValue(m, "RPH") ?? 0;
+                double rphFactor = avgRph > 0 ? memberRph / avgRph : 1.0;
+                double impact = rphFactor * weight * Math.Abs(percentOff);
+
+                entries.Add(new FocusFiveEntry
+                {
+                    Name = m.Name.Split(' ')[0],
+                    Pod = m.Department.Length > 15 ? m.Department[..15] + "…" : m.Department,
+                    PercentOff = lowerIsBetter ? percentOff : percentOff,
+                    Impact = impact
+                });
+            }
+
+            _focusFiveByKpi[metricKey] = entries
+                .OrderByDescending(e => e.Impact)
+                .Take(5)
+                .ToList();
+        }
+    }
+
+    private double? GetMemberLatestMetricValue(TeamMember member, string metricKey)
+    {
+        var record = member.MetricRecords?
+            .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(r => r.Period)
+            .FirstOrDefault();
+        if (record?.Value != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            return val;
+        return null;
+    }
+
+    // ── Rankings (by live weighted KPI score) ──
     private void CalculateAllRankings()
     {
         if (_allPodMembers == null || !_allPodMembers.Any()) return;
@@ -1351,7 +1504,7 @@
             if (!membersInPod.Any()) continue;
 
             var ranked = membersInPod
-                .Select(m => new RankedMember { Id = m.Id, Name = m.Name, Department = m.Department, Score = m.TotalExperience })
+                .Select(m => new RankedMember { Id = m.Id, Name = m.Name, Department = m.Department, Score = GetWeightedScoreForMember(m) })
                 .OrderByDescending(rm => rm.Score)
                 .Select((rm, idx) => { rm.Rank = idx + 1; return rm; })
                 .ToList();

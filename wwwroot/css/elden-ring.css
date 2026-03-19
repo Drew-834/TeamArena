@@ -21,6 +21,8 @@
     --er-blue: #121e2e;
     --er-blue-bright: #1a3050;
     --er-silver: #8a8a8a;
+    --er-orange: #c47830;
+    --er-orange-bright: #e09040;
     --er-bronze: #a0724a;
     --er-purple: #6a3a8a;
 
@@ -1021,6 +1023,25 @@ html, body {
 }
 
 /* ===== PARTICLE CANVAS ===== */
+
+/* ===== FOCUS 5 ANIMATION ===== */
+
+@keyframes focus5Pulse {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(196, 48, 48, 0.08); }
+}
+
+.focus5-pulse {
+    animation: focus5Pulse 2.5s ease-in-out infinite;
+    border-radius: 3px;
+    padding: 1px 3px;
+}
+
+/* ===== ORANGE BAR & TIER ===== */
+
+.elden-progress-bar.bar-orange {
+    background: linear-gradient(90deg, #a05820, #c47830, #e09040);
+}
 
 #elden-particles-canvas {
     position: fixed;
