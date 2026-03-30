@@ -321,7 +321,7 @@
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "Admin321";
+    private const string CorrectPassword = "1411Advisor";
 
     // ── Page state ──
     private bool _isSaving = false;
@@ -358,16 +358,26 @@
     private Dictionary<string, Dictionary<int, Dictionary<string, string>>> _parsedPodData = new();
 
     // ── Constants ──
-    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach", "PCBasket", "HTBasket", "ServAttach", "Office" };
 
     private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 }
+        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 },
+        { "PCBasket", 5 }, { "HTBasket", 5 }, { "ServAttach", 5 }, { "Office", 5 }
     };
 
     private static readonly Dictionary<string, double> _metricTargets = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 }, { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
+        { "RPH", 920.0 },           // Revenue Per Hour
+        { "AppEff", 6500.0 },       // App Efficiency
+        { "PMEff", 4000.0 },        // PM Efficiency
+        { "Surveys", 4.6 },         // 5-Star Surveys
+        { "WarrantyAttach", 10.0 }, // Warranty Attach
+        { "AccAttach", 20.0 },      // Accessory Attach (old format)
+        { "PCBasket", 120.0 },      // NEW: PC Basket goal = $120
+        { "HTBasket", 300.0 },      // NEW: HT Basket goal = $300
+        { "Office", 0.20 },         // NEW: Office goal = 20%
+        { "ServAttach", 0.20 }      // NEW: Serv Attach goal = 20%
     };
 
     // Pod name alias mapping: Excel name → system name
@@ -437,6 +447,22 @@
         {
             try
             {
+                // Check for session timeout (30 minutes)
+                var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthTime");
+                if (!string.IsNullOrEmpty(authTime) && long.TryParse(authTime, out long timestamp))
+                {
+                    var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - timestamp;
+                    if (elapsed > 30 * 60 * 1000) // 30 minutes
+                    {
+                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthenticated");
+                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthTime");
+                        _isAuthenticated = false;
+                        _showPasswordModal = true;
+                        await InvokeAsync(StateHasChanged);
+                        return;
+                    }
+                }
+
                 var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
                 if (isAuth == "true") { _isAuthenticated = true; _showPasswordModal = false; await InvokeAsync(StateHasChanged); return; }
             }
@@ -512,7 +538,8 @@
     //  PASTE PARSER - handles entire Excel pod tracker sheets
     // ══════════════════════════════════════════════════════════
 
-    private async Task HandlePastedData()
+    // OLD FORMAT PARSER - Kept as backup for reference
+    private async Task HandlePastedData_OLD_FORMAT()
     {
         _parseResults = null;
         _parseLog.Clear();
@@ -837,6 +864,343 @@
         }
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  NEW FORMAT PARSER - handles Employee Relative Performance Dashboard format
+    // ══════════════════════════════════════════════════════════
+
+    private async Task HandlePastedData()
+    {
+        _parseResults = null;
+        _parseLog.Clear();
+        _parsedPodData.Clear();
+        _uploadStatusMessage = null;
+        _uploadSuccess = false;
+        _isParsing = true;
+        StateHasChanged();
+
+        if (string.IsNullOrWhiteSpace(_pastedData))
+        {
+            _uploadStatusMessage = "Paste area is empty.";
+            _isParsing = false;
+            return;
+        }
+
+        try
+        {
+            var lines = _pastedData.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length < 3)
+            {
+                _uploadStatusMessage = "Need more data - paste the full team tracker sheet.";
+                _isParsing = false;
+                return;
+            }
+
+            // Detect format: New format has "Employee Relative Performance Dashboard Output" in header
+            bool isNewFormat = lines.Any(l => l.Contains("Employee Relative Performance Dashboard Output", StringComparison.OrdinalIgnoreCase));
+
+            if (isNewFormat)
+            {
+                await HandlePastedData_NewFormat(lines);
+            }
+            else
+            {
+                await HandlePastedData_OLD_FORMAT();
+            }
+        }
+        catch (Exception ex)
+        {
+            _uploadStatusMessage = $"Parse error: {ex.Message}";
+            _uploadSuccess = false;
+            _parseLog.Add($"✗ Fatal: {ex.Message}");
+            Console.WriteLine($"PodTracker parse error: {ex}");
+        }
+        finally
+        {
+            _isParsing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  NEW FORMAT PARSER - Employee Relative Performance Dashboard
+    // ══════════════════════════════════════════════════════════
+    private async Task HandlePastedData_NewFormat(string[] lines)
+    {
+        _parseLog.Add("Using NEW format parser (Employee Relative Performance Dashboard)");
+
+        // New format structure:
+        // Row 0: Kissimmee | Employee Relative Performance Dashboard Output | March
+        // Row 1: 1411 | (blank) | 3/29/2026
+        // Row 2+: Employee | Hours | Total Rev | TPH | Rev Per Hour | Apps/AppEff(Actaul/Goal/Track) | PMs/PMEff(Actaul/Goal/Track) | Surveys/5-Star(Actaul/Goal/Track) | Warranty Attach | Dept Specific | Rank | KPIs Hit
+
+        // Find the header row (contains "Employee" column)
+        int headerRowIdx = -1;
+        int nameCol = 0;
+        for (int i = 0; i < Math.Min(lines.Length, 10); i++)
+        {
+            var cells = lines[i].Split('\t');
+            int empIdx = Array.FindIndex(cells, c => c.Trim().Equals("Employee", StringComparison.OrdinalIgnoreCase));
+            if (empIdx >= 0)
+            {
+                headerRowIdx = i;
+                nameCol = empIdx;
+                _parseLog.Add($"Header found at row {i + 1}, Employee column at index {empIdx}");
+                break;
+            }
+        }
+
+        if (headerRowIdx < 0)
+        {
+            _uploadStatusMessage = "Could not find header row with 'Employee' column.";
+            _isParsing = false;
+            return;
+        }
+
+        // New format column positions (verified from sample data):
+        // 0: Employee name
+        // 4: Rev Per Hour (RPH)
+        // 5: AppEff Actual ("Actaul" typo in source)
+        // 6: AppEff Goal
+        // 8: PMEff Actual
+        // 9: PMEff Goal
+        // 11: Surveys Actual
+        // 14: Warranty Attach Actual
+        // 17+: Dept Specific metrics (PC Basket, Office for PC/CA; HT Basket, Serv Att for HT/CA)
+
+        int rphCol = 4;
+        int appEffCol = 5;  // "Actaul" column
+        int pmEffCol = 8;
+        int surveysCol = 11;
+        int warrantyCol = 14;
+
+        // Walk through lines starting after header
+        var results = new List<PodParseInfo>();
+        PodParseInfo? currentPod = null;
+        int startRow = headerRowIdx + 1;
+        var nameCache = new Dictionary<string, TeamMember>(StringComparer.OrdinalIgnoreCase);
+
+        for (int i = startRow; i < lines.Length; i++)
+        {
+            var cells = lines[i].Split('\t');
+            if (cells.Length < 5) continue;
+            if (cells.All(c => string.IsNullOrWhiteSpace(c))) continue;
+
+            int rowNum = i + 1;
+            string nameCell = (cells[nameCol] ?? "").Trim();
+
+            // Skip empty names
+            if (string.IsNullOrEmpty(nameCell)) continue;
+
+            // Skip metadata rows (date, id numbers)
+            if (nameCell.Equals("1411", StringComparison.OrdinalIgnoreCase)) continue;
+            if (double.TryParse(nameCell.Replace(",", ""), NumberStyles.Any, CultureInfo.InvariantCulture, out _)) continue;
+
+            // Detect pod header: names ending with department codes like -PC/CA, -HT/CA, -PC/APPL
+            if (IsNewFormatPodHeader(nameCell))
+            {
+                _parseLog.Add($"Row {rowNum}: Pod header detected: '{nameCell}'");
+                string systemName = ResolvePodName(nameCell);
+                bool isNew = !PodExistsInSystem(systemName);
+
+                currentPod = new PodParseInfo { ExcelName = nameCell, SystemName = systemName, IsNew = isNew };
+                results.Add(currentPod);
+
+                if (nameCell != systemName)
+                    _parseLog.Add($"Pod '{nameCell}' → mapped to '{systemName}'");
+                else if (!isNew)
+                    _parseLog.Add($"Pod '{nameCell}' found in system");
+                else
+                    _parseLog.Add($"Pod '{nameCell}' is new - will be created on save");
+
+                continue;
+            }
+
+            // Skip if no pod detected yet
+            if (currentPod == null)
+            {
+                _parseLog.Add($"Row {rowNum}: skipped (no pod yet) - '{nameCell}'");
+                continue;
+            }
+
+            // Skip #N/A rows
+            if (IsNARow(cells))
+            {
+                _parseLog.Add($"Row {rowNum}: skipped (#N/A) - '{nameCell}'");
+                continue;
+            }
+
+            // Match member to existing system entries
+            var podMembers = _allPodMembers?
+                .Where(m => m.Department.Equals(currentPod.SystemName, StringComparison.OrdinalIgnoreCase))
+                .ToList() ?? new();
+
+            string normalizedName = NormalizeMemberName(nameCell);
+            TeamMember? matched = null;
+
+            if (nameCache.TryGetValue(normalizedName, out var cached))
+            {
+                matched = cached;
+                if (!matched.Department.Equals(currentPod.SystemName, StringComparison.OrdinalIgnoreCase))
+                {
+                    string prevPod = matched.Department;
+                    matched.Department = currentPod.SystemName;
+                    _parseLog.Add($"Moved '{nameCell}' to '{currentPod.SystemName}' (previously in '{prevPod}')");
+                }
+            }
+            else
+            {
+                matched = MatchMember(nameCell, podMembers);
+            }
+
+            if (matched == null)
+            {
+                // Try all pod members (maybe they moved)
+                var allMatch = MatchMember(nameCell, _allPodMembers ?? new());
+                if (allMatch != null)
+                {
+                    string prevPod = allMatch.Department;
+                    allMatch.Department = currentPod.SystemName;
+                    matched = allMatch;
+                    _parseLog.Add($"Moved '{nameCell}' to '{currentPod.SystemName}' (previously in '{prevPod}')");
+                }
+            }
+
+            if (matched == null)
+            {
+                // Create new member
+                var newMember = new TeamMember
+                {
+                    Name = nameCell,
+                    Department = currentPod.SystemName,
+                    AvatarUrl = "images/avatars/avatar4.png"
+                };
+
+                try
+                {
+                    await DataService.AddTeamMemberAsync(newMember);
+                    _allPodMembers ??= new List<TeamMember>();
+                    _allPodMembers.Add(newMember);
+                    matched = newMember;
+                    currentPod.NewMembers.Add(nameCell);
+                    _parseLog.Add($"Created '{nameCell}' in '{currentPod.SystemName}'");
+                }
+                catch (Exception ex)
+                {
+                    currentPod.UnmatchedNames.Add(nameCell);
+                    _parseLog.Add($"Row {rowNum}: Failed to create '{nameCell}': {ex.Message}");
+                    continue;
+                }
+            }
+            else
+            {
+                currentPod.MatchedMembers.Add(nameCell);
+            }
+
+            if (matched != null)
+            {
+                nameCache[normalizedName] = matched;
+            }
+
+            // Extract KPI values from new format column positions
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["RPH"] = CleanCurrency(SafeGet(cells, rphCol)),
+                ["AppEff"] = CleanCurrency(SafeGet(cells, appEffCol)),
+                ["PMEff"] = CleanCurrency(SafeGet(cells, pmEffCol)),
+                ["Surveys"] = SafeGet(cells, surveysCol).Trim(),
+                ["WarrantyAttach"] = CleanPercentage(SafeGet(cells, warrantyCol))
+            };
+
+            // Extract dept-specific metrics from right-hand side of row
+            // PC Basket is typically 2 columns from end, Office is last
+            // HT Basket and Serv Att for Home Theater teams
+            if (cells.Length >= 6)
+            {
+                int targetStart = cells.Length - 6;
+                string pcBasketRaw = CleanCurrency(SafeGet(cells, targetStart));
+                string htBasketRaw = CleanCurrency(SafeGet(cells, targetStart + 1));
+                string servAttRaw = CleanPercentage(SafeGet(cells, targetStart + 2));
+                string officeRaw = CleanPercentage(SafeGet(cells, targetStart + 4));
+
+                values["PCBasket"] = pcBasketRaw;
+                values["HTBasket"] = htBasketRaw;
+                values["ServAttach"] = servAttRaw;
+                values["Office"] = officeRaw;
+            }
+
+            _parseLog.Add($"Row {rowNum}: Name={nameCell} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Surveys={values["Surveys"]} | Warranty={values["WarrantyAttach"]}");
+
+            // Store parsed values
+            if (!_parsedPodData.ContainsKey(currentPod.SystemName))
+                _parsedPodData[currentPod.SystemName] = new();
+            _parsedPodData[currentPod.SystemName][matched.Id] = values;
+        }
+
+        _parseResults = results;
+
+        // Update pod dropdown to include new pods
+        foreach (var pod in results)
+        {
+            if (!_pods.Contains(pod.SystemName, StringComparer.OrdinalIgnoreCase))
+                _pods.Add(pod.SystemName);
+        }
+        _pods.Sort(StringComparer.OrdinalIgnoreCase);
+
+        // Build summary
+        int totalMatched = results.Sum(r => r.MatchedMembers.Count);
+        int totalNew = results.Sum(r => r.NewMembers.Count);
+        int totalUnmatched = results.Sum(r => r.UnmatchedNames.Count);
+
+        _uploadSuccess = (totalMatched + totalNew) > 0;
+        _uploadStatusMessage = $"Parsed {totalMatched + totalNew} members across {results.Count} teams.";
+        if (totalNew > 0) _uploadStatusMessage += $" ({totalNew} new members created)";
+        if (totalUnmatched > 0) _uploadStatusMessage += $" ({totalUnmatched} could not be matched)";
+
+        _pastedData = string.Empty;
+
+        // Auto-select first pod with data
+        if (results.Any())
+        {
+            _selectedPod = results.First().SystemName;
+            LoadMembersForSelectedPod();
+        }
+    }
+
+    // Detect pod header in new format: names ending with -PC/CA, -HT/CA, -PC/APPL, etc.
+    private bool IsNewFormatPodHeader(string nameCell)
+    {
+        if (string.IsNullOrEmpty(nameCell)) return false;
+        if (nameCell.Length < 5) return false;
+
+        // New format pod headers end with department codes
+        string[] deptCodes = { "PC/CA", "HT/CA", "PC/APPL", "HT/APPL", "DI/HT", "Center Store", "HT/CA" };
+        foreach (var code in deptCodes)
+        {
+            if (nameCell.EndsWith(code, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        // Also check if it's in our existing pod list
+        if (PodExistsInSystem(nameCell)) return true;
+
+        // Check if it looks like a leader name with department code
+        // e.g., "Matt Nelsen-PC/CA", "Christian Nazario-HT/CA"
+        if (nameCell.Contains("-") && nameCell.Length > 6)
+        {
+            var parts = nameCell.Split('-');
+            if (parts.Length == 2)
+            {
+                string leaderName = parts[0].Trim();
+                string deptCode = parts[1].Trim();
+                // Leader name should have at least first and last name
+                if (leaderName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     // ── Header detection ──
     private int FindHeaderRow(string[] lines, ref int nameCol, ref int rphCol, ref int appEffCol, ref int pmEffCol, ref int fiveStarCol, ref int warCol, ref int accCol)
     {
@@ -1130,7 +1494,10 @@
         if (_passwordInput == CorrectPassword)
         {
             _passwordError = string.Empty; _isAuthenticated = true; _showPasswordModal = false;
-            try { await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true"); } catch { }
+            try {
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthTime", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+            } catch { }
         }
         else
         {
