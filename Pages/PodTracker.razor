@@ -977,10 +977,10 @@
         // 17+: Dept Specific metrics (PC Basket, Office for PC/CA; HT Basket, Serv Att for HT/CA)
 
         int rphCol = 4;
-        int appEffCol = 6;  // "Actaul" column (index 5 in header, but data starts at 6)
-        int pmEffCol = 9;
-        int surveysCol = 12;
-        int warrantyCol = 15;
+        int appEffCol = 5;  // "Actaul" column (Actual, not Goal)
+        int pmEffCol = 8;
+        int surveysCol = 11;
+        int warrantyCol = 14;
 
         // Walk through lines starting after header
         var results = new List<PodParseInfo>();
@@ -1134,15 +1134,15 @@
 
                 if (isHT)
                 {
-                    // HT/Retail pods: HT Basket and Serv Attach
-                    values["HTBasket"] = CleanCurrency(SafeGet(cells, targetStart + 1));
-                    values["ServAttach"] = CleanPercentage(SafeGet(cells, targetStart + 2));
+                    // HT/Retail pods: HT Basket (index 13) and Serv Attach (index 14)
+                    values["HTBasket"] = CleanCurrency(SafeGet(cells, 13));
+                    values["ServAttach"] = CleanPercentage(SafeGet(cells, 14));
                 }
                 else
                 {
-                    // PC pods: PC Basket and Office
-                    values["PCBasket"] = CleanCurrency(SafeGet(cells, targetStart));
-                    values["Office"] = CleanPercentage(SafeGet(cells, targetStart + 4));
+                    // PC pods: PC Basket (index 22) and Office (index 23)
+                    values["PCBasket"] = CleanCurrency(SafeGet(cells, 22));
+                    values["Office"] = CleanPercentage(SafeGet(cells, 23));
                 }
             }
 
@@ -1218,8 +1218,13 @@
                 string leaderName = parts[0].Trim();
                 string deptCode = parts[1].Trim();
                 // Leader name should have at least first and last name
+                // AND deptCode must be a valid department code (not just any word)
                 if (leaderName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2)
-                    return true;
+                {
+                    string[] validCodes = { "PC/CA", "HT/CA", "PC/APPL", "HT/APPL", "DI/HT", "Center Store" };
+                    if (validCodes.Any(c => deptCode.Equals(c, StringComparison.OrdinalIgnoreCase)))
+                        return true;
+                }
             }
         }
 
