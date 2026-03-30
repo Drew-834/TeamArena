@@ -1117,27 +1117,36 @@
                 ["AppEff"] = CleanCurrency(SafeGet(cells, appEffCol)),
                 ["PMEff"] = CleanCurrency(SafeGet(cells, pmEffCol)),
                 ["Surveys"] = SafeGet(cells, surveysCol).Trim(),
-                ["WarrantyAttach"] = CleanPercentage(SafeGet(cells, warrantyCol))
+                ["WarrantyAttach"] = CleanPercentage(SafeGet(cells, warrantyCol)),
+                ["PCBasket"] = "",
+                ["HTBasket"] = "",
+                ["ServAttach"] = "",
+                ["Office"] = ""
             };
 
-            // Extract dept-specific metrics from right-hand side of row
-            // PC Basket is typically 2 columns from end, Office is last
-            // HT Basket and Serv Att for Home Theater teams
+            // Extract dept-specific metrics based on pod type
+            // PC pods: PC Basket and Office
+            // HT pods: HT Basket and Serv Attach
             if (cells.Length >= 6)
             {
                 int targetStart = cells.Length - 6;
-                string pcBasketRaw = CleanCurrency(SafeGet(cells, targetStart));
-                string htBasketRaw = CleanCurrency(SafeGet(cells, targetStart + 1));
-                string servAttRaw = CleanPercentage(SafeGet(cells, targetStart + 2));
-                string officeRaw = CleanPercentage(SafeGet(cells, targetStart + 4));
+                bool isHT = IsHTPod(currentPod.SystemName);
 
-                values["PCBasket"] = pcBasketRaw;
-                values["HTBasket"] = htBasketRaw;
-                values["ServAttach"] = servAttRaw;
-                values["Office"] = officeRaw;
+                if (isHT)
+                {
+                    // HT/Retail pods: HT Basket and Serv Attach
+                    values["HTBasket"] = CleanCurrency(SafeGet(cells, targetStart + 1));
+                    values["ServAttach"] = CleanPercentage(SafeGet(cells, targetStart + 2));
+                }
+                else
+                {
+                    // PC pods: PC Basket and Office
+                    values["PCBasket"] = CleanCurrency(SafeGet(cells, targetStart));
+                    values["Office"] = CleanPercentage(SafeGet(cells, targetStart + 4));
+                }
             }
 
-            _parseLog.Add($"Row {rowNum}: Name={nameCell} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Surveys={values["Surveys"]} | Warranty={values["WarrantyAttach"]}");
+            _parseLog.Add($"Row {rowNum}: Name={nameCell} | Pod={currentPod.SystemName} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Surveys={values["Surveys"]} | Warranty={values["WarrantyAttach"]} | PCBasket={values["PCBasket"]} | HTBasket={values["HTBasket"]} | Office={values["Office"]} | ServAttach={values["ServAttach"]}");
 
             // Store parsed values
             if (!_parsedPodData.ContainsKey(currentPod.SystemName))
@@ -1360,17 +1369,22 @@
         return excelName;
     }
 
+    // Check if a department is HT type (Home Theater, Retail Programs)
+    private static bool IsHTPod(string department)
+    {
+        if (string.IsNullOrEmpty(department)) return false;
+        return department.Contains("HT", StringComparison.OrdinalIgnoreCase)
+               || department.Contains("Home Theater", StringComparison.OrdinalIgnoreCase)
+               || department.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
+               || department.Contains("Center Store", StringComparison.OrdinalIgnoreCase);
+    }
+
     // Get metrics applicable to a department (HT/Retail = HTBasket/ServAttach, PC = PCBasket/Office)
     private static List<string> GetMetricsForDepartment(string department)
     {
         if (string.IsNullOrEmpty(department)) return _podMetricKeys;
 
-        bool isHT = department.Contains("HT", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Home Theater", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Center Store", StringComparison.OrdinalIgnoreCase);
-
-        if (isHT)
+        if (IsHTPod(department))
             return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "HTBasket", "ServAttach" };
         else
             return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "Office" };
