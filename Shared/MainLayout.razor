@@ -5,16 +5,40 @@
 @inject NavigationManager NavigationManager
 @inject AppState AppState
 @using GameScoreboard.Models
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="relative min-h-screen" style="background-color: var(--er-bg-primary);">
     <div class="elden-atmosphere"></div>
     <canvas id="elden-particles-canvas"></canvas>
 
-    <main class="relative z-10 @(_showTermsModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
+    @if (!_isAuthenticated)
+    {
+        <div id="password-modal" class="elden-modal-backdrop @(_showPasswordModal ? "" : "hidden")">
+            <div class="elden-modal">
+                <h2 class="elden-modal-title">Sealed Passage</h2>
+                <div class="elden-divider-ornate mb-4"></div>
+                <div class="mb-4">
+                    <input type="password" @bind="PasswordInputValue" @bind:event="oninput" @onkeydown="HandlePasswordKeydown"
+                           class="elden-input w-full"
+                           placeholder="Password" />
+                </div>
+                @if (!string.IsNullOrEmpty(_passwordError))
+                {
+                    <p class="text-sm mb-4" style="color: var(--er-red-bright);">@_passwordError</p>
+                }
+                <button @onclick="CheckPassword" class="elden-btn elden-btn-primary w-full text-center">Authenticate</button>
+            </div>
+        </div>
+    }
+
+    <main class="relative z-10 @(_showTermsModal || _showPasswordModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
         @Body
     </main>
 
-    <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
+    @if (_isAuthenticated && _showTermsModal)
+    {
+        <TermsOfUseModal IsVisible="@_showTermsModal" OnAccepted="HandleTermsAccepted" />
+    }
 
     @if (_showSearch)
     {
@@ -61,6 +85,14 @@
 </div>
 
 @code {
+    // Auth state
+    private bool _isAuthenticated = false;
+    private bool _showPasswordModal = false;
+    private string _passwordInput = string.Empty;
+    private string _passwordError = string.Empty;
+    private const string CorrectPassword = "1411Advisor";
+
+    // Existing state
     private bool _showTermsModal = false;
     private bool _termsChecked = false;
     private bool _audioInitialized = false;
@@ -76,6 +108,12 @@
     private List<TeamMember> _allMembers = new();
     private bool _membersLoaded = false;
     private ElementReference _searchInputRef;
+
+    private string PasswordInputValue
+    {
+        get => _passwordInput;
+        set { _passwordInput = value; if (!string.IsNullOrEmpty(_passwordError)) _passwordError = string.Empty; }
+    }
 
     private List<TeamMember> _searchResults =>
         string.IsNullOrWhiteSpace(_searchQuery)
@@ -132,6 +170,43 @@
         {
             await JSRuntime.InvokeVoidAsync("eldenParticles.init", "elden-particles-canvas");
 
+            // Check auth first
+            if (!_isAuthenticated)
+            {
+                try
+                {
+                    // Check session timeout (30 minutes)
+                    var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthTime");
+                    if (!string.IsNullOrEmpty(authTime) && long.TryParse(authTime, out long timestamp))
+                    {
+                        var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - timestamp;
+                        if (elapsed > 30 * 60 * 1000)
+                        {
+                            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthenticated");
+                            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthTime");
+                        }
+                    }
+
+                    var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
+                    if (isAuth == "true")
+                    {
+                        _isAuthenticated = true;
+                        _showPasswordModal = false;
+                    }
+                    else
+                    {
+                        _showPasswordModal = true;
+                    }
+                }
+                catch
+                {
+                    _showPasswordModal = true;
+                }
+                StateHasChanged();
+                return;
+            }
+
+            // If authenticated but terms not checked, show terms
             if (!_termsChecked)
             {
                 _termsChecked = true;
@@ -179,6 +254,37 @@
         }
         catch { }
         StateHasChanged();
+    }
+
+    private async Task CheckPassword()
+    {
+        if (_passwordInput == CorrectPassword)
+        {
+            _passwordError = string.Empty;
+            _isAuthenticated = true;
+            _showPasswordModal = false;
+            _showTermsModal = true; // Show terms after successful auth
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthTime", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+            }
+            catch { }
+        }
+        else
+        {
+            _passwordError = "Incorrect password.";
+            _passwordInput = string.Empty;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePasswordKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CheckPassword();
+        }
     }
 
     private async Task ToggleMute()

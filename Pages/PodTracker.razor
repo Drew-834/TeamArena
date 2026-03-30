@@ -384,6 +384,16 @@
     private static readonly Dictionary<string, string> _podAliases = new(StringComparer.OrdinalIgnoreCase)
     {
         { "LUIS-DI/HT/Mobile", "Luis the Beast" },
+        { "Matt Nelsen-PC/CA", "Matt Nelsen-PC/CA" },
+        { "Matt Nelsen-PC/APPL", "Matt Nelsen-PC/APPL" },
+        { "Home Theater-HT/CA", "Home Theater-HT/CA" },
+        { "Retail Programs-HT", "Retail Programs-HT" },
+        { "Retail Programs-Center Store", "Retail Programs-Center Store" },
+        // Leader name to pod mappings
+        { "Drew Carillo", "Drews Crew-Computing" },
+        { "Drew Carrillo", "Drews Crew-Computing" },
+        { "Jaime Torres", "Jaime Torres" },
+        { "Luis Ramos", "Luis Ramos" },
     };
 
     // Non-pod departments to exclude from auto-detection
@@ -1172,8 +1182,18 @@
         if (string.IsNullOrEmpty(nameCell)) return false;
         if (nameCell.Length < 5) return false;
 
+        // Check against pod aliases (includes leader names mapping to pods)
+        if (_podAliases.ContainsKey(nameCell)) return true;
+
+        // Also check if just the leader name matches (e.g., "Drew Carillo" -> pod)
+        foreach (var alias in _podAliases.Keys)
+        {
+            if (nameCell.Equals(alias, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
         // New format pod headers end with department codes
-        string[] deptCodes = { "PC/CA", "HT/CA", "PC/APPL", "HT/APPL", "DI/HT", "Center Store", "HT/CA" };
+        string[] deptCodes = { "PC/CA", "HT/CA", "PC/APPL", "HT/APPL", "DI/HT", "Center Store" };
         foreach (var code in deptCodes)
         {
             if (nameCell.EndsWith(code, StringComparison.OrdinalIgnoreCase))
