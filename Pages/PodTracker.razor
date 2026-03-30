@@ -977,10 +977,10 @@
         // 17+: Dept Specific metrics (PC Basket, Office for PC/CA; HT Basket, Serv Att for HT/CA)
 
         int rphCol = 4;
-        int appEffCol = 5;  // "Actaul" column
-        int pmEffCol = 8;
-        int surveysCol = 11;
-        int warrantyCol = 14;
+        int appEffCol = 6;  // "Actaul" column (index 5 in header, but data starts at 6)
+        int pmEffCol = 9;
+        int surveysCol = 12;
+        int warrantyCol = 15;
 
         // Walk through lines starting after header
         var results = new List<PodParseInfo>();
@@ -1207,9 +1207,6 @@
             if (nameCell.EndsWith(code, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
-
-        // Also check if it's in our existing pod list
-        if (PodExistsInSystem(nameCell)) return true;
 
         // Check if it looks like a leader name with department code
         // e.g., "Matt Nelsen-PC/CA", "Christian Nazario-HT/CA"
