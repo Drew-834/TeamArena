@@ -309,15 +309,16 @@
     private Dictionary<string, string> _kpiWinnerByMetric = new();
     private Dictionary<string, string> _kpiWinnerByMember = new();
 
-    // Pod-specific KPI keys in display order
-    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" };
+    // Pod-specific KPI keys in display order (used for fallback/default)
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "HTBasket", "ServAttach", "Office" };
 
-    // Weighted scoring: 7 App Eff, 5 Warranty, 5 Acc Attach, 5 PM Eff, 3 Surveys, 7 RPH = 32 total
+    // Weighted scoring
     private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 }
+        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 },
+        { "PCBasket", 5 }, { "HTBasket", 5 }, { "ServAttach", 5 }, { "Office", 5 }
     };
-    private const int TotalWeight = 32;
+    private const int TotalWeight = 37;
 
     // Targets from the Excel sheet
     private static readonly Dictionary<string, double> _metricTargets = new(StringComparer.OrdinalIgnoreCase)
@@ -327,7 +328,10 @@
         { "PMEff", 4000.0 },
         { "Surveys", 4.6 },
         { "WarrantyAttach", 10.0 },
-        { "AccAttach", 20.0 }
+        { "PCBasket", 120.0 },
+        { "HTBasket", 300.0 },
+        { "ServAttach", 20.0 },
+        { "Office", 20.0 }
     };
 
     private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
@@ -336,6 +340,22 @@
     };
 
     private static bool IsPodDepartment(string dept) => !_regularDepartments.Contains(dept);
+
+    // Get metrics applicable to a department (HT/Retail = HTBasket/ServAttach, PC = PCBasket/Office)
+    private static List<string> GetMetricsForDepartment(string department)
+    {
+        if (string.IsNullOrEmpty(department)) return _podMetricKeys;
+
+        bool isHT = department.Contains("HT", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Home Theater", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Center Store", StringComparison.OrdinalIgnoreCase);
+
+        if (isHT)
+            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "HTBasket", "ServAttach" };
+        else
+            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "Office" };
+    }
 
     private static DateTime ParsePeriodEndDate(string period)
     {
@@ -647,23 +667,25 @@
         double totalWeightedScore = 0;
         int applicableWeight = 0;
 
-        foreach (var kvp in _metricWeights)
+        var metricsForMember = GetMetricsForDepartment(member.Department);
+        foreach (var metricKey in metricsForMember)
         {
-            double? rawValue = GetMemberMetricValue(member, kvp.Key);
+            int weight = _metricWeights.GetValueOrDefault(metricKey, 5);
+            double? rawValue = GetMemberMetricValue(member, metricKey);
             if (!rawValue.HasValue) continue;
 
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 20000) continue;
+            if ((metricKey == "AppEff" || metricKey == "PMEff") && rawValue.Value >= 20000) continue;
 
-            if (kvp.Key == "Surveys" && rawValue.Value == 0)
+            if (metricKey == "Surveys" && rawValue.Value == 0)
             {
-                applicableWeight += kvp.Value;
+                applicableWeight += weight;
                 continue;
             }
 
-            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
             double normalizedScore;
 
-            if (IsLowerBetter(kvp.Key))
+            if (IsLowerBetter(metricKey))
             {
                 normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
             }
@@ -680,8 +702,8 @@
             }
 
             normalizedScore = Math.Clamp(normalizedScore, 0, 125);
-            totalWeightedScore += normalizedScore * kvp.Value;
-            applicableWeight += kvp.Value;
+            totalWeightedScore += normalizedScore * weight;
+            applicableWeight += weight;
         }
 
         return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;

@@ -358,11 +358,11 @@
     private Dictionary<string, Dictionary<int, Dictionary<string, string>>> _parsedPodData = new();
 
     // ── Constants ──
-    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach", "PCBasket", "HTBasket", "ServAttach", "Office" };
+    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "HTBasket", "ServAttach", "Office" };
 
     private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "AccAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 },
+        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 },
         { "PCBasket", 5 }, { "HTBasket", 5 }, { "ServAttach", 5 }, { "Office", 5 }
     };
 
@@ -373,11 +373,10 @@
         { "PMEff", 4000.0 },        // PM Efficiency
         { "Surveys", 4.6 },         // 5-Star Surveys
         { "WarrantyAttach", 10.0 }, // Warranty Attach
-        { "AccAttach", 20.0 },      // Accessory Attach (old format)
-        { "PCBasket", 120.0 },      // NEW: PC Basket goal = $120
-        { "HTBasket", 300.0 },      // NEW: HT Basket goal = $300
-        { "Office", 0.20 },         // NEW: Office goal = 20%
-        { "ServAttach", 0.20 }      // NEW: Serv Attach goal = 20%
+        { "PCBasket", 120.0 },      // PC Basket goal = $120
+        { "HTBasket", 300.0 },      // HT Basket goal = $300
+        { "Office", 20.0 },         // Office goal = 20%
+        { "ServAttach", 20.0 }       // Serv Attach goal = 20%
     };
 
     // Pod name alias mapping: Excel name → system name
@@ -1361,6 +1360,22 @@
         return excelName;
     }
 
+    // Get metrics applicable to a department (HT/Retail = HTBasket/ServAttach, PC = PCBasket/Office)
+    private static List<string> GetMetricsForDepartment(string department)
+    {
+        if (string.IsNullOrEmpty(department)) return _podMetricKeys;
+
+        bool isHT = department.Contains("HT", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Home Theater", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
+                    || department.Contains("Center Store", StringComparison.OrdinalIgnoreCase);
+
+        if (isHT)
+            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "HTBasket", "ServAttach" };
+        else
+            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "Office" };
+    }
+
     private static bool FuzzyMatch(string a, string b)
     {
         if (a.Length < 5 || b.Length < 5) return false;
@@ -1774,17 +1789,19 @@
     {
         double totalWeightedScore = 0;
         int applicableWeight = 0;
-        foreach (var kvp in _metricWeights)
+        var metricsForMember = GetMetricsForDepartment(member.Department);
+        foreach (var metricKey in metricsForMember)
         {
-            var rec = member.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
+            int weight = _metricWeights.GetValueOrDefault(metricKey, 5);
+            var rec = member.MetricRecords?.FirstOrDefault(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase));
             if (rec?.Value == null || !double.TryParse(rec.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double numVal))
                 continue;
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && numVal >= 20000) continue;
-            double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
+            if ((metricKey == "AppEff" || metricKey == "PMEff") && numVal >= 20000) continue;
+            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
             double normalized;
-            if (kvp.Key == "Surveys" && numVal == 0)
+            if (metricKey == "Surveys" && numVal == 0)
                 normalized = 0;
-            else if (kvp.Key == "AppEff" || kvp.Key == "PMEff")
+            else if (metricKey == "AppEff" || metricKey == "PMEff")
                 normalized = target > 0 && numVal > 0 ? (target / numVal) * 100.0 : 0;
             else
                 normalized = target > 0 ? (numVal / target) * 100.0 : 0;
@@ -1797,8 +1814,8 @@
             }
 
             normalized = Math.Clamp(normalized, 0, 125);
-            totalWeightedScore += normalized * kvp.Value;
-            applicableWeight += kvp.Value;
+            totalWeightedScore += normalized * weight;
+            applicableWeight += weight;
         }
         return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;
     }
@@ -1821,7 +1838,17 @@
             .DefaultIfEmpty(920)
             .Average();
 
-        foreach (var metricKey in _podMetricKeys)
+        // Get all unique metrics across all relevant pods
+        var allRelevantMetrics = new HashSet<string>();
+        foreach (var m in members)
+        {
+            foreach (var metric in GetMetricsForDepartment(m.Department))
+            {
+                allRelevantMetrics.Add(metric);
+            }
+        }
+
+        foreach (var metricKey in allRelevantMetrics)
         {
             double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
             int weight = _metricWeights.GetValueOrDefault(metricKey, 1);
@@ -1830,6 +1857,10 @@
 
             foreach (var m in members)
             {
+                // Only consider this metric if it applies to this member's department
+                var memberMetrics = GetMetricsForDepartment(m.Department);
+                if (!memberMetrics.Contains(metricKey)) continue;
+
                 double? val = GetMemberLatestMetricValue(m, metricKey);
                 if (!val.HasValue) continue;
                 if (lowerIsBetter && val.Value >= 20000) continue;
@@ -1857,7 +1888,7 @@
                 {
                     Name = m.Name.Split(' ')[0],
                     Pod = m.Department.Length > 15 ? m.Department[..15] + "…" : m.Department,
-                    PercentOff = lowerIsBetter ? percentOff : percentOff,
+                    PercentOff = percentOff,
                     Impact = impact
                 });
             }
