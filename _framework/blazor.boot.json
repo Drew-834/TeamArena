@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "GameScoreboard",
   "resources": {
-    "hash": "sha256-Jx/wCj5Xb76kQnz5Z9RA1V8vFqOrbfMZsDgz87k8z+4=",
+    "hash": "sha256-bao7NKhNfwb7ICbXoVehMjvzIN9/Se03DHBUJo7Nx50=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-A16ka545FHaB+QXjyJ4exXh7XpBAAIFnX8YkC4xAng8="
     },
@@ -87,7 +87,7 @@
       "System.wasm": "sha256-25KTxVbx+rD8S9iyUye7jmbj1e4TZ5Ca+elup4oegJA=",
       "netstandard.wasm": "sha256-cdldufDfhY5t5kaljoTJ3xJ0uPrdkhr4z2csoeRYwtE=",
       "System.Private.CoreLib.wasm": "sha256-NfKQqKd3Zgeo9XlcaMs7NgCXrV4KvP8W/N1QMg9PzCg=",
-      "GameScoreboard.wasm": "sha256-9ajp67KHs07NSfGXubhmaf+NkLa/fzj9FN47ODn90Gc="
+      "GameScoreboard.wasm": "sha256-3OmSX42fQgmySlzHbOet+M9VaDwScqW8+Xm3A80RbTs="
     }
   },
   "debugLevel": 0,
