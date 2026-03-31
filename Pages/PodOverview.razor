@@ -78,7 +78,7 @@
                                                         <table class="elden-table text-xs">
                                                             <thead><tr>
                                                                 <th class="text-left">Name</th>
-                                                                @foreach (var metricKey in _podMetricKeys)
+                                                                @foreach (var metricKey in GetMetricsForDepartment(PodName))
                                                                 {
                                                                     <th class="text-right">@TeamMember.GetMetricDisplayName(metricKey)</th>
                                                                 }
@@ -89,7 +89,7 @@
                                                                 {
                                                                     <tr>
                                                                         <td class="font-medium">@row.Name</td>
-                                                                        @foreach (var metricKey in _podMetricKeys)
+                                                                        @foreach (var metricKey in GetMetricsForDepartment(PodName))
                                                                         {
                                                                             <td class="text-right" style="color: var(--er-text-dim);">@row.Metrics.GetValueOrDefault(metricKey, "—")</td>
                                                                         }
@@ -159,7 +159,7 @@
 
         <!-- KPI Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
-            @foreach (var metricKey in _podMetricKeys)
+            @foreach (var metricKey in GetMetricsForDepartment(PodName))
             {
                 var avgData = _departmentAverages.GetValueOrDefault(metricKey);
                 var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
@@ -575,7 +575,7 @@
         _highPerformerValues.Clear();
         _lowPerformerValues.Clear();
 
-        foreach (var key in _podMetricKeys)
+        foreach (var key in GetMetricsForDepartment(PodName))
         {
             var valuesForMetric = _teamMembers
                 .Select(m => (Name: m.Name, Value: GetMemberMetricValue(m, key)))
@@ -822,7 +822,7 @@
                 m.Name,
                 m.Id,
                 WeightedScore = GetWeightedScore(m).ToString("F1", CultureInfo.InvariantCulture),
-                Metrics = _podMetricKeys.ToDictionary(
+                Metrics = GetMetricsForDepartment(PodName).ToDictionary(
                     key => key,
                     key =>
                     {
@@ -892,7 +892,7 @@
                 var score = element.GetProperty("WeightedScore").GetString() ?? "0";
                 var metricsObj = element.GetProperty("Metrics");
                 var metrics = new Dictionary<string, string>();
-                foreach (var key in _podMetricKeys)
+                foreach (var key in GetMetricsForDepartment(PodName))
                 {
                     if (metricsObj.TryGetProperty(key, out var val))
                         metrics[key] = val.GetString() ?? "—";
