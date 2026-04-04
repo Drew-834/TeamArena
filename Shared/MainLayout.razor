@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IJSRuntime JSRuntime
 @using GameScoreboard.Services
 @inject IDataService DataService
@@ -6,10 +7,12 @@
 @inject AppState AppState
 @using GameScoreboard.Models
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
 
-<div class="relative min-h-screen" style="background-color: var(--er-bg-primary);">
+<div class="relative min-h-screen elden-shell" style="background-color: var(--er-bg-primary);">
     <div class="elden-atmosphere"></div>
     <canvas id="elden-particles-canvas"></canvas>
+    <div class="elden-vignette @(_isRouteTransitionActive ? "is-active" : "")"></div>
 
     @if (!_isAuthenticated)
     {
@@ -31,8 +34,34 @@
         </div>
     }
 
+    @if (_isAuthenticated)
+    {
+        <header class="elden-shell-header @(_showSearch ? "shell-is-searching" : "")">
+            <div class="elden-shell-header-inner">
+                <button class="elden-shell-nav-btn" @onclick="NavigateToHome" title="Return to the Roundtable">
+                    Return
+                </button>
+                <div class="elden-shell-titleblock">
+                    <div class="elden-shell-kicker">Guided By Grace</div>
+                    <div class="elden-shell-title">@_currentChamberTitle</div>
+                    <div class="elden-shell-subtitle">@_currentRouteDescriptor</div>
+                </div>
+                <div class="elden-shell-actions">
+                    <button class="elden-shell-icon-btn" @onclick="ToggleSearch" title="Search Champions">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </button>
+                    <button class="elden-shell-icon-btn" @onclick="ToggleMute" title="@(_isMuted ? "Unmute" : "Mute")">
+                        @(_isMuted ? "🔇" : "🔊")
+                    </button>
+                </div>
+            </div>
+        </header>
+    }
+
     <main class="relative z-10 @(_showTermsModal || _showPasswordModal ? "filter blur-sm pointer-events-none" : "") transition-all duration-300">
-        @Body
+        <div class="elden-route-stage @(_isAuthenticated ? "is-authenticated" : "") @(_isRouteTransitionActive ? "is-transitioning" : "")" @key="_routeKey">
+            @Body
+        </div>
     </main>
 
     @if (_isAuthenticated && _showTermsModal)
@@ -70,14 +99,6 @@
         </div>
     }
 
-    <button class="elden-search-btn" @onclick="ToggleSearch" title="Search Champions">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
-
-    <button class="elden-mute-btn" @onclick="ToggleMute" title="@(_isMuted ? "Unmute" : "Mute")">
-        @(_isMuted ? "🔇" : "🔊")
-    </button>
-
     <footer class="relative z-10 text-center text-xs p-3 @(_showTermsModal ? "filter blur-sm" : "") transition-all duration-300"
             style="color: var(--er-text-muted);">
         &copy; @DateTime.Now.Year Drew Carrillo. All Rights Reserved.
@@ -97,10 +118,16 @@
     private bool _termsChecked = false;
     private bool _audioInitialized = false;
     private bool _isMuted = false;
+    private bool _isRouteTransitionActive = false;
+    private string _currentChamberTitle = "Roundtable Hold";
+    private string _currentRouteDescriptor = "Character Select";
+    private string _routeKey = "route-initial";
 
     protected override void OnInitialized()
     {
         AppState.StartPreload(DataService);
+        UpdateRouteChrome(NavigationManager.Uri);
+        NavigationManager.LocationChanged += HandleLocationChanged;
     }
 
     private bool _showSearch = false;
@@ -295,5 +322,78 @@
             StateHasChanged();
         }
         catch { }
+    }
+
+    private async void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateRouteChrome(e.Location);
+        _routeKey = $"route-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+
+        if (_isAuthenticated)
+        {
+            _isRouteTransitionActive = true;
+            await InvokeAsync(StateHasChanged);
+
+            try { await JSRuntime.InvokeVoidAsync("eldenAudio.playTransition"); } catch { }
+
+            await Task.Delay(260);
+            _isRouteTransitionActive = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateRouteChrome(string uri)
+    {
+        var relative = NavigationManager.ToBaseRelativePath(uri);
+        relative = relative.Split('?', '#')[0].Trim('/');
+
+        if (string.IsNullOrWhiteSpace(relative))
+        {
+            _currentChamberTitle = "Roundtable Hold";
+            _currentRouteDescriptor = "Character Select";
+            return;
+        }
+
+        var segments = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var first = segments[0].ToLowerInvariant();
+
+        switch (first)
+        {
+            case "pods":
+                _currentChamberTitle = "War Council";
+                _currentRouteDescriptor = segments.Length > 1 ? Uri.UnescapeDataString(segments[^1]).Replace('-', ' ') : "Team Index";
+                break;
+            case "podtracker":
+                _currentChamberTitle = "Leader Dashboard";
+                _currentRouteDescriptor = "Tracker Command";
+                break;
+            case "character":
+                _currentChamberTitle = "Champion Ledger";
+                _currentRouteDescriptor = "Individual Dossier";
+                break;
+            case "departments":
+                _currentChamberTitle = "Department Chronicle";
+                _currentRouteDescriptor = segments.Length > 1 ? Uri.UnescapeDataString(segments[^1]).Replace('-', ' ') : "Overview";
+                break;
+            case "weeklytracker":
+                _currentChamberTitle = "Hidden Archives";
+                _currentRouteDescriptor = "Weekly Command";
+                break;
+            default:
+                _currentChamberTitle = "The Lands Between";
+                _currentRouteDescriptor = Uri.UnescapeDataString(relative).Replace('-', ' ');
+                break;
+        }
+    }
+
+    private void NavigateToHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
     }
 }

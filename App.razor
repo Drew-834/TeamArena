@@ -1,4 +1,4 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
@@ -6,11 +6,12 @@
     <NotFound>
         <PageTitle>Not found</PageTitle>
         <LayoutView Layout="@typeof(MainLayout)">
-            <div class="bg-gray-900 min-h-screen text-white flex items-center justify-center">
-                <div class="text-center">
-                    <h1 class="text-4xl font-bold text-yellow-400 mb-4">404 - Page Not Found</h1>
-                    <p class="text-xl mb-8">Sorry, there's nothing at this address.</p>
-                    <a href="/" class="px-6 py-3 bg-yellow-500 text-gray-900 rounded-md font-semibold hover:bg-yellow-400 transition-colors duration-200">
+            <div class="min-h-screen flex items-center justify-center px-6">
+                <div class="elden-panel elden-panel-gold text-center max-w-2xl w-full animate-fade-in-up">
+                    <div class="text-rune text-sm tracking-[0.3em] uppercase mb-3">Lost Grace</div>
+                    <h1 class="title-glow text-4xl mb-4">404 - Page Not Found</h1>
+                    <p class="font-body text-xl mb-8" style="color: var(--er-text-dim);">Sorry, there is nothing at this address.</p>
+                    <a href="/" class="elden-btn elden-btn-primary">
                         Return to Character Select
                     </a>
                 </div>

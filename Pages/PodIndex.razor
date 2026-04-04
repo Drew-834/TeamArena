@@ -14,11 +14,33 @@
             &larr; Back to Home
         </button>
 
-        <div class="text-center mb-10">
-            <h1 class="title-glow text-4xl mb-2">War Council</h1>
-            <p class="font-body" style="color: var(--er-text-dim);">Select a team to view individual KPI performance</p>
-            <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 300px;"></div>
-        </div>
+        <section class="elden-dashboard-section elden-dashboard-hero mb-10">
+            <div class="relative z-10">
+                <div class="text-center mb-8">
+                    <div class="elden-dashboard-eyebrow">Council Navigation</div>
+                    <h1 class="title-glow text-4xl mb-2">War Council</h1>
+                    <p class="font-body text-lg" style="color: var(--er-text-dim);">Select a team to inspect its current champions and KPI standing.</p>
+                    <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 300px;"></div>
+                </div>
+                <div class="elden-dashboard-grid metrics">
+                    <div class="elden-dashboard-card text-center">
+                        <div class="elden-dashboard-eyebrow">Active Teams</div>
+                        <div class="elden-dashboard-value">@_pods.Count</div>
+                        <div class="elden-dashboard-caption">Pods with live performance data</div>
+                    </div>
+                    <div class="elden-dashboard-card text-center">
+                        <div class="elden-dashboard-eyebrow">Rostered Champions</div>
+                        <div class="elden-dashboard-value">@(_allMembers?.Count(m => m.MetricRecords?.Any() == true) ?? 0)</div>
+                        <div class="elden-dashboard-caption">Members carrying current metrics</div>
+                    </div>
+                    <div class="elden-dashboard-card text-center">
+                        <div class="elden-dashboard-eyebrow">Tracker Access</div>
+                        <div class="elden-dashboard-value">Hidden</div>
+                        <div class="elden-dashboard-caption">Use the sealed route when you need to update data</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         @if (_isLoading)
         {

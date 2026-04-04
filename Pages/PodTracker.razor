@@ -34,182 +34,271 @@
     }
     else
     {
-        <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Teams</button>
-        <h1 class="font-heading text-3xl mb-6" style="color: var(--er-gold);">Team Metrics Tracker</h1>
-
-        @if (_focusFiveByKpi != null && _focusFiveByKpi.Any())
-        {
-            <div class="mb-6">
-                <h2 class="font-heading text-lg mb-3" style="color: var(--er-gold);">
-                    Focus 5 — Highest Impact Off-Track
-                    @if (!string.IsNullOrEmpty(_selectedPod))
-                    {
-                        <span class="text-sm font-body ml-2" style="color: var(--er-text-dim);">(@_selectedPod)</span>
-                    }
-                </h2>
-                <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: thin; scrollbar-color: var(--er-gold-dark) transparent;">
-                    @foreach (var kpi in _focusFiveByKpi)
-                    {
-                        <div class="elden-panel flex-shrink-0" style="min-width: 220px; max-width: 260px; border-left: 3px solid var(--er-orange, #c47830);">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-heading text-xs tracking-wide" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(kpi.Key)</h4>
-                                <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: rgba(196, 120, 48, 0.15); color: var(--er-orange, #c47830);">
-                                    W: @_metricWeights.GetValueOrDefault(kpi.Key, 0)
-                                </span>
+        <div class="mx-auto max-w-7xl space-y-8">
+            <section class="elden-dashboard-section elden-dashboard-hero animate-fade-in-up">
+                <div class="relative z-10 space-y-6">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div class="space-y-3 max-w-3xl">
+                            <button @onclick="NavigateBack" class="elden-btn">&larr; Back to Teams</button>
+                            <div class="elden-dashboard-eyebrow">Leader Dashboard</div>
+                            <h1 class="font-heading text-3xl md:text-4xl" style="color: var(--er-gold-bright);">Tracker Command Chamber</h1>
+                            <p class="font-body text-lg" style="color: var(--er-text-dim);">
+                                Monitor business health, surface strategic pressure, and shepherd imports into the live roster without leaving the war room.
+                            </p>
+                        </div>
+                        <div class="elden-dashboard-grid metrics w-full lg:max-w-3xl">
+                            <div class="elden-dashboard-card">
+                                <div class="elden-dashboard-eyebrow">Reporting Period</div>
+                                <div class="elden-dashboard-value">@_selectedPeriod</div>
+                                <div class="elden-dashboard-caption">Current live save label</div>
                             </div>
-                            @if (kpi.Value.Any())
+                            <div class="elden-dashboard-card">
+                                <div class="elden-dashboard-eyebrow">Teams In Command</div>
+                                <div class="elden-dashboard-value">@_pods.Count</div>
+                                <div class="elden-dashboard-caption">Pods with active or staged data</div>
+                            </div>
+                            <div class="elden-dashboard-card">
+                                <div class="elden-dashboard-eyebrow">Strategic Pressure</div>
+                                <div class="elden-dashboard-value">@GetFocusPressureCount()</div>
+                                <div class="elden-dashboard-caption">KPIs with live off-track pressure</div>
+                            </div>
+                            <div class="elden-dashboard-card">
+                                <div class="elden-dashboard-eyebrow">Import Readiness</div>
+                                <div class="elden-dashboard-value">@GetImportReadinessLabel()</div>
+                                <div class="elden-dashboard-caption">@GetImportReadinessCaption()</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="elden-dashboard-grid dual">
+                <div class="elden-dashboard-section">
+                    <div class="elden-dashboard-section-header">
+                        <div>
+                            <div class="elden-dashboard-eyebrow">Focus / Rankings</div>
+                            <h2 class="elden-dashboard-section-title">Strategic Pressure</h2>
+                            <p class="elden-dashboard-section-copy">
+                                Highest-impact off-track metrics across the active scope, weighted by business importance and current revenue strength.
+                            </p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_selectedPod))
+                        {
+                            <div class="font-heading text-xs uppercase tracking-[0.2em]" style="color: var(--er-text-dim);">@_selectedPod</div>
+                        }
+                    </div>
+
+                    @if (_focusFiveByKpi != null && _focusFiveByKpi.Any())
+                    {
+                        <div class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: thin; scrollbar-color: var(--er-gold-dark) transparent;">
+                            @foreach (var kpi in _focusFiveByKpi)
                             {
-                                <ul class="space-y-1.5">
-                                    @foreach (var entry in kpi.Value)
+                                <div class="elden-dashboard-card flex-shrink-0" style="min-width: 230px; max-width: 270px; border-left: 3px solid var(--er-orange, #c47830);">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-heading text-xs tracking-wide" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(kpi.Key)</h4>
+                                        <span class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: rgba(196, 120, 48, 0.15); color: var(--er-orange, #c47830);">
+                                            W: @_metricWeights.GetValueOrDefault(kpi.Key, 0)
+                                        </span>
+                                    </div>
+                                    @if (kpi.Value.Any())
                                     {
-                                        var severity = Math.Abs(entry.PercentOff);
-                                        var sevColor = severity > 40 ? "var(--er-red-bright)" : severity > 20 ? "var(--er-orange, #c47830)" : "var(--er-text-dim)";
-                                        <li class="flex items-center justify-between text-xs font-body gap-2 @(severity > 40 ? "focus5-pulse" : "")">
-                                            <div class="truncate" style="max-width: 120px;">
-                                                <span style="color: var(--er-text);">@entry.Name</span>
-                                                <div class="text-xs truncate" style="color: var(--er-text-muted);">@entry.Pod</div>
-                                            </div>
-                                            <div class="text-right font-mono whitespace-nowrap">
-                                                <span style="color: @sevColor; font-weight: 600;">@entry.PercentOff.ToString("+0;-0")%</span>
-                                            </div>
-                                        </li>
+                                        <ul class="space-y-1.5">
+                                            @foreach (var entry in kpi.Value)
+                                            {
+                                                var severity = Math.Abs(entry.PercentOff);
+                                                var sevColor = severity > 40 ? "var(--er-red-bright)" : severity > 20 ? "var(--er-orange, #c47830)" : "var(--er-text-dim)";
+                                                <li class="flex items-center justify-between text-xs font-body gap-2 @(severity > 40 ? "focus5-pulse" : "")">
+                                                    <div class="truncate" style="max-width: 130px;">
+                                                        <span style="color: var(--er-text);">@entry.Name</span>
+                                                        <div class="text-xs truncate" style="color: var(--er-text-muted);">@entry.Pod</div>
+                                                    </div>
+                                                    <div class="text-right font-mono whitespace-nowrap">
+                                                        <span style="color: @sevColor; font-weight: 600;">@entry.PercentOff.ToString("+0;-0")%</span>
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
                                     }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p class="text-xs font-body" style="color: var(--er-green-bright);">All on track</p>
+                                    else
+                                    {
+                                        <p class="text-xs font-body" style="color: var(--er-green-bright);">All on track</p>
+                                    }
+                                </div>
                             }
                         </div>
                     }
+                    else
+                    {
+                        <p class="font-body" style="color: var(--er-text-muted);">No off-track pressure detected yet. Load live metrics or select a team to focus the chamber.</p>
+                    }
                 </div>
-            </div>
-        }
 
-        <div class="mb-8 elden-panel">
-            <h2 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Import Team Tracker Data</h2>
+                <div class="elden-dashboard-section">
+                    <div class="elden-dashboard-section-header">
+                        <div>
+                            <div class="elden-dashboard-eyebrow">War Council</div>
+                            <h2 class="elden-dashboard-section-title">Team Rankings</h2>
+                            <p class="elden-dashboard-section-copy">Live weighted standings for each pod, updated from the current saved roster.</p>
+                        </div>
+                    </div>
 
-            <div class="flex flex-wrap gap-4 mb-4 items-end">
-                <div>
-                    <label class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">Upload Date</label>
-                    <div class="px-4 py-2 font-mono font-semibold" style="background: var(--er-bg-card); border: 1px solid var(--er-border); color: var(--er-gold);">
-                        @_selectedPeriod
+                    @if (_podRankings != null && _podRankings.Any())
+                    {
+                        <div class="space-y-4">
+                            @foreach (var kvp in _podRankings.OrderBy(kv => kv.Key))
+                            {
+                                <div class="elden-dashboard-card">
+                                    <h4 class="font-heading text-xs mb-2" style="color: var(--er-text);">@kvp.Key</h4>
+                                    <ul class="space-y-1 text-sm font-body">
+                                        @foreach (var rm in kvp.Value.Take(5))
+                                        {
+                                            <li class="flex justify-between items-center" style="color: @(rm.Rank == 1 ? "var(--er-gold-bright)" : rm.Rank <= 3 ? "var(--er-text)" : "var(--er-text-dim)");">
+                                                <span>@rm.Rank. @rm.Name</span>
+                                                <span class="font-mono text-xs">@rm.Score.ToString("F1")</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="font-body italic" style="color: var(--er-text-muted);">No ranking data yet.</p>
+                    }
+                </div>
+            </section>
+
+            <section class="elden-dashboard-section">
+                <div class="elden-dashboard-section-header">
+                    <div>
+                        <div class="elden-dashboard-eyebrow">Import Flow</div>
+                        <h2 class="elden-dashboard-section-title">Ingest The Tracker</h2>
+                        <p class="elden-dashboard-section-copy">Paste the dashboard output, inspect parsing feedback, then commit staged team updates when the chamber looks clean.</p>
                     </div>
                 </div>
-                <p class="text-xs pb-2" style="color: var(--er-text-muted);">Period is auto-set to today's date.</p>
-            </div>
 
-            <div class="mb-3">
-                <label class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">
-                    Paste Full Excel Sheet
-                    <span style="color: var(--er-text-muted);">(copy all rows including team headers)</span>
-                </label>
-                <textarea @bind="_pastedData" @bind:event="oninput" rows="10"
-                          class="elden-input w-full font-mono text-sm"
-                          placeholder="Select all data in the Excel tracker (Ctrl+A) and paste here (Ctrl+V)..."></textarea>
-            </div>
+                <div class="elden-dashboard-grid triple mb-5">
+                    <div class="elden-dashboard-card">
+                        <div class="elden-dashboard-eyebrow">Parsed Teams</div>
+                        <div class="elden-dashboard-value">@GetParsedTeamCount()</div>
+                        <div class="elden-dashboard-caption">Teams recognized in the current paste</div>
+                    </div>
+                    <div class="elden-dashboard-card">
+                        <div class="elden-dashboard-eyebrow">Roster Matches</div>
+                        <div class="elden-dashboard-value">@GetParsedMatchedCount()</div>
+                        <div class="elden-dashboard-caption">Members aligned with existing champions</div>
+                    </div>
+                    <div class="elden-dashboard-card">
+                        <div class="elden-dashboard-eyebrow">Warnings</div>
+                        <div class="elden-dashboard-value">@GetParseWarningCount()</div>
+                        <div class="elden-dashboard-caption">Rows needing review before a live save</div>
+                    </div>
+                </div>
 
-            <div class="flex items-center gap-4">
-                <button @onclick="HandlePastedData" disabled="@_isParsing" class="elden-btn elden-btn-primary">
-                    @(_isParsing ? "Processing..." : "Process Pasted Data")
-                </button>
-                @if (!string.IsNullOrEmpty(_uploadStatusMessage))
+                <div class="flex flex-wrap gap-4 mb-4 items-end">
+                    <div>
+                        <label class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">Upload Date</label>
+                        <div class="px-4 py-2 font-mono font-semibold rounded-xl" style="background: var(--er-bg-card); border: 1px solid var(--er-border); color: var(--er-gold);">
+                            @_selectedPeriod
+                        </div>
+                    </div>
+                    <p class="text-sm pb-1" style="color: var(--er-text-muted);">Period is auto-set to today's date and used for all live writes and backups.</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-body mb-2" style="color: var(--er-text-dim);">
+                        Paste Full Excel Sheet
+                        <span style="color: var(--er-text-muted);">(copy all rows including team headers)</span>
+                    </label>
+                    <textarea @bind="_pastedData" @bind:event="oninput" rows="10"
+                              class="elden-input w-full font-mono text-sm"
+                              placeholder="Select all data in the Excel tracker (Ctrl+A) and paste here (Ctrl+V)..."></textarea>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4">
+                    <button @onclick="HandlePastedData" disabled="@_isParsing" class="elden-btn elden-btn-primary">
+                        @(_isParsing ? "Processing..." : "Process Pasted Data")
+                    </button>
+                    @if (!string.IsNullOrEmpty(_uploadStatusMessage))
+                    {
+                        <span class="text-sm" style="color: @(_uploadSuccess ? "var(--er-green-bright)" : "var(--er-red-bright)");">@_uploadStatusMessage</span>
+                    }
+                </div>
+
+                @if (_parseResults != null && _parseResults.Any())
                 {
-                    <span class="text-sm" style="color: @(_uploadSuccess ? "var(--er-green-bright)" : "var(--er-red-bright)");">@_uploadStatusMessage</span>
-                }
-            </div>
+                    <div class="mt-5 elden-grid-shell">
+                        <h3 class="font-heading text-sm mb-4" style="color: var(--er-gold);">Staged Parse Results</h3>
 
-            @if (_parseResults != null && _parseResults.Any())
-            {
-                <div class="mt-5 p-4 rounded-lg" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">
-                    <h3 class="font-heading text-sm mb-3" style="color: var(--er-gold);">Parse Results</h3>
-
-                    <div class="flex flex-wrap gap-3 mb-4 font-mono text-sm">
-                        <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-gold);">@_parseResults.Count</span> teams</span>
-                        <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-green-bright);">@_parseResults.Sum(r => r.MatchedMembers.Count)</span> matched</span>
-                        @{ var newCount = _parseResults.Sum(r => r.NewMembers.Count); }
-                        @if (newCount > 0)
+                        @foreach (var pod in _parseResults)
                         {
-                            <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-blue-bright);">@newCount</span> new</span>
+                            <div class="mb-3 p-4 rounded-2xl cursor-pointer elden-dashboard-card"
+                                 @onclick="() => SelectPodFromResults(pod.SystemName)">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span style="color: @(pod.IsNew ? "var(--er-blue-bright)" : "var(--er-green-bright)");" class="text-lg">@(pod.IsNew ? "★" : "✓")</span>
+                                    <span class="font-semibold">@pod.ExcelName</span>
+                                    @if (pod.ExcelName != pod.SystemName)
+                                    {
+                                        <span style="color: var(--er-text-muted);">→</span>
+                                        <span style="color: var(--er-gold);">@pod.SystemName</span>
+                                    }
+                                    @if (pod.IsNew)
+                                    {
+                                        <span class="text-xs px-2 py-0.5 rounded" style="background: var(--er-blue); color: var(--er-text);">NEW TEAM</span>
+                                    }
+                                    <span class="text-sm ml-auto" style="color: var(--er-text-dim);">
+                                        @(pod.MatchedMembers.Count + pod.NewMembers.Count) members
+                                        @if (pod.NewMembers.Any()) { <span style="color: var(--er-blue-bright);">(@pod.NewMembers.Count new)</span> }
+                                    </span>
+                                </div>
+                                @if (pod.NewMembers.Any())
+                                {
+                                    <div class="text-xs mt-2 ml-7" style="color: var(--er-blue-bright);">New: @string.Join(", ", pod.NewMembers)</div>
+                                }
+                                @if (pod.UnmatchedNames.Any())
+                                {
+                                    <div class="text-xs mt-1 ml-7" style="color: var(--er-bronze);">Could not match: @string.Join(", ", pod.UnmatchedNames)</div>
+                                }
+                            </div>
                         }
-                        @{ var unmatchedCount = _parseResults.Sum(r => r.UnmatchedNames.Count); }
-                        @if (unmatchedCount > 0)
+
+                        @if (_parseLog.Any())
                         {
-                            <span class="px-3 py-1 rounded" style="background: var(--er-bg-primary);"><span class="font-bold" style="color: var(--er-bronze);">@unmatchedCount</span> unmatched</span>
+                            <details class="mt-4">
+                                <summary class="text-sm cursor-pointer" style="color: var(--er-text-dim);">Detailed parse log (@_parseLog.Count entries)</summary>
+                                <div class="mt-2 p-3 rounded text-xs font-mono max-h-48 overflow-y-auto space-y-0.5" style="background: var(--er-bg-primary);">
+                                    @foreach (var log in _parseLog)
+                                    {
+                                        string logColor = log.StartsWith("⚠") ? "var(--er-gold)" : log.StartsWith("★") ? "var(--er-blue-bright)" : log.StartsWith("✗") ? "var(--er-red-bright)" : "var(--er-green-bright)";
+                                        <div style="color: @logColor;">@log</div>
+                                    }
+                                </div>
+                            </details>
+                        }
+
+                        @if (_parsedPodData.Any())
+                        {
+                            <div class="mt-4 flex flex-wrap gap-3">
+                                <button @onclick="SaveAllPods" disabled="@_isSaving" class="elden-btn elden-btn-primary">
+                                    @(_isSaving ? "Saving All..." : $"Save All {_parsedPodData.Count} Teams")
+                                </button>
+                                <button @onclick="ClearParseResults" class="elden-btn">Clear Results</button>
+                            </div>
                         }
                     </div>
+                }
+            </section>
 
-                    @foreach (var pod in _parseResults)
-                    {
-                        <div class="mb-2 p-3 rounded cursor-pointer" style="background: var(--er-bg-primary); border: 1px solid var(--er-border);"
-                             @onclick="() => SelectPodFromResults(pod.SystemName)">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span style="color: @(pod.IsNew ? "var(--er-blue-bright)" : "var(--er-green-bright)");" class="text-lg">@(pod.IsNew ? "★" : "✓")</span>
-                                <span class="font-semibold">@pod.ExcelName</span>
-                                @if (pod.ExcelName != pod.SystemName)
-                                {
-                                    <span style="color: var(--er-text-muted);">→</span>
-                                    <span style="color: var(--er-gold);">@pod.SystemName</span>
-                                }
-                                @if (pod.IsNew)
-                                {
-                                    <span class="text-xs px-2 py-0.5 rounded" style="background: var(--er-blue); color: var(--er-text);">NEW TEAM</span>
-                                }
-                                <span class="text-sm ml-auto" style="color: var(--er-text-dim);">
-                                    @(pod.MatchedMembers.Count + pod.NewMembers.Count) members
-                                    @if (pod.NewMembers.Any()) { <span style="color: var(--er-blue-bright);">(@pod.NewMembers.Count new)</span> }
-                                </span>
-                            </div>
-                            @if (pod.NewMembers.Any())
-                            {
-                                <div class="text-xs mt-1 ml-7" style="color: var(--er-blue-bright);">New: @string.Join(", ", pod.NewMembers)</div>
-                            }
-                            @if (pod.UnmatchedNames.Any())
-                            {
-                                <div class="text-xs mt-1 ml-7" style="color: var(--er-bronze);">Could not match: @string.Join(", ", pod.UnmatchedNames)</div>
-                            }
-                        </div>
-                    }
-
-                    @if (_parseLog.Any())
-                    {
-                        <details class="mt-3">
-                            <summary class="text-sm cursor-pointer" style="color: var(--er-text-dim);">Detailed parse log (@_parseLog.Count entries)</summary>
-                            <div class="mt-2 p-3 rounded text-xs font-mono max-h-48 overflow-y-auto space-y-0.5" style="background: var(--er-bg-primary);">
-                                @foreach (var log in _parseLog)
-                                {
-                                    string logColor = log.StartsWith("⚠") ? "var(--er-gold)" : log.StartsWith("★") ? "var(--er-blue-bright)" : log.StartsWith("✗") ? "var(--er-red-bright)" : "var(--er-green-bright)";
-                                    <div style="color: @logColor;">@log</div>
-                                }
-                            </div>
-                        </details>
-                    }
-
-                    @if (_parsedPodData.Any())
-                    {
-                        <div class="mt-4 flex gap-3">
-                            <button @onclick="SaveAllPods" disabled="@_isSaving" class="elden-btn elden-btn-primary">
-                                @(_isSaving ? "Saving All..." : $"Save All {_parsedPodData.Count} Teams")
-                            </button>
-                            <button @onclick="ClearParseResults" class="elden-btn">Clear Results</button>
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-
-        <div class="flex flex-col md:flex-row gap-8">
-            <div class="flex-grow md:w-3/4">
-                <div class="elden-panel overflow-x-auto">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="font-heading text-lg" style="color: var(--er-gold);">
-                            @(_selectedPod ?? "Select a Team")
-                            @if (_parsedPodData.ContainsKey(_selectedPod ?? ""))
-                            {
-                                <span class="text-sm ml-2" style="color: var(--er-green-bright);">(data loaded)</span>
-                            }
-                        </h2>
-                        <select class="elden-select text-sm" @onchange="OnPodChanged">
+            <section class="elden-dashboard-section">
+                <div class="elden-dashboard-section-header">
+                    <div>
+                        <div class="elden-dashboard-eyebrow">Edit / Review</div>
+                        <h2 class="elden-dashboard-section-title">Roster Review Table</h2>
+                        <p class="elden-dashboard-section-copy">Choose a pod, review the applicable KPI profile, then stage or save direct adjustments for the selected team.</p>
+                    </div>
+                    <div class="w-full max-w-sm">
+                        <select class="elden-select text-sm w-full" @onchange="OnPodChanged">
                             <option value="">Select Team...</option>
                             @foreach (var pod in _pods)
                             {
@@ -217,14 +306,34 @@
                             }
                         </select>
                     </div>
+                </div>
 
-                    <div class="mb-3 flex flex-wrap gap-2 text-xs font-mono">
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">RPH: <strong style="color: var(--er-gold);">7</strong></span>
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">App Eff: <strong style="color: var(--er-gold);">7</strong></span>
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">PM Eff: <strong style="color: var(--er-gold);">5</strong></span>
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Warranty: <strong style="color: var(--er-gold);">5</strong></span>
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Acc Attach: <strong style="color: var(--er-gold);">5</strong></span>
-                        <span class="px-2 py-1 rounded" style="background: var(--er-bg-card); border: 1px solid var(--er-border);">Surveys: <strong style="color: var(--er-gold);">3</strong></span>
+                <div class="elden-chip-list mb-5">
+                    @foreach (var metricKey in GetCurrentMetricDisplayKeys())
+                    {
+                        <div class="elden-metric-chip">
+                            <div class="elden-metric-chip-name">@TeamMember.GetMetricDisplayName(metricKey)</div>
+                            <div class="elden-metric-chip-meta">
+                                <span>Weight @PodMetricCatalog.GetWeight(metricKey)</span>
+                                <span>Goal @FormatMetricTarget(metricKey)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="elden-grid-shell overflow-x-auto">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-heading text-lg" style="color: var(--er-gold);">
+                            @(_selectedPod ?? "Select a Team")
+                            @if (_parsedPodData.ContainsKey(_selectedPod ?? ""))
+                            {
+                                <span class="text-sm ml-2" style="color: var(--er-green-bright);">(data loaded)</span>
+                            }
+                        </h3>
+                        @if (!string.IsNullOrEmpty(_selectedPod))
+                        {
+                            <span class="text-sm font-body" style="color: var(--er-text-dim);">@GetSelectionSummary()</span>
+                        }
                     </div>
 
                     @if (_currentPodMembers != null && _currentPodMembers.Any() && !string.IsNullOrEmpty(_selectedPod))
@@ -269,7 +378,7 @@
                     }
                 </div>
 
-                <div class="mt-6 flex items-center justify-end gap-4">
+                <div class="mt-6 flex flex-wrap items-center justify-end gap-4">
                     <button @onclick="SaveMetrics" disabled="@(_isSaving || string.IsNullOrEmpty(_selectedPod))" class="elden-btn elden-btn-primary">
                         @(_isSaving ? "Saving..." : "Save Current Team")
                     </button>
@@ -283,35 +392,7 @@
                 {
                     <div class="elden-notification error mt-2 text-sm">@_saveError</div>
                 }
-            </div>
-
-            <div class="md:w-1/4 elden-panel self-start sticky top-8">
-                <h2 class="font-heading text-xl mb-4 pb-2" style="color: var(--er-gold); border-bottom: 1px solid var(--er-gold-dark);">Team Rankings</h2>
-                @if (_podRankings != null && _podRankings.Any())
-                {
-                    <div class="space-y-4">
-                        @foreach (var kvp in _podRankings.OrderBy(kv => kv.Key))
-                        {
-                            <div>
-                                <h4 class="font-heading text-xs mb-1" style="color: var(--er-text);">@kvp.Key</h4>
-                                <ul class="space-y-1 text-sm font-body">
-                                    @foreach (var rm in kvp.Value.Take(5))
-                                    {
-                                        <li class="flex justify-between items-center" style="color: @(rm.Rank == 1 ? "var(--er-gold-bright)" : rm.Rank <= 3 ? "var(--er-text)" : "var(--er-text-dim)");">
-                                            <span>@rm.Rank. @rm.Name</span>
-                                            <span class="font-mono text-xs">@rm.Score.ToString("F1")</span>
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="font-body italic" style="color: var(--er-text-muted);">No ranking data yet.</p>
-                }
-            </div>
+            </section>
         </div>
     }
 </div>
@@ -1250,6 +1331,83 @@
     private static List<string> GetMetricsForDepartment(string department)
     {
         return PodMetricCatalog.GetApplicableMetrics(department).ToList();
+    }
+
+    private IReadOnlyList<string> GetCurrentMetricDisplayKeys()
+    {
+        if (!string.IsNullOrWhiteSpace(_selectedPod))
+        {
+            return GetMetricsForDepartment(_selectedPod);
+        }
+
+        return PodMetricCatalog.CoreMetrics.ToList();
+    }
+
+    private string FormatMetricTarget(string metricKey)
+    {
+        return PodMetricCatalog.FormatMetricValue(PodMetricCatalog.GetTarget(metricKey), metricKey);
+    }
+
+    private int GetFocusPressureCount()
+    {
+        return _focusFiveByKpi?.Count(kvp => kvp.Value.Any()) ?? 0;
+    }
+
+    private int GetParsedTeamCount()
+    {
+        return _parseResults?.Count ?? 0;
+    }
+
+    private int GetParsedMatchedCount()
+    {
+        return _parseResults?.Sum(r => r.MatchedMembers.Count + r.NewMembers.Count) ?? 0;
+    }
+
+    private int GetParseWarningCount()
+    {
+        return _parseLog.Count(log => log.StartsWith("⚠", StringComparison.Ordinal) || log.StartsWith("✗", StringComparison.Ordinal));
+    }
+
+    private string GetImportReadinessLabel()
+    {
+        if (_isParsing)
+        {
+            return "Reading";
+        }
+
+        if (_parsedPodData.Any())
+        {
+            return $"{_parsedPodData.Count} Staged";
+        }
+
+        return "Awaiting";
+    }
+
+    private string GetImportReadinessCaption()
+    {
+        if (_isParsing)
+        {
+            return "Tracker data is being parsed now";
+        }
+
+        if (_parsedPodData.Any())
+        {
+            return $"{GetParsedMatchedCount()} roster entries ready for save";
+        }
+
+        return "Paste a dashboard export to prepare a live update";
+    }
+
+    private string GetSelectionSummary()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedPod))
+        {
+            return "No team selected";
+        }
+
+        var memberCount = _currentPodMembers?.Count ?? 0;
+        var metricCount = GetCurrentMetricDisplayKeys().Count;
+        return $"{memberCount} champions • {metricCount} active KPIs";
     }
 
     private static bool FuzzyMatch(string a, string b)
