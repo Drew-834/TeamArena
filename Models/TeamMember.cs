@@ -4,6 +4,7 @@ using System.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using GameScoreboard.Data; // Added for MetricRecord
+using GameScoreboard.Services.Tracking;
 
 namespace GameScoreboard.Models
 {
@@ -42,7 +43,7 @@ namespace GameScoreboard.Models
         {
             // Computers
             { "M365Attach", "M365 Attach %" },
-            { "GSP", "GSP %" }, // Generic GSP, context will clarify (Warranty, BP)
+            { "GSP", "GSP %" }, // Generic GSP, context will clarify (Warranty)
             { "Revenue", "Revenue $" }, // Generic Revenue, context will clarify (Comp Revenue, Store Revenue, Pick $)
             { "ASP", "ASP $" },
             { "Basket", "Basket $" }, // Generic Basket, context will clarify (Comp Basket, Store Basket)
@@ -165,9 +166,15 @@ namespace GameScoreboard.Models
                 return string.Empty;
 
             var relativeStrengths = new Dictionary<string, double>();
+            var allowedMetrics = PodMetricCatalog.IsPodDepartment(Department)
+                ? new HashSet<string>(PodMetricCatalog.GetPublicDisplayMetrics(Department), StringComparer.OrdinalIgnoreCase)
+                : null;
 
             foreach (var record in MetricRecords)
             {
+                if (allowedMetrics != null && !allowedMetrics.Contains(record.MetricKey))
+                    continue;
+
                 double? metricValue = GetMetricDoubleValue(record.MetricKey);
                 if (!metricValue.HasValue) continue;
 
@@ -222,6 +229,10 @@ namespace GameScoreboard.Models
                 "PMEff" => "PM Eff $",
                 "Surveys" => "5-Star",
                 "WarrantyAttach" => "Warranty %",
+                "PCBasket" => "PC Basket $",
+                "HTBasket" => "HT Basket $",
+                "ServAttach" => "Serv Attach %",
+                "Office" => "Office %",
                 "AccAttach" => "Acc Attach %",
                 "Hours" => "Hours",
                 "TotalRevenue" => "Total Revenue $",

@@ -3,6 +3,7 @@
 @namespace GameScoreboard.Pages
 @using GameScoreboard.Models
 @using GameScoreboard.Services
+@using GameScoreboard.Services.Tracking
 @using GameScoreboard.Data
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
@@ -65,7 +66,7 @@
                         </h2>
 
                         <div class="space-y-4">
-                            @foreach (var metric in _latestMetricsDict.OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
+                            @foreach (var metric in GetVisibleMetrics().OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
                             {
                                 var numericValue = GetMetricDoubleValue(metric.Key);
 
@@ -375,6 +376,18 @@
         }
         return metricsDict;
     }
+
+    private IEnumerable<KeyValuePair<string, object?>> GetVisibleMetrics()
+    {
+        if (!IsPodMember())
+        {
+            return _latestMetricsDict;
+        }
+
+        return PodMetricCatalog.GetPublicDisplayMetrics(_teamMember?.Department)
+            .Where(key => _latestMetricsDict.ContainsKey(key))
+            .Select(key => new KeyValuePair<string, object?>(key, _latestMetricsDict[key]));
+    }
     
     // --- Modified Average Calculation ---
     
@@ -462,14 +475,19 @@
     // Example: Update GetMetricDoubleValue to potentially read from _latestMetricsDict first
      private double? GetMetricDoubleValue(string key)
      {
-         if (_latestMetricsDict.TryGetValue(key, out var objValue) && objValue is double dVal)
-         { 
-             return dVal;
-         }
-         if (_latestMetricsDict.TryGetValue(key, out objValue) && objValue is string sVal && double.TryParse(sVal, out dVal))
+         foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(key, _teamMember?.Department))
          {
-             return dVal;
+             if (_latestMetricsDict.TryGetValue(lookupKey, out var objValue) && objValue is double dVal)
+             {
+                 return dVal;
+             }
+
+             if (_latestMetricsDict.TryGetValue(lookupKey, out objValue) && objValue is string sVal && double.TryParse(sVal, out dVal))
+             {
+                 return dVal;
+             }
          }
+
          return null; 
      }
 
@@ -732,16 +750,7 @@
         
         if (value is string sVal)
         {
-            // Clean the string: remove $, %, commas, whitespace
-            sVal = sVal.Replace("$", "")
-                       .Replace("%", "")
-                       .Replace(",", "")
-                       .Trim();
-                       
-            if (double.TryParse(sVal, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedDouble))
-            { 
-                return parsedDouble;
-            }
+            return TrackerValueSanitizer.ParseNullableDouble(sVal);
         }
         
         return null; 
@@ -805,7 +814,7 @@
     {
         if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
-        var topMetrics = _latestMetricsDict
+        var topMetrics = GetVisibleMetrics()
             .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
             .Select(kvp => new { Key = kvp.Key, Score = GetPerformanceScore(kvp.Key, kvp.Value) })
             .OrderByDescending(m => m.Score)
@@ -820,7 +829,7 @@
     {
         if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
-        var bottomMetrics = _latestMetricsDict
+        var bottomMetrics = GetVisibleMetrics()
            .Where(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _)))
            .Select(kvp => new { Key = kvp.Key, Score = GetPerformanceScore(kvp.Key, kvp.Value) })
            .OrderBy(m => m.Score)
@@ -838,12 +847,11 @@
     // =========================================================================
     private static readonly Dictionary<string, double> _podMetricWeights = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "RPH",            7.0 / 32.0 },   // 21.875%
-        { "AppEff",         7.0 / 32.0 },   // 21.875%
-        { "PMEff",          5.0 / 32.0 },   // 15.625%
-        { "AccAttach",      5.0 / 32.0 },   // 15.625%
-        { "WarrantyAttach", 5.0 / 32.0 },   // 15.625%
-        { "Surveys",        3.0 / 32.0 },   // 9.375%
+        { "RPH",            7.0 / 32.0 },
+        { "AppEff",         7.0 / 32.0 },
+        { "PMEff",          5.0 / 32.0 },
+        { "WarrantyAttach", 5.0 / 32.0 },
+        { "Surveys",        3.0 / 32.0 },
     };
 
     /// <summary>
@@ -868,15 +876,22 @@
         double weightedSum = 0;
         double totalWeight = 0;
 
-        foreach (var kvp in metricsDict)
+        var weightedKeys = isPod
+            ? PodMetricCatalog.GetApplicableMetrics(_teamMember?.Department)
+            : metricsDict.Keys.ToList();
+
+        foreach (var metricKey in weightedKeys)
         {
-            double? numVal = GetDoubleValue(kvp.Value);
+            if (!metricsDict.TryGetValue(metricKey, out var value))
+                continue;
+
+            double? numVal = GetDoubleValue(value);
             if (!numVal.HasValue) continue;
 
-            double score = CalculatePerformanceScore(kvp.Key, numVal.Value, _teamAverages);
+            double score = CalculatePerformanceScore(metricKey, numVal.Value, _teamAverages);
             double weight = 1.0;
 
-            if (isPod && _podMetricWeights.TryGetValue(kvp.Key, out var podWeight))
+            if (isPod && _podMetricWeights.TryGetValue(metricKey, out var podWeight))
                 weight = podWeight;
 
             weightedSum += score * weight;
@@ -896,40 +911,41 @@
     private string FormatMetricValue(string metricKey, object? value)
     {
         if (value == null) return "N/A";
+        var valueText = value.ToString() ?? "N/A";
 
         return metricKey switch
         {
-            "M365Attach" or "GSP" or "PMAttach" or "PickRate" or "WarrantyAttach" or "AccAttach" =>
+            "M365Attach" or "GSP" or "PMAttach" or "PickRate" or "WarrantyAttach" or "AccAttach" or "ServAttach" or "Office" =>
                 value is double dPercent ? $"{dPercent:F1}%" :
                 value is int iPercent ? $"{iPercent:F1}%" :
-                value.ToString() + "%",
-            "Revenue" or "ASP" or "Basket" or "Pick$" =>
+                valueText + "%",
+            "Revenue" or "ASP" or "Basket" or "Pick$" or "PCBasket" or "HTBasket" =>
                 value is double dCurrency ? $"${dCurrency:N2}" :
                 value is int iCurrency ? $"${iCurrency:N0}" :
-                "$" + value.ToString(),
+                "$" + valueText,
             "AppEff" or "PMEff" =>
                 value is double dEff ? $"${dEff:N0}" :
                 value is int iEff ? $"${iEff:N0}" :
-                "$" + value.ToString(),
+                "$" + valueText,
             "RPH" =>
                 value is double dRph ? $"${dRph:N0}" :
                 value is int iRph ? $"${iRph:N0}" :
-                "$" + value.ToString(),
+                "$" + valueText,
             "BP" or "PM" or "PickQuantity" =>
                 value is int iCount ? iCount.ToString("N0") :
                 value is double dCount ? ((int)dCount).ToString("N0") :
-                value.ToString() + "#",
+                valueText + "#",
             "5Star" or "Surveys" =>
                 value is double dRating ? dRating.ToString("F1") :
-                value.ToString(),
+                valueText,
             "Awk" =>
                value is double dMins ? $"{dMins:F1} min" :
                value is int iMins ? $"{iMins} min" :
-               value.ToString() + " min",
-            "MVP" => value.ToString() ?? "N/A",
+               valueText + " min",
+            "MVP" => valueText,
             _ => value is double dVal ? dVal.ToString("F1") :
                  value is int iVal ? iVal.ToString() :
-                 value.ToString() ?? "N/A"
+                 valueText
         };
     }
     
@@ -986,11 +1002,7 @@
         "front", "computers", "warehouse"
     };
 
-    private static readonly Dictionary<string, double> _podMetricTargets = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "RPH", 920.0 }, { "AppEff", 6500.0 }, { "PMEff", 4000.0 },
-        { "Surveys", 4.6 }, { "WarrantyAttach", 10.0 }, { "AccAttach", 20.0 }
-    };
+    private static readonly Dictionary<string, double> _podMetricTargets = PodMetricCatalog.MetricTargets.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
     private double? GetMemberGoal(string metricKey)
     {
@@ -1166,7 +1178,7 @@
 
         bool isPod = IsPodMember();
         var radarMetrics = isPod
-            ? new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "AccAttach" }
+            ? PodMetricCatalog.GetPublicDisplayMetrics(_teamMember?.Department).ToList()
             : new List<string> { "Revenue", "ASP", "Basket", "M365Attach", "PMAttach", "GSP" };
 
         foreach (var key in radarMetrics)

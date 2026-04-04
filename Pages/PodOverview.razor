@@ -1,6 +1,7 @@
 @page "/pods/{*PodName}"
 @using GameScoreboard.Models
 @using GameScoreboard.Services
+@using GameScoreboard.Services.Tracking
 @using GameScoreboard.Data
 @using System.Globalization
 @using System.Text.Json
@@ -78,7 +79,7 @@
                                                         <table class="elden-table text-xs">
                                                             <thead><tr>
                                                                 <th class="text-left">Name</th>
-                                                                @foreach (var metricKey in GetMetricsForDepartment(PodName))
+                                                                @foreach (var metricKey in GetOverviewMetrics(PodName))
                                                                 {
                                                                     <th class="text-right">@TeamMember.GetMetricDisplayName(metricKey)</th>
                                                                 }
@@ -89,7 +90,7 @@
                                                                 {
                                                                     <tr>
                                                                         <td class="font-medium">@row.Name</td>
-                                                                        @foreach (var metricKey in GetMetricsForDepartment(PodName))
+                                                                        @foreach (var metricKey in GetOverviewMetrics(PodName))
                                                                         {
                                                                             <td class="text-right" style="color: var(--er-text-dim);">@row.Metrics.GetValueOrDefault(metricKey, "—")</td>
                                                                         }
@@ -159,7 +160,7 @@
 
         <!-- KPI Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
-            @foreach (var metricKey in GetMetricsForDepartment(PodName))
+            @foreach (var metricKey in GetOverviewMetrics(PodName))
             {
                 var avgData = _departmentAverages.GetValueOrDefault(metricKey);
                 var highPerformer = _highPerformerNames.GetValueOrDefault(metricKey);
@@ -310,52 +311,30 @@
     private Dictionary<string, string> _kpiWinnerByMember = new();
 
     // Pod-specific KPI keys in display order (used for fallback/default)
-    private static readonly List<string> _podMetricKeys = new() { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "HTBasket", "ServAttach", "Office" };
+    private static readonly List<string> _podMetricKeys = PodMetricCatalog.AllMetrics.ToList();
 
     // Weighted scoring
-    private static readonly Dictionary<string, int> _metricWeights = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "AppEff", 7 }, { "WarrantyAttach", 5 }, { "PMEff", 5 }, { "Surveys", 3 }, { "RPH", 7 },
-        { "PCBasket", 5 }, { "HTBasket", 5 }, { "ServAttach", 5 }, { "Office", 5 }
-    };
+    private static readonly Dictionary<string, int> _metricWeights = PodMetricCatalog.MetricWeights.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
     private const int TotalWeight = 37;
 
     // Targets from the Excel sheet
-    private static readonly Dictionary<string, double> _metricTargets = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "RPH", 920.0 },
-        { "AppEff", 6500.0 },
-        { "PMEff", 4000.0 },
-        { "Surveys", 4.6 },
-        { "WarrantyAttach", 10.0 },
-        { "PCBasket", 120.0 },
-        { "HTBasket", 300.0 },
-        { "ServAttach", 20.0 },
-        { "Office", 20.0 }
-    };
+    private static readonly Dictionary<string, double> _metricTargets = PodMetricCatalog.MetricTargets.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
     {
         "front", "computers", "warehouse"
     };
 
-    private static bool IsPodDepartment(string dept) => !_regularDepartments.Contains(dept);
+    private static bool IsPodDepartment(string dept) => PodMetricCatalog.IsPodDepartment(dept);
 
     // Get metrics applicable to a department (HT/Retail = HTBasket/ServAttach, PC = PCBasket/Office)
     private static List<string> GetMetricsForDepartment(string department)
     {
-        if (string.IsNullOrEmpty(department)) return _podMetricKeys;
-
-        bool isHT = department.Contains("HT", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Home Theater", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
-                    || department.Contains("Center Store", StringComparison.OrdinalIgnoreCase);
-
-        if (isHT)
-            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "HTBasket", "ServAttach" };
-        else
-            return new List<string> { "RPH", "AppEff", "PMEff", "Surveys", "WarrantyAttach", "PCBasket", "Office" };
+        return PodMetricCatalog.GetApplicableMetrics(department).ToList();
     }
+
+    private static List<string> GetOverviewMetrics(string department) =>
+        PodMetricCatalog.GetPublicDisplayMetrics(department).ToList();
 
     private static DateTime ParsePeriodEndDate(string period)
     {
@@ -376,9 +355,7 @@
         catch { return DateTime.MinValue; }
     }
 
-    private static bool IsLowerBetter(string metricKey) =>
-        metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
-        metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase);
+    private static bool IsLowerBetter(string metricKey) => PodMetricCatalog.IsLowerBetter(metricKey);
 
     private bool _carouselInitialized;
 
@@ -575,7 +552,7 @@
         _highPerformerValues.Clear();
         _lowPerformerValues.Clear();
 
-        foreach (var key in GetMetricsForDepartment(PodName))
+        foreach (var key in GetOverviewMetrics(PodName))
         {
             var valuesForMetric = _teamMembers
                 .Select(m => (Name: m.Name, Value: GetMemberMetricValue(m, key)))
@@ -632,7 +609,9 @@
         _kpiWinnerByMember.Clear();
         var assigned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        var sortedKpis = _metricWeights.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key).Select(kv => kv.Key);
+        var sortedKpis = GetOverviewMetrics(PodName)
+            .OrderByDescending(k => PodMetricCatalog.GetWeight(k))
+            .ThenBy(k => k);
 
         foreach (var kpi in sortedKpis)
         {
@@ -654,11 +633,15 @@
 
     private double? GetMemberMetricValue(TeamMember member, string metricKey)
     {
-        var record = member.MetricRecords?.FirstOrDefault(r =>
-            r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase) &&
-            r.Period == _latestPeriod);
-        if (record?.Value != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
-            return val;
+        foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(metricKey, member.Department))
+        {
+            var record = member.MetricRecords?.FirstOrDefault(r =>
+                r.MetricKey.Equals(lookupKey, StringComparison.OrdinalIgnoreCase) &&
+                r.Period == _latestPeriod);
+            if (record?.Value != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+                return val;
+        }
+
         return null;
     }
 
@@ -670,7 +653,7 @@
         var metricsForMember = GetMetricsForDepartment(member.Department);
         foreach (var metricKey in metricsForMember)
         {
-            int weight = _metricWeights.GetValueOrDefault(metricKey, 5);
+            int weight = PodMetricCatalog.GetWeight(metricKey);
             double? rawValue = GetMemberMetricValue(member, metricKey);
             if (!rawValue.HasValue) continue;
 
@@ -682,7 +665,7 @@
                 continue;
             }
 
-            double target = _metricTargets.GetValueOrDefault(metricKey, 1.0);
+            double target = PodMetricCatalog.GetTarget(metricKey);
             double normalizedScore;
 
             if (IsLowerBetter(metricKey))
@@ -714,21 +697,21 @@
         string? bestKey = null;
         double bestScore = double.MinValue;
 
-        foreach (var kvp in _metricWeights)
+        foreach (var metricKey in GetOverviewMetrics(member.Department))
         {
-            double? rawValue = GetMemberMetricValue(member, kvp.Key);
+            double? rawValue = GetMemberMetricValue(member, metricKey);
             if (!rawValue.HasValue) continue;
-            if ((kvp.Key == "AppEff" || kvp.Key == "PMEff") && rawValue.Value >= 20000) continue;
+            if ((metricKey == "AppEff" || metricKey == "PMEff") && rawValue.Value >= 20000) continue;
 
             double normalizedScore;
-            if (kvp.Key == "Surveys" && rawValue.Value == 0)
+            if (metricKey == "Surveys" && rawValue.Value == 0)
             {
                 normalizedScore = 0;
             }
             else
             {
-                double target = _metricTargets.GetValueOrDefault(kvp.Key, 1.0);
-                if (IsLowerBetter(kvp.Key))
+                double target = PodMetricCatalog.GetTarget(metricKey);
+                if (IsLowerBetter(metricKey))
                     normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
                 else
                     normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
@@ -737,7 +720,7 @@
             if (normalizedScore > bestScore)
             {
                 bestScore = normalizedScore;
-                bestKey = kvp.Key;
+                bestKey = metricKey;
             }
         }
 
@@ -784,14 +767,7 @@
 
     private string FormatMetricValue(double value, string metricKey)
     {
-        bool isPercentage = metricKey == "WarrantyAttach" || metricKey == "AccAttach";
-        bool isCurrency = metricKey == "RPH" || metricKey == "AppEff" || metricKey == "PMEff";
-        bool isRating = metricKey == "Surveys";
-
-        if (isPercentage) return value.ToString("F1", CultureInfo.InvariantCulture) + "%";
-        if (isCurrency) return "$" + value.ToString("N0", CultureInfo.InvariantCulture);
-        if (isRating) return value.ToString("F1", CultureInfo.InvariantCulture);
-        return value.ToString("N0", CultureInfo.InvariantCulture);
+        return PodMetricCatalog.FormatMetricValue(value, metricKey);
     }
 
     private async Task LoadSnapshots()
@@ -822,7 +798,7 @@
                 m.Name,
                 m.Id,
                 WeightedScore = GetWeightedScore(m).ToString("F1", CultureInfo.InvariantCulture),
-                Metrics = GetMetricsForDepartment(PodName).ToDictionary(
+                Metrics = GetOverviewMetrics(PodName).ToDictionary(
                     key => key,
                     key =>
                     {
@@ -892,7 +868,7 @@
                 var score = element.GetProperty("WeightedScore").GetString() ?? "0";
                 var metricsObj = element.GetProperty("Metrics");
                 var metrics = new Dictionary<string, string>();
-                foreach (var key in GetMetricsForDepartment(PodName))
+                foreach (var key in GetOverviewMetrics(PodName))
                 {
                     if (metricsObj.TryGetProperty(key, out var val))
                         metrics[key] = val.GetString() ?? "—";
