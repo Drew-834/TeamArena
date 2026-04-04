@@ -184,7 +184,7 @@
                             <span class="font-body text-xs" style="color: var(--er-text-dim);">Target: @(isEfficiency ? "≤ " : "")@FormatMetricValue(goal.Value, metricKey)</span>
                         }
                     </div>
-                    <div class="font-body text-xs mb-1" style="color: var(--er-text-dim);">@(isEfficiency ? "Worst" : "Low"): @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
+                    <div class="font-body text-xs mb-1" style="color: var(--er-text-dim);">@(isEfficiency ? "Focus" : "Low"): @(lowPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_lowPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
                     <div class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Best: @(highPerformer?.FirstOrDefault() ?? "N/A") (@FormatMetricValue(_highPerformerValues.GetValueOrDefault(metricKey), metricKey))</div>
 
                     @if (goal.HasValue && goal.Value > 0)
