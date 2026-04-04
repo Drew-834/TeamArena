@@ -43,6 +43,12 @@
     --er-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
     --er-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
 
+    --er-motion-fast: 180ms;
+    --er-motion-base: 320ms;
+    --er-motion-slow: 560ms;
+    --er-ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --er-ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+
     --font-heading: 'Cinzel', serif;
     --font-body: 'EB Garamond', serif;
     --font-mono: 'Fira Code', monospace;
@@ -260,6 +266,16 @@ html, body {
     color: var(--er-gold-bright);
 }
 
+.elden-btn:focus-visible,
+.elden-input:focus-visible,
+.elden-select:focus-visible,
+.elden-shell-nav-btn:focus-visible,
+.elden-shell-icon-btn:focus-visible {
+    outline: 1px solid rgba(232, 210, 130, 0.55);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(200, 169, 78, 0.14);
+}
+
 .elden-btn:active {
     transform: scale(0.98);
 }
@@ -368,6 +384,7 @@ html, body {
     border: 1px solid var(--er-border);
     border-radius: 2px;
     padding: 1.5rem;
+    box-shadow: var(--er-shadow-sm);
 }
 
 .elden-panel-gold {
@@ -678,6 +695,276 @@ html, body {
     pointer-events: none;
     z-index: 9999;
     background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+    opacity: 0.45;
+    transition: opacity var(--er-motion-base) var(--er-ease-soft);
+}
+
+.elden-vignette.is-active {
+    opacity: 0.72;
+    animation: shell-breath 420ms var(--er-ease-soft);
+}
+
+.elden-shell {
+    isolation: isolate;
+}
+
+.elden-shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: 1rem 1rem 0;
+    pointer-events: none;
+}
+
+.elden-shell-header-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid rgba(200, 169, 78, 0.16);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(20, 20, 28, 0.92) 0%, rgba(8, 8, 12, 0.82) 100%);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(232, 210, 130, 0.05);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+}
+
+.elden-shell-titleblock {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+}
+
+.elden-shell-kicker {
+    font-family: var(--font-heading);
+    color: var(--er-gold-dim);
+    font-size: 0.62rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+}
+
+.elden-shell-title {
+    font-family: var(--font-heading);
+    color: var(--er-gold-bright);
+    font-size: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(200, 169, 78, 0.22);
+}
+
+.elden-shell-subtitle {
+    color: var(--er-text-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.elden-shell-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.elden-shell-nav-btn,
+.elden-shell-icon-btn {
+    border: 1px solid rgba(200, 169, 78, 0.18);
+    background: rgba(10, 10, 15, 0.72);
+    color: var(--er-gold-dim);
+    transition: transform var(--er-motion-fast) var(--er-ease-soft), color var(--er-motion-fast) ease, border-color var(--er-motion-fast) ease, box-shadow var(--er-motion-fast) ease;
+}
+
+.elden-shell-nav-btn {
+    min-width: 108px;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    font-family: var(--font-heading);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+}
+
+.elden-shell-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.elden-shell-nav-btn:hover,
+.elden-shell-icon-btn:hover {
+    color: var(--er-gold-bright);
+    border-color: rgba(200, 169, 78, 0.4);
+    box-shadow: 0 0 18px rgba(200, 169, 78, 0.18);
+    transform: translateY(-1px);
+}
+
+.elden-route-stage {
+    min-height: 100vh;
+    padding-bottom: 3rem;
+    transition: opacity var(--er-motion-base) ease, transform var(--er-motion-base) var(--er-ease-soft);
+}
+
+.elden-route-stage.is-authenticated {
+    padding-top: 0.5rem;
+}
+
+.elden-route-stage.is-transitioning {
+    opacity: 0.86;
+    transform: translateY(6px);
+}
+
+.elden-dashboard-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.elden-dashboard-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top left, rgba(200, 169, 78, 0.1), transparent 38%), linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 55%);
+    pointer-events: none;
+}
+
+.elden-dashboard-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.elden-dashboard-grid.metrics {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.elden-dashboard-grid.dual {
+    grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.95fr);
+}
+
+.elden-dashboard-grid.triple {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.elden-dashboard-card {
+    position: relative;
+    padding: 1rem 1.1rem;
+    border: 1px solid rgba(200, 169, 78, 0.12);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(20, 20, 28, 0.94) 0%, rgba(8, 8, 12, 0.84) 100%);
+    box-shadow: var(--er-shadow-sm);
+    transition: transform var(--er-motion-fast) var(--er-ease-soft), border-color var(--er-motion-fast) ease, box-shadow var(--er-motion-fast) ease;
+}
+
+.elden-dashboard-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(200, 169, 78, 0.26);
+    box-shadow: var(--er-shadow-md);
+}
+
+.elden-dashboard-eyebrow {
+    color: var(--er-gold-dim);
+    font-family: var(--font-heading);
+    font-size: 0.65rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+
+.elden-dashboard-value {
+    color: var(--er-gold-bright);
+    font-family: var(--font-heading);
+    font-size: clamp(1.3rem, 2vw, 2rem);
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+}
+
+.elden-dashboard-caption {
+    color: var(--er-text-dim);
+    font-size: 0.85rem;
+}
+
+.elden-dashboard-section {
+    position: relative;
+    padding: 1.4rem;
+    border: 1px solid rgba(200, 169, 78, 0.12);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(16, 16, 20, 0.96) 0%, rgba(8, 8, 12, 0.9) 100%);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(232, 210, 130, 0.04);
+}
+
+.elden-dashboard-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(200, 169, 78, 0.05), transparent 45%);
+    pointer-events: none;
+}
+
+.elden-dashboard-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.elden-dashboard-section-title {
+    font-family: var(--font-heading);
+    color: var(--er-gold);
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.elden-dashboard-section-copy {
+    color: var(--er-text-dim);
+    font-size: 0.9rem;
+    max-width: 56ch;
+}
+
+.elden-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.elden-metric-chip {
+    min-width: 150px;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(200, 169, 78, 0.14);
+    background: rgba(10, 10, 15, 0.78);
+}
+
+.elden-metric-chip-name {
+    color: var(--er-gold);
+    font-family: var(--font-heading);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.elden-metric-chip-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--er-text-dim);
+    font-size: 0.76rem;
+    margin-top: 0.35rem;
+}
+
+.elden-grid-shell {
+    border-radius: 20px;
+    border: 1px solid rgba(200, 169, 78, 0.12);
+    background: rgba(10, 10, 15, 0.68);
+    padding: 0.85rem;
 }
 
 /* ===== KEYFRAME ANIMATIONS ===== */
@@ -700,6 +987,11 @@ html, body {
 @keyframes modal-enter {
     from { opacity: 0; transform: translateY(-20px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shell-breath {
+    0% { opacity: 0.28; }
+    100% { opacity: 0.72; }
 }
 
 @keyframes gold-pulse {
@@ -784,6 +1076,32 @@ html, body {
 }
 
 @media (max-width: 768px) {
+    .elden-shell-header {
+        padding: 0.75rem 0.75rem 0;
+    }
+
+    .elden-shell-header-inner {
+        border-radius: 20px;
+        min-height: auto;
+        padding: 0.8rem;
+        flex-wrap: wrap;
+    }
+
+    .elden-shell-titleblock {
+        order: 3;
+        width: 100%;
+        text-align: left;
+    }
+
+    .elden-shell-nav-btn {
+        min-width: auto;
+        padding-inline: 0.9rem;
+    }
+
+    .elden-dashboard-grid.dual {
+        grid-template-columns: 1fr;
+    }
+
     .elden-character-card {
         width: 160px !important;
         height: 260px !important;
@@ -801,6 +1119,10 @@ html, body {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+
+    .elden-route-stage.is-transitioning {
+        transform: none;
     }
 }
 

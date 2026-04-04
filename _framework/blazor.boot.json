@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "GameScoreboard",
   "resources": {
-    "hash": "sha256-pLo+iUidQNc1OCYOFXFEXPkIolYWyzuYwx0j26+Dp7c=",
+    "hash": "sha256-gyydETwZq+ZLgmThAH/a6S1UCC+rOkc6wAmxK8Dd7BY=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-A16ka545FHaB+QXjyJ4exXh7XpBAAIFnX8YkC4xAng8="
     },
@@ -78,7 +78,7 @@
       "System.Runtime.InteropServices.wasm": "sha256-vYoz5iG5WmT4irxWWv+o66tewr0Qb7rwfOH/B21T5AQ=",
       "System.Runtime.Numerics.wasm": "sha256-HL3x42eckKosF8Y3nAR7OwGnziHSlQ1fJQODdfAsnB0=",
       "System.Runtime.Serialization.Formatters.wasm": "sha256-fse26JGWdlXKVYEj3TI7r+BmIp4RTr7iLMjImbktbcU=",
-      "System.Runtime.wasm": "sha256-F0yqM+df3IPoSEsSlfq1mPUIOcmvAR5CYqH/zlNAJG8=",
+      "System.Runtime.wasm": "sha256-vockZUzWBu8kKjANdm9ZCAARlAtyDmubOvd7JJQMJ3Q=",
       "System.Security.Cryptography.wasm": "sha256-RlmL2LrzSYnNwGu6KH/UZxzBiVRfXIFMgSMDWe0pxXU=",
       "System.Text.RegularExpressions.wasm": "sha256-DscwkwfK402YArUJb5pgXpot3W4APa0QEnp/+pWZGvo=",
       "System.Threading.Thread.wasm": "sha256-LjT7Kl/MJbnL25J1rsNK9pjR/E7Q3DUvSUoSXxarcKA=",
@@ -87,7 +87,7 @@
       "System.wasm": "sha256-25KTxVbx+rD8S9iyUye7jmbj1e4TZ5Ca+elup4oegJA=",
       "netstandard.wasm": "sha256-cdldufDfhY5t5kaljoTJ3xJ0uPrdkhr4z2csoeRYwtE=",
       "System.Private.CoreLib.wasm": "sha256-NfKQqKd3Zgeo9XlcaMs7NgCXrV4KvP8W/N1QMg9PzCg=",
-      "GameScoreboard.wasm": "sha256-xJ9mWileNHxZ30T7zlSKMM23h6MZHbGZ1152qYX8bhY="
+      "GameScoreboard.wasm": "sha256-pxtQhJG9CyTSUq36dqebLFSB7P1t5W76UvsO0r2Z68g="
     }
   },
   "debugLevel": 0,
