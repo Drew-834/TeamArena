@@ -2,6 +2,7 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @using GameScoreboard.Services
+@using GameScoreboard.Services.Tracking
 @inject IDataService DataService
 @inject AppState AppState
 
@@ -88,29 +89,7 @@
     private int _loadingProgress = 10;
     private string? _errorMessage;
 
-    private static readonly HashSet<string> _regularDepartments = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "front", "computers", "warehouse"
-    };
-
-    // Known valid pod departments
-    private static readonly HashSet<string> _knownPodDepartments = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Matt Nelsen-PC/CA",
-        "Matt Nelsen-PC/APPL",
-        "Home Theater-HT/CA",
-        "Retail Programs-HT",
-        "Retail Programs-Center Store",
-        "Drews Crew-Computing",
-        "Jaime Torres",
-        "Luis Ramos",
-        // Legacy pods
-        "Luis the Beast",
-        "Matt-Category Advisors"
-    };
-
-    private static bool IsPodDepartment(string dept) =>
-        !string.IsNullOrWhiteSpace(dept) && !_regularDepartments.Contains(dept) && _knownPodDepartments.Contains(dept);
+    private static bool IsPodDepartment(string dept) => PodMetricCatalog.IsPodDepartment(dept);
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,9 +110,10 @@
             Console.WriteLine($"[PodIndex] Received {_allMembers?.Count ?? 0} members total");
 
             _pods = (_allMembers ?? new())
-                .Where(m => IsPodDepartment(m.Department))
-                .Select(m => m.Department)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(m => IsPodDepartment(m.Department) && m.MetricRecords?.Any() == true)
+                .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Any(member => member.MetricRecords?.Any() == true))
+                .Select(g => g.Key)
                 .OrderBy(d => d)
                 .ToList();
 
@@ -162,7 +142,9 @@
     }
 
     private int GetPodMemberCount(string pod) =>
-        _allMembers?.Count(m => m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase)) ?? 0;
+        _allMembers?.Count(m =>
+            m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase) &&
+            m.MetricRecords?.Any() == true) ?? 0;
 
     private async Task NavigateToPod(string podName)
     {

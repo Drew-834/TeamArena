@@ -409,7 +409,12 @@ public sealed class PodTrackerImportParser
 
     private static bool IsKnownPodHeader(string nameCell) =>
         _podAliases.ContainsKey(nameCell)
-        || (nameCell.Contains('-', StringComparison.Ordinal) && nameCell.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 2);
+        || nameCell.EndsWith("PC/CA", StringComparison.OrdinalIgnoreCase)
+        || nameCell.EndsWith("PC/APPL", StringComparison.OrdinalIgnoreCase)
+        || nameCell.EndsWith("HT/CA", StringComparison.OrdinalIgnoreCase)
+        || nameCell.EndsWith("HT/APPL", StringComparison.OrdinalIgnoreCase)
+        || nameCell.Contains("Retail Programs", StringComparison.OrdinalIgnoreCase)
+        || nameCell.Contains("Home Theater", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolvePodName(string excelName, IReadOnlyCollection<TeamMember> allPodMembers)
     {

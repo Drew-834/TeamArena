@@ -334,7 +334,7 @@
     }
 
     private static List<string> GetOverviewMetrics(string department) =>
-        PodMetricCatalog.GetPublicDisplayMetrics(department).ToList();
+        PodMetricCatalog.GetApplicableMetrics(department).ToList();
 
     private static DateTime ParsePeriodEndDate(string period)
     {
@@ -483,18 +483,18 @@
             .Select(m => m.Department.Trim().ToLowerInvariant())
             .ToHashSet();
 
-        _teamMembers = _allMembersCache
+        var teamMembersInDepartment = _allMembersCache
             .Where(m => m.Department.Equals(PodName, StringComparison.OrdinalIgnoreCase)
                         && !allDeptNames.Contains(m.Name.Trim().ToLowerInvariant()))
             .GroupBy(m => m.Name.Trim().ToLowerInvariant())
             .Select(g => g.OrderByDescending(m => m.Id).First())
             .ToList();
 
-        Console.WriteLine($"[PodOverview] Found {_teamMembers.Count} members for pod '{PodName}'");
+        Console.WriteLine($"[PodOverview] Found {teamMembersInDepartment.Count} members for pod '{PodName}'");
 
-        if (_teamMembers.Any())
+        if (teamMembersInDepartment.Any())
         {
-            _latestPeriod = _teamMembers
+            _latestPeriod = teamMembersInDepartment
                 .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
                 .Select(r => r.Period)
                 .Where(p => !string.IsNullOrEmpty(p))
@@ -502,6 +502,12 @@
                 .Select(p => new { Period = p, EndDate = ParsePeriodEndDate(p) })
                 .OrderByDescending(x => x.EndDate)
                 .FirstOrDefault()?.Period;
+
+            _teamMembers = string.IsNullOrEmpty(_latestPeriod)
+                ? teamMembersInDepartment
+                : teamMembersInDepartment
+                    .Where(m => m.MetricRecords?.Any(r => r.Period == _latestPeriod) == true)
+                    .ToList();
 
             Console.WriteLine($"[PodOverview] Latest period: {_latestPeriod ?? "none"}, members with metrics: {_teamMembers.Count(m => m.MetricRecords?.Any() == true)}");
 
@@ -513,8 +519,9 @@
 
         var podsWithData = _allMembersCache
             .Where(m => IsPodDepartment(m.Department) && m.MetricRecords?.Any() == true)
-            .Select(m => m.Department)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Any(member => member.MetricRecords?.Any() == true))
+            .Select(g => g.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         CalculatePodLeaderboard(_allMembersCache.Where(m => podsWithData.Contains(m.Department)).ToList());

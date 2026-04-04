@@ -73,5 +73,35 @@ public class PodTrackerImportParserTests
         Assert.Null(match.Member);
     }
 
+    [Fact]
+    public void Parse_HyphenatedEmployeeName_DoesNotCreatePhantomPod()
+    {
+        var annette = new TeamMember
+        {
+            Id = 20,
+            Name = "Annette Roman",
+            Department = "Luis Ramos",
+            AvatarUrl = "images/avatars/avatar4.png"
+        };
+
+        var pastedData = string.Join(Environment.NewLine, new[]
+        {
+            Row("Kissimmee", "", "Employee Relative Performance Dashboard Output", "", "", "March"),
+            Row("1411", "", "", "", "", "4/3/2026"),
+            Row("Employee", "Hours", "Total Rev", "TPH", "Rev Per Hour", "", "", "Apps / App Eff", "", "", "", "PMs / PM Eff", "", "", "", "Surveys / 5-Star", "", "", "", "Warranty Attach", "", "", "Dept Specific", "", "Rank", "KPIs Hit"),
+            Row("Luis Ramos", "", "", "", "Actaul", "Goal", "Track", "", "Actaul", "Goal", "Track", "", "Actaul", "Goal", "Track", "", "Actaul", "Goal", "Track", "Actaul", "Goal", "Track", "PC Basket", "Office", "", ""),
+            Row("Joannie Parrilla-Nieves", "55", "$49,162", "6.2", "$889", "$600", "On Track", "4", "$12,291", "$7,500", "Off Track", "0", "$100,000", "$6,500", "Off Track", "0", "0.0", "4.75", "On Track", "6.1%", "10%", "Off Track", "$0", "0", "3045", "2"),
+            Row("Annette Roman", "46", "$4,219", "0.5", "$91", "$600", "Off Track", "0", "$100,000", "$7,500", "Off Track", "0", "$100,000", "$6,500", "Off Track", "0", "0.0", "4.75", "On Track", "25.0%", "10%", "On Track", "#N/A", "#N/A", "99999", "2")
+        });
+
+        var result = _parser.Parse(pastedData, new[] { annette });
+
+        var pod = Assert.Single(result.Pods);
+        Assert.Equal("Luis Ramos", pod.SystemName);
+        Assert.Equal(2, pod.Rows.Count);
+        Assert.DoesNotContain(result.Pods, p => p.SystemName.Equals("Joannie Parrilla-Nieves", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(pod.Rows, row => row.MemberName == "Joannie Parrilla-Nieves");
+    }
+
     private static string Row(params string[] cells) => string.Join('\t', cells);
 }

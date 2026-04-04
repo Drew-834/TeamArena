@@ -384,7 +384,7 @@
             return _latestMetricsDict;
         }
 
-        return PodMetricCatalog.GetPublicDisplayMetrics(_teamMember?.Department)
+        return PodMetricCatalog.GetApplicableMetrics(_teamMember?.Department)
             .Where(key => _latestMetricsDict.ContainsKey(key))
             .Select(key => new KeyValuePair<string, object?>(key, _latestMetricsDict[key]));
     }
@@ -1178,7 +1178,7 @@
 
         bool isPod = IsPodMember();
         var radarMetrics = isPod
-            ? PodMetricCatalog.GetPublicDisplayMetrics(_teamMember?.Department).ToList()
+            ? PodMetricCatalog.GetApplicableMetrics(_teamMember?.Department).ToList()
             : new List<string> { "Revenue", "ASP", "Basket", "M365Attach", "PMAttach", "GSP" };
 
         foreach (var key in radarMetrics)

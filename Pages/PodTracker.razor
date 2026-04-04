@@ -419,13 +419,7 @@
     {
         try
         {
-            var allMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
-            _allPodMembers = allMembers
-                .Where(m => !_regularDepartments.Contains(m.Department))
-                .GroupBy(m => m.Name.Trim().ToLowerInvariant())
-                .Select(g => g.OrderByDescending(m => m.Id).First())
-                .ToList();
-            _pods = _allPodMembers.Select(m => m.Department).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(d => d).ToList();
+            await ReloadAllPodMembersAsync();
             CalculateAllRankings();
             CalculateFocusFive();
         }
@@ -434,6 +428,23 @@
             Console.WriteLine($"Error in PodTracker init: {ex.Message}");
         }
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReloadAllPodMembersAsync()
+    {
+        var allMembers = (await DataService.GetTeamMembersAsync())?.ToList() ?? new List<TeamMember>();
+        _allPodMembers = allMembers
+            .Where(m => !_regularDepartments.Contains(m.Department))
+            .GroupBy(m => m.Name.Trim().ToLowerInvariant())
+            .Select(g => g.OrderByDescending(m => m.Id).First())
+            .ToList();
+
+        _pods = _allPodMembers
+            .Where(m => m.MetricRecords?.Any() == true || _parsedPodData.ContainsKey(m.Department))
+            .Select(m => m.Department)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(d => d)
+            .ToList();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -484,6 +495,7 @@
     {
         _selectedPod = podName;
         LoadMembersForSelectedPod();
+        CalculateFocusFive();
         StateHasChanged();
     }
 
@@ -514,6 +526,7 @@
                 }
             }
         }
+        CalculateFocusFive();
         StateHasChanged();
     }
 
@@ -1397,8 +1410,11 @@
         try
         {
             await SavePodMembers(_currentPodMembers, _inputValues);
-            CalculateAllRankings();
             await AppState.NotifyMetricsUpdatedAsync();
+            await ReloadAllPodMembersAsync();
+            LoadMembersForSelectedPod();
+            CalculateAllRankings();
+            CalculateFocusFive();
 
             // Auto-backup
             await AutoBackupPod(_selectedPod);
@@ -1425,6 +1441,8 @@
 
         try
         {
+            var parsedPodNames = _parsedPodData.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             foreach (var (podName, podData) in _parsedPodData)
             {
                 var podMembers = _allPodMembers?
@@ -1443,6 +1461,15 @@
                 try
                 {
                     await SavePodMembers(podMembers.Where(m => podInputs.ContainsKey(m.Id)).ToList(), podInputs);
+
+                    var omittedMembers = podMembers
+                        .Where(m => !podInputs.ContainsKey(m.Id))
+                        .ToList();
+                    foreach (var omitted in omittedMembers)
+                    {
+                        await DataService.SaveMetricRecordsForPeriodAsync(omitted.Id, _selectedPeriod!, new List<MetricRecord>());
+                    }
+
                     savedPods++;
                     savedMembers += podInputs.Count;
                 }
@@ -1452,8 +1479,20 @@
                 }
             }
 
+            var stalePodMembers = (_allPodMembers ?? new List<TeamMember>())
+                .Where(m => PodMetricCatalog.IsPodDepartment(m.Department) && !parsedPodNames.Contains(m.Department))
+                .ToList();
+
+            foreach (var staleMember in stalePodMembers)
+            {
+                await DataService.SaveMetricRecordsForPeriodAsync(staleMember.Id, _selectedPeriod!, new List<MetricRecord>());
+            }
+
             CalculateAllRankings();
             await AppState.NotifyMetricsUpdatedAsync();
+            await ReloadAllPodMembersAsync();
+            LoadMembersForSelectedPod();
+            CalculateFocusFive();
 
             // Auto-backup: create snapshot for each saved pod
             int backupCount = 0;
@@ -1696,7 +1735,9 @@
             .DefaultIfEmpty(920)
             .Average();
 
-        var allRelevantMetrics = new HashSet<string>(PodMetricCatalog.GetPublicDisplayMetrics(_selectedPod), StringComparer.OrdinalIgnoreCase);
+        var allRelevantMetrics = string.IsNullOrEmpty(_selectedPod)
+            ? new HashSet<string>(members.SelectMany(m => GetMetricsForDepartment(m.Department)), StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(GetMetricsForDepartment(_selectedPod), StringComparer.OrdinalIgnoreCase);
 
         foreach (var metricKey in allRelevantMetrics)
         {

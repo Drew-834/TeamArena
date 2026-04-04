@@ -167,7 +167,7 @@ namespace GameScoreboard.Models
 
             var relativeStrengths = new Dictionary<string, double>();
             var allowedMetrics = PodMetricCatalog.IsPodDepartment(Department)
-                ? new HashSet<string>(PodMetricCatalog.GetPublicDisplayMetrics(Department), StringComparer.OrdinalIgnoreCase)
+                ? new HashSet<string>(PodMetricCatalog.GetApplicableMetrics(Department), StringComparer.OrdinalIgnoreCase)
                 : null;
 
             foreach (var record in MetricRecords)
