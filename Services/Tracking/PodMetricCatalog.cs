@@ -88,9 +88,9 @@ public static class PodMetricCatalog
         ["WarrantyAttach"] = 10.0,
         ["PCBasket"] = 120.0,
         ["HTBasket"] = 300.0,
-        ["ServAttach"] = 20.0,
+        ["ServAttach"] = 25.0,
         ["Office"] = 20.0,
-        ["AccAttach"] = 20.0
+        ["AccAttach"] = 25.0
     };
 
     public static bool IsPodDepartment(string? department) =>

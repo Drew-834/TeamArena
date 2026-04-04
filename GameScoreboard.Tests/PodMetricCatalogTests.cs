@@ -28,4 +28,13 @@ public class PodMetricCatalogTests
         Assert.Contains("Office", pcMetrics);
         Assert.DoesNotContain("HTBasket", pcMetrics);
     }
+
+    [Fact]
+    public void MetricTargets_UseUpdatedDepartmentSpecificGoals()
+    {
+        Assert.Equal(300.0, PodMetricCatalog.GetTarget("HTBasket"));
+        Assert.Equal(25.0, PodMetricCatalog.GetTarget("ServAttach"));
+        Assert.Equal(120.0, PodMetricCatalog.GetTarget("PCBasket"));
+        Assert.Equal(20.0, PodMetricCatalog.GetTarget("Office"));
+    }
 }

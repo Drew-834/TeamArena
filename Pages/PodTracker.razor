@@ -322,7 +322,7 @@
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "1411Advisor";
+    private const string CorrectPassword = "Admin321";
 
     // ── Page state ──
     private bool _isSaving = false;
@@ -1748,7 +1748,7 @@
 
             foreach (var m in members)
             {
-                var memberMetrics = PodMetricCatalog.GetPublicDisplayMetrics(m.Department);
+                var memberMetrics = PodMetricCatalog.GetApplicableMetrics(m.Department);
                 if (!memberMetrics.Contains(metricKey)) continue;
 
                 double? val = GetMemberLatestMetricValue(m, metricKey);
