@@ -1,114 +1,174 @@
 @page "/pods"
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@using System.Globalization
+@using GameScoreboard.Models
 @using GameScoreboard.Services
 @using GameScoreboard.Services.Tracking
 @inject IDataService DataService
 @inject AppState AppState
 
 <div class="min-h-screen px-4 py-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
-    <div class="container mx-auto max-w-5xl">
-        <button @onclick='() => NavigateTo("/")'
-                @onmouseover="PlayHover"
-                class="elden-btn mb-8">
-            &larr; Back to Home
-        </button>
-
-        <section class="elden-dashboard-section elden-dashboard-hero mb-10">
+    <div class="mx-auto max-w-7xl space-y-6">
+        <section class="elden-dashboard-section elden-dashboard-hero elden-lively-panel council-hero">
             <div class="relative z-10">
-                <div class="text-center mb-8">
+                <div class="text-center mb-6">
                     <div class="elden-dashboard-eyebrow">Council Navigation</div>
                     <h1 class="title-glow text-4xl mb-2">War Council</h1>
-                    <p class="font-body text-lg" style="color: var(--er-text-dim);">Select a team to inspect its current champions and KPI standing.</p>
+                    <p class="font-body text-lg" style="color: var(--er-text-dim);">Track the strongest teams at a glance, then descend into the pod index below when you want a specific roster.</p>
                     <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 300px;"></div>
                 </div>
-                <div class="elden-dashboard-grid metrics">
-                    <div class="elden-dashboard-card text-center">
-                        <div class="elden-dashboard-eyebrow">Active Teams</div>
-                        <div class="elden-dashboard-value">@_pods.Count</div>
-                        <div class="elden-dashboard-caption">Pods with live performance data</div>
-                    </div>
-                    <div class="elden-dashboard-card text-center">
-                        <div class="elden-dashboard-eyebrow">Rostered Champions</div>
-                        <div class="elden-dashboard-value">@(_allMembers?.Count(m => m.MetricRecords?.Any() == true) ?? 0)</div>
-                        <div class="elden-dashboard-caption">Members carrying current metrics</div>
-                    </div>
-                    <div class="elden-dashboard-card text-center">
-                        <div class="elden-dashboard-eyebrow">Tracker Access</div>
-                        <div class="elden-dashboard-value">Hidden</div>
-                        <div class="elden-dashboard-caption">Use the sealed route when you need to update data</div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        @if (_isLoading)
-        {
-            <div class="flex flex-col items-center justify-center mt-20">
-                <div class="elden-loading-rune mb-6"></div>
-                <p class="font-heading text-sm" style="color: var(--er-gold-dim); letter-spacing: 0.1em; animation: gold-pulse 2s ease infinite;">
-                    @_loadingStatus
-                </p>
-                <div class="w-64 mt-4 elden-progress elden-progress-shimmer">
-                    <div class="elden-progress-bar" style="width: @(_loadingProgress)%"></div>
-                </div>
-            </div>
-        }
-        else if (!string.IsNullOrEmpty(_errorMessage))
-        {
-            <div class="flex flex-col items-center justify-center mt-20">
-                <p class="font-body text-lg mb-4" style="color: var(--er-red-bright);">@_errorMessage</p>
-                <button @onclick="RetryLoad" class="elden-btn elden-btn-primary">Retry</button>
-            </div>
-        }
-        else if (!_pods.Any())
-        {
-            <div class="flex flex-col items-center justify-center mt-20">
-                <p class="font-body text-lg" style="color: var(--er-text-dim);">No teams with performance data found.</p>
-                <p class="font-body text-sm mt-2" style="color: var(--er-text-muted);">Use the Team Tracker to enter metrics first.</p>
-            </div>
-        }
-        else
-        {
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                @foreach (var pod in _pods)
+                @if (_isLoading)
                 {
-                    <div @onclick="() => NavigateToPod(pod)"
-                         @onmouseover="PlayHover"
-                         class="elden-card elden-card-ornate p-8 cursor-pointer text-center group">
-                        <div class="elden-corners-inner">
-                            <div class="mb-3">
-                                <span class="font-heading text-xs tracking-widest uppercase" style="color: var(--er-gold-dim);">Team</span>
+                    <div class="flex flex-col items-center justify-center py-10">
+                        <div class="elden-loading-rune mb-4"></div>
+                        <p class="font-heading text-sm" style="color: var(--er-gold-dim); letter-spacing: 0.1em; animation: gold-pulse 2s ease infinite;">
+                            @_loadingStatus
+                        </p>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="max-w-2xl mx-auto text-center">
+                        <p class="font-body text-lg mb-4" style="color: var(--er-red-bright);">@_errorMessage</p>
+                        <button @onclick="RetryLoad" class="elden-btn elden-btn-primary">Retry</button>
+                    </div>
+                }
+                else if (!_pods.Any())
+                {
+                    <div class="max-w-2xl mx-auto text-center">
+                        <p class="font-body text-lg" style="color: var(--er-text-dim);">No teams with performance data found.</p>
+                        <p class="font-body text-sm mt-2" style="color: var(--er-text-muted);">Use the Team Tracker to enter metrics first.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        @foreach (var pod in _podLeaderboard.Take(3))
+                        {
+                            var rankClass = pod.Rank == 1 ? "rank-1" : pod.Rank == 2 ? "rank-2" : "rank-3";
+                            var rankColor = pod.Rank == 1 ? "elden-rank-gold" : pod.Rank == 2 ? "elden-rank-silver" : "elden-rank-bronze";
+
+                            <div @onclick="() => NavigateToPod(pod.Name)"
+                                 @onmouseover="PlayHover"
+                                 class="elden-rank-card council-leaderboard-card @rankClass">
+                                <div class="font-heading text-xs mb-2 uppercase tracking-[0.28em]" style="color: var(--er-text-dim);">Rank #@pod.Rank</div>
+                                <div class="font-heading text-3xl font-bold @rankColor mb-2">@pod.Name</div>
+                                <div class="font-mono text-3xl font-bold mb-1" style="color: var(--er-gold-bright);">@pod.Score.ToString("F1")</div>
+                                <div class="font-body text-sm" style="color: var(--er-text-dim);">@GetPodMemberCount(pod.Name) champions carrying live metrics</div>
                             </div>
-                            <h2 class="font-heading text-2xl mb-3 transition-colors duration-300 group-hover:text-gold-bright" style="color: var(--er-gold);">
-                                @pod
-                            </h2>
-                            <div class="elden-divider mx-auto mb-3" style="max-width: 120px;"></div>
-                            <p class="font-mono text-sm" style="color: var(--er-text-dim);">
-                                @GetPodMemberCount(pod) champions
-                            </p>
+                        }
+                    </div>
+
+                    <div class="elden-chip-list justify-center mt-5">
+                        <div class="elden-metric-chip text-center">
+                            <div class="elden-metric-chip-name">Active Teams</div>
+                            <div class="font-heading text-2xl mt-1" style="color: var(--er-gold-bright);">@_pods.Count</div>
+                        </div>
+                        <div class="elden-metric-chip text-center">
+                            <div class="elden-metric-chip-name">Rostered Champions</div>
+                            <div class="font-heading text-2xl mt-1" style="color: var(--er-gold-bright);">@(_allMembers?.Count(m => m.MetricRecords?.Any() == true) ?? 0)</div>
+                        </div>
+                        <div class="elden-metric-chip text-center">
+                            <div class="elden-metric-chip-name">Tracker Access</div>
+                            <div class="font-heading text-2xl mt-1" style="color: var(--er-gold-bright);">Sealed</div>
                         </div>
                     </div>
                 }
             </div>
+        </section>
 
-            <!-- Hidden Pod Tracker Card -->
-            <div id="team-tracker-card" @onclick='() => NavigateTo("/podtracker")'
-                 @onmouseover="PlayHover"
-                 class="hidden mt-8 elden-card p-6 cursor-pointer text-center" style="border-color: var(--er-purple);">
-                <h2 class="font-heading text-xl mb-1" style="color: var(--er-purple);">Team Tracker</h2>
-                <p class="font-body text-sm" style="color: var(--er-text-dim);">Input and update team metrics</p>
-            </div>
+        @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _pods.Any())
+        {
+            <section class="elden-dashboard-grid dual">
+                <div class="elden-dashboard-section elden-lively-panel">
+                    <div class="elden-dashboard-section-header">
+                        <div>
+                            <div class="elden-dashboard-eyebrow">Council Briefing</div>
+                            <h2 class="elden-dashboard-section-title">Team Performance Overview</h2>
+                            <p class="elden-dashboard-section-copy">Use the ranking strip above as your quick read, then drop into the footer atlas to open a specific pod and inspect the full champion roster.</p>
+                        </div>
+                    </div>
+                    <div class="elden-dashboard-grid triple">
+                        <div class="elden-dashboard-card">
+                            <div class="elden-dashboard-eyebrow">First Place</div>
+                            <div class="elden-dashboard-value">@(_podLeaderboard.FirstOrDefault()?.Name ?? "None")</div>
+                            <div class="elden-dashboard-caption">Current leader by weighted team average</div>
+                        </div>
+                        <div class="elden-dashboard-card">
+                            <div class="elden-dashboard-eyebrow">Council Average</div>
+                            <div class="elden-dashboard-value">@GetCouncilAverageScore().ToString("F1")</div>
+                            <div class="elden-dashboard-caption">Average weighted score across all tracked teams</div>
+                        </div>
+                        <div class="elden-dashboard-card">
+                            <div class="elden-dashboard-eyebrow">Tracker Chamber</div>
+                            <div class="elden-dashboard-value">Hidden</div>
+                            <div class="elden-dashboard-caption">Use the sealed route when you need to update imports</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="elden-dashboard-section council-sidecar">
+                    <div class="elden-dashboard-section-header">
+                        <div>
+                            <div class="elden-dashboard-eyebrow">Field Notes</div>
+                            <h2 class="elden-dashboard-section-title">How To Read The Council</h2>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="elden-dashboard-card">
+                            <div class="elden-dashboard-eyebrow">1. Read The Top Three</div>
+                            <div class="elden-dashboard-caption">The hero strip surfaces the strongest pods right now using the same weighted logic as the pod overview flow.</div>
+                        </div>
+                        <div class="elden-dashboard-card">
+                            <div class="elden-dashboard-eyebrow">2. Enter A Pod</div>
+                            <div class="elden-dashboard-caption">Use the footer atlas to jump straight into a team and inspect champions, KPI snapshots, and character details.</div>
+                        </div>
+                        <div id="team-tracker-card"
+                             @onclick='() => NavigateTo("/podtracker")'
+                             @onmouseover="PlayHover"
+                             class="hidden elden-dashboard-card cursor-pointer text-center"
+                             style="border-color: rgba(106, 58, 138, 0.45);">
+                            <div class="elden-dashboard-eyebrow" style="color: var(--er-purple);">Sealed Passage</div>
+                            <div class="font-heading text-xl mt-1 mb-2" style="color: var(--er-purple);">Team Tracker</div>
+                            <div class="elden-dashboard-caption">Input and update team metrics.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="elden-dashboard-section council-footer-nav elden-lively-panel">
+                <div class="elden-dashboard-section-header">
+                    <div>
+                        <div class="elden-dashboard-eyebrow">Footer Atlas</div>
+                        <h2 class="elden-dashboard-section-title">Choose A Team</h2>
+                        <p class="elden-dashboard-section-copy">A denser navigation band keeps the page readable even as more pods join the council.</p>
+                    </div>
+                </div>
+
+                <div class="council-footer-grid">
+                    @foreach (var pod in _pods)
+                    {
+                        <button @onclick="() => NavigateToPod(pod)"
+                                @onmouseover="PlayHover"
+                                class="elden-footer-pod">
+                            <span class="elden-footer-pod-name">@pod</span>
+                            <span class="elden-footer-pod-meta">@GetPodMemberCount(pod) champions</span>
+                        </button>
+                    }
+                </div>
+            </footer>
         }
     </div>
 </div>
 
 @code {
     private List<string> _pods = new();
-    private List<GameScoreboard.Models.TeamMember>? _allMembers;
+    private List<TeamMember>? _allMembers;
+    private List<RankedMember> _podLeaderboard = new();
     private bool _isLoading = true;
     private string _loadingStatus = "Connecting to server...";
-    private int _loadingProgress = 10;
     private string? _errorMessage;
 
     private static bool IsPodDepartment(string dept) => PodMetricCatalog.IsPodDepartment(dept);
@@ -139,6 +199,8 @@
                 .OrderBy(d => d)
                 .ToList();
 
+            CalculatePodLeaderboard();
+
             Console.WriteLine($"[PodIndex] Found {_pods.Count} teams with data: [{string.Join(", ", _pods)}]");
         }
         catch (Exception ex)
@@ -167,6 +229,105 @@
         _allMembers?.Count(m =>
             m.Department.Equals(pod, StringComparison.OrdinalIgnoreCase) &&
             m.MetricRecords?.Any() == true) ?? 0;
+
+    private void CalculatePodLeaderboard()
+    {
+        var podGroups = (_allMembers ?? new List<TeamMember>())
+            .Where(m => _pods.Contains(m.Department, StringComparer.OrdinalIgnoreCase))
+            .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _podLeaderboard = podGroups
+            .Select(group => new RankedMember
+            {
+                Name = group.Key,
+                Department = group.Key,
+                Score = group.Select(GetWeightedScore).Where(score => score > 0).DefaultIfEmpty(0).Average()
+            })
+            .Where(rank => rank.Score > 0)
+            .OrderByDescending(rank => rank.Score)
+            .Select((rank, index) =>
+            {
+                rank.Rank = index + 1;
+                rank.Id = index + 1;
+                return rank;
+            })
+            .ToList();
+    }
+
+    private double GetCouncilAverageScore()
+    {
+        return _podLeaderboard.Any() ? _podLeaderboard.Average(p => p.Score) : 0;
+    }
+
+    private double GetWeightedScore(TeamMember member)
+    {
+        double totalWeightedScore = 0;
+        int applicableWeight = 0;
+
+        foreach (var metricKey in PodMetricCatalog.GetApplicableMetrics(member.Department))
+        {
+            var rawValue = GetMemberMetricValue(member, metricKey);
+            if (!rawValue.HasValue)
+            {
+                continue;
+            }
+
+            if ((metricKey == "AppEff" || metricKey == "PMEff") && rawValue.Value >= 20000)
+            {
+                continue;
+            }
+
+            int weight = PodMetricCatalog.GetWeight(metricKey);
+
+            if (metricKey == "Surveys" && rawValue.Value == 0)
+            {
+                applicableWeight += weight;
+                continue;
+            }
+
+            double target = PodMetricCatalog.GetTarget(metricKey);
+            double normalizedScore = IsLowerBetter(metricKey)
+                ? (target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0)
+                : (target > 0 ? (rawValue.Value / target) * 100.0 : 0);
+
+            if (normalizedScore > 100)
+            {
+                double excess = normalizedScore - 100;
+                double bonus = 15.0 * Math.Log(1 + excess / 20.0);
+                normalizedScore = 100 + Math.Min(bonus, 25.0);
+            }
+
+            normalizedScore = Math.Clamp(normalizedScore, 0, 125);
+            totalWeightedScore += normalizedScore * weight;
+            applicableWeight += weight;
+        }
+
+        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;
+    }
+
+    private double? GetMemberMetricValue(TeamMember member, string metricKey)
+    {
+        foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(metricKey, member.Department))
+        {
+            var record = member.MetricRecords?
+                .Where(r => r.MetricKey.Equals(lookupKey, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(r => r.Period)
+                .FirstOrDefault();
+
+            if (record != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsLowerBetter(string metricKey)
+    {
+        return PodMetricCatalog.IsLowerBetter(metricKey);
+    }
 
     private async Task NavigateToPod(string podName)
     {
