@@ -12,6 +12,8 @@
 @implements IDisposable
 
 <div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+    <button @onclick="NavigateHome" class="elden-btn mb-6">&larr; Back to Home</button>
+
     <div class="text-center mb-8">
         <h1 class="title-glow text-3xl md:text-4xl mb-1">@DepartmentName</h1>
         <p class="font-body" style="color: var(--er-text-dim);">Performance Overview</p>
@@ -462,6 +464,11 @@
     }
 
     // Method to handle navigation back home
+    private void NavigateHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
     private void NavigateToMember(int memberId)
     {
         NavigationManager.NavigateTo($"/character/{memberId}");

@@ -13,6 +13,8 @@
 @implements IDisposable
 
 <div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+    <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Teams</button>
+
     <div class="text-center mb-4">
         <h1 class="title-glow text-3xl md:text-4xl mb-1">@PodName</h1>
         <p class="font-body" style="color: var(--er-text-dim);">Team Performance Overview</p>
@@ -893,6 +895,7 @@
             NavigationManager.NavigateTo($"/pods/{podName}");
     }
 
+    private void NavigateBack() => NavigationManager.NavigateTo("/pods");
     private void NavigateToMember(int memberId) => NavigationManager.NavigateTo($"/character/{memberId}");
 
     public void Dispose()

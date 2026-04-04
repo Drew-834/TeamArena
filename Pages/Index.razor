@@ -2,9 +2,9 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
-<div class="min-h-screen flex flex-col items-center justify-start px-4 py-8 lg:py-10" style="background-color: var(--er-bg-primary);">
+<div class="min-h-screen flex flex-col items-center justify-center px-4 py-12" style="background-color: var(--er-bg-primary);">
 
-    <div class="text-center mb-8 lg:mb-6 animate-fade-in elden-lively-panel">
+    <div class="text-center mb-12 animate-fade-in">
         <h1 class="title-glow text-5xl md:text-6xl mb-3">Team Arena</h1>
         <p class="font-body text-lg" style="color: var(--er-text-dim); letter-spacing: 0.05em;">
             Forge your legend through performance
@@ -12,7 +12,7 @@
         <div class="elden-divider-ornate mx-auto mt-6" style="max-width: 400px;"></div>
     </div>
 
-    <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <!-- Team Performance (Boss Gate - Full Width) -->
         <div @onclick='() => Navigate("/pods")'

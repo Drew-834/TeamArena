@@ -4,7 +4,7 @@ window.eldenParticles = (function () {
     let particles = [];
     let animFrame = null;
     let isRunning = false;
-    const BASE_PARTICLE_COUNT = 54;
+    const PARTICLE_COUNT = 40;
 
     function Particle() {
         this.reset();
@@ -14,17 +14,16 @@ window.eldenParticles = (function () {
     Particle.prototype.reset = function () {
         this.x = Math.random() * (canvas ? canvas.width : 1200);
         this.y = canvas ? canvas.height + 10 : 810;
-        this.size = Math.random() * 3.2 + 0.6;
-        this.speedY = -(Math.random() * 0.42 + 0.14);
-        this.speedX = (Math.random() - 0.5) * 0.24;
+        this.size = Math.random() * 2.5 + 0.5;
+        this.speedY = -(Math.random() * 0.4 + 0.15);
+        this.speedX = (Math.random() - 0.5) * 0.2;
         this.opacity = 0;
-        this.maxOpacity = Math.random() * 0.45 + 0.18;
+        this.maxOpacity = Math.random() * 0.5 + 0.2;
         this.fadeInRate = Math.random() * 0.008 + 0.003;
         this.life = 0;
-        this.maxLife = Math.random() * 700 + 450;
+        this.maxLife = Math.random() * 600 + 400;
         this.flickerSpeed = Math.random() * 0.02 + 0.01;
         this.wobble = Math.random() * Math.PI * 2;
-        this.driftRadius = Math.random() * 0.18 + 0.08;
     };
 
     Particle.prototype.update = function () {
@@ -37,7 +36,7 @@ window.eldenParticles = (function () {
             this.opacity *= 0.995;
         }
 
-        this.x += this.speedX + Math.sin(this.wobble) * this.driftRadius;
+        this.x += this.speedX + Math.sin(this.wobble) * 0.15;
         this.y += this.speedY;
 
         if (this.life > this.maxLife || this.y < -20 || this.opacity < 0.01) {
@@ -61,35 +60,13 @@ window.eldenParticles = (function () {
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
 
-        if (this.size > 2.5) {
-            ctx.globalAlpha = alpha * 0.35;
-            ctx.strokeStyle = 'rgba(232, 210, 130, 0.85)';
-            ctx.lineWidth = 0.75;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
         ctx.restore();
     };
 
     function resize() {
         if (!canvas) return;
-        var ratio = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(window.innerWidth * ratio);
-        canvas.height = Math.floor(window.innerHeight * ratio);
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-        if (ctx) {
-            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-        }
-        updateParticleCount();
-    }
-
-    function updateParticleCount() {
-        var target = Math.max(34, Math.min(72, Math.floor(window.innerWidth / 28)));
-        while (particles.length < target) particles.push(new Particle());
-        while (particles.length > target) particles.pop();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     }
 
     function animate() {
@@ -121,10 +98,9 @@ window.eldenParticles = (function () {
                 window.addEventListener('resize', resize);
 
                 particles = [];
-                for (var i = 0; i < BASE_PARTICLE_COUNT; i++) {
+                for (var i = 0; i < PARTICLE_COUNT; i++) {
                     particles.push(new Particle());
                 }
-                updateParticleCount();
 
                 isRunning = true;
                 animate();
