@@ -150,7 +150,22 @@
                                     </div>
                                 </div>
 
-                                <div class="champion-carousel tracker-focus-carousel" id="focus-five-carousel">
+                                <div class="tracker-focus-guide-rail" role="tablist" aria-label="Focus Five KPI guide">
+                                    @foreach (var slide in focusCarousel.Slides.Select((item, index) => new { Item = item, Index = index }))
+                                    {
+                                        <button type="button"
+                                                class="tracker-focus-guide-btn @(slide.Index == 0 ? "is-active" : "")"
+                                                data-carousel-index="@slide.Index"
+                                                role="tab"
+                                                aria-selected="@(slide.Index == 0 ? "true" : "false")"
+                                                aria-label="@($"Focus {slide.Item.Label}")">
+                                            <span class="tracker-focus-guide-rank">@($"{slide.Index + 1:D2}")</span>
+                                            <span class="tracker-focus-guide-name">@slide.Item.Label</span>
+                                        </button>
+                                    }
+                                </div>
+
+                                <div class="champion-carousel tracker-focus-carousel" id="focus-five-carousel" data-snap="true">
                                     <div class="carousel-track tracker-focus-carousel-track">
                                         @foreach (var slide in focusCarousel.Slides)
                                         {
@@ -229,6 +244,38 @@
                                 </div>
                             }
                         </div>
+                    }
+
+                    @{
+                        var influenceRows = GetFocusInfluenceRows().Take(5).ToList();
+                    }
+                    @if (influenceRows.Any())
+                    {
+                        <section class="tracker-focus-sidebar">
+                            <div class="tracker-focus-sidebar-header">
+                                <div>
+                                    <div class="elden-dashboard-eyebrow">Focus Five</div>
+                                    <h3 class="tracker-focus-sidebar-title">Influence Summary</h3>
+                                </div>
+                                <div class="tracker-focus-sidebar-meta">@influenceRows.Count focuses</div>
+                            </div>
+
+                            <ol class="tracker-focus-sidebar-list">
+                                @foreach (var row in influenceRows)
+                                {
+                                    <li class="tracker-focus-sidebar-row @row.SeverityClass">
+                                        <div class="tracker-focus-sidebar-copy">
+                                            <span class="tracker-focus-sidebar-name">@row.Name</span>
+                                            <span class="tracker-focus-sidebar-context">@row.MetricLabel • @row.Pod</span>
+                                        </div>
+                                        <div class="tracker-focus-sidebar-stats">
+                                            <span class="tracker-focus-sidebar-delta">@row.DeltaLabel</span>
+                                            <span class="tracker-focus-sidebar-impact">Impact @row.ImpactLabel</span>
+                                        </div>
+                                    </li>
+                                }
+                            </ol>
+                        </section>
                     }
                 </aside>
             </section>
@@ -477,7 +524,7 @@
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "Admin321";
+    private const string CorrectPassword = "1411Advisor"; //this is the password for the front end
 
     // ── Page state ──
     private bool _isSaving = false;
@@ -512,6 +559,17 @@
     private sealed class FocusCarouselVisual
     {
         public List<FocusFiveSigil.KpiSlide> Slides { get; set; } = new();
+    }
+
+    private sealed class FocusInfluenceRow
+    {
+        public string Name { get; set; } = "";
+        public string Pod { get; set; } = "";
+        public string MetricLabel { get; set; } = "";
+        public string DeltaLabel { get; set; } = "";
+        public string ImpactLabel { get; set; } = "";
+        public string SeverityClass { get; set; } = "";
+        public double Impact { get; set; }
     }
 
     private sealed class PodStandingRow
@@ -1564,6 +1622,24 @@
         };
     }
 
+    private IEnumerable<FocusInfluenceRow> GetFocusInfluenceRows()
+    {
+        return GetOrderedFocusLanes()
+            .SelectMany(lane => lane.Value.Select(entry => new FocusInfluenceRow
+            {
+                Name = entry.Name,
+                Pod = entry.Pod,
+                MetricLabel = TeamMember.GetMetricDisplayName(lane.Key),
+                DeltaLabel = entry.PercentOff.ToString("+0;-0", CultureInfo.InvariantCulture) + "%",
+                ImpactLabel = entry.Impact.ToString("F0", CultureInfo.InvariantCulture),
+                SeverityClass = GetFocusSeverityClassToken(Math.Abs(entry.PercentOff)),
+                Impact = entry.Impact
+            }))
+            .OrderByDescending(row => row.Impact)
+            .ThenBy(row => row.Name)
+            .ToList();
+    }
+
     private static double NormalizeToHundred(double value, double max)
     {
         if (max <= 0)
@@ -1605,6 +1681,21 @@
         }
 
         return "Stable";
+    }
+
+    private static string GetFocusSeverityClassToken(double severity)
+    {
+        if (severity > 40)
+        {
+            return "severity-high";
+        }
+
+        if (severity > 20)
+        {
+            return "severity-mid";
+        }
+
+        return "severity-low";
     }
 
     private List<PodStandingRow> GetPodStandingRows()
@@ -2172,6 +2263,7 @@
     private void CalculateFocusFive()
     {
         _focusFiveByKpi = new Dictionary<string, List<FocusFiveEntry>>();
+        _focusCarouselInitialized = false;
         if (_allPodMembers == null || !_allPodMembers.Any()) return;
 
         var allCandidates = string.IsNullOrEmpty(_selectedPod)
