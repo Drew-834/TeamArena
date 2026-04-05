@@ -3,7 +3,7 @@
 <div class="focus-five-starfield @CssClass">
     @if (Territories.Any())
     {
-        <svg viewBox="0 0 920 620" class="focus-five-starfield-svg" role="img" aria-label="Focus Five constellation pressure map">
+        <svg viewBox="0 0 1200 760" class="focus-five-starfield-svg" role="img" aria-label="Focus Five constellation pressure map">
             <defs>
                 <radialGradient id="@($"{_chartId}-center-glow")" cx="50%" cy="50%" r="65%">
                     <stop offset="0%" stop-color="rgba(231, 206, 136, 0.26)" />
@@ -19,7 +19,7 @@
                 </filter>
             </defs>
 
-            <rect x="0" y="0" width="920" height="620" class="focus-five-starfield-backdrop" />
+            <rect x="0" y="0" width="1200" height="760" class="focus-five-starfield-backdrop" />
 
             @foreach (var bridge in GetRegionBridges())
             {
@@ -27,11 +27,11 @@
                       class="focus-five-starfield-bridge" />
             }
 
-            <circle cx="460" cy="310" r="118" class="focus-five-starfield-center-halo" fill="@($"url(#{_chartId}-center-glow)")" />
-            <circle cx="460" cy="310" r="86" class="focus-five-starfield-center-ring" />
-            <circle cx="460" cy="310" r="40" class="focus-five-starfield-center-core" />
-            <text x="460" y="304" class="focus-five-starfield-center-title" text-anchor="middle">@CenterLabel</text>
-            <text x="460" y="332" class="focus-five-starfield-center-sub" text-anchor="middle">@SubLabel</text>
+            <circle cx="600" cy="380" r="154" class="focus-five-starfield-center-halo" fill="@($"url(#{_chartId}-center-glow)")" />
+            <circle cx="600" cy="380" r="112" class="focus-five-starfield-center-ring" />
+            <circle cx="600" cy="380" r="52" class="focus-five-starfield-center-core" />
+            <text x="600" y="374" class="focus-five-starfield-center-title" text-anchor="middle">@CenterLabel</text>
+            <text x="600" y="408" class="focus-five-starfield-center-sub" text-anchor="middle">@SubLabel</text>
 
             @foreach (var territory in Territories.Select((item, index) => new { Item = item, Index = index }))
             {
@@ -59,11 +59,6 @@
                           y="@Fmt(anchor.Y - 114)"
                           class="focus-five-starfield-territory-label"
                           text-anchor="middle">@territory.Item.Label</text>
-                    <text x="@Fmt(anchor.X)"
-                          y="@Fmt(anchor.Y - 94)"
-                          class="focus-five-starfield-territory-meta"
-                          text-anchor="middle">@GetTerritoryMeta(territory.Item)</text>
-
                     @foreach (var node in territory.Item.Nodes.Select((item, index) => new { Item = item, Index = index }))
                     {
                         var point = GetNodePoint(anchor, node.Index, territory.Index, territory.Item.Nodes.Count);
@@ -128,11 +123,11 @@
 
     private static readonly (double X, double Y)[] _presetAnchors =
     {
-        (220, 168),
-        (700, 178),
-        (704, 454),
-        (216, 456),
-        (460, 132)
+        (276, 208),
+        (928, 214),
+        (924, 556),
+        (270, 554),
+        (600, 144)
     };
 
     private static readonly (double X, double Y)[] _nodeOffsets =
@@ -154,8 +149,8 @@
         var angle = (-90 + (360.0 / Math.Max(total, 1)) * index) * Math.PI / 180.0;
         return
         (
-            460 + Math.Cos(angle) * 240,
-            310 + Math.Sin(angle) * 210
+            600 + Math.Cos(angle) * 314,
+            380 + Math.Sin(angle) * 258
         );
     }
 
@@ -164,9 +159,9 @@
         for (int i = 0; i < Territories.Count; i++)
         {
             var anchor = GetRegionAnchor(i, Territories.Count);
-            var controlX = 460 + ((anchor.X - 460) * 0.55);
-            var controlY = 310 + ((anchor.Y - 310) * 0.55) + (i % 2 == 0 ? -24 : 24);
-            yield return $"M {Fmt(460)} {Fmt(310)} Q {Fmt(controlX)} {Fmt(controlY)} {Fmt(anchor.X)} {Fmt(anchor.Y)}";
+            var controlX = 600 + ((anchor.X - 600) * 0.55);
+            var controlY = 380 + ((anchor.Y - 380) * 0.55) + (i % 2 == 0 ? -28 : 28);
+            yield return $"M {Fmt(600)} {Fmt(380)} Q {Fmt(controlX)} {Fmt(controlY)} {Fmt(anchor.X)} {Fmt(anchor.Y)}";
         }
     }
 
@@ -248,12 +243,12 @@
 
     private static double GetNameLabelX((double X, double Y) point, (double X, double Y) anchor)
     {
-        return point.X + (point.X >= anchor.X ? 14 : -14);
+        return point.X + (point.X >= anchor.X ? 18 : -18);
     }
 
     private static double GetNameLabelY((double X, double Y) point)
     {
-        return point.Y - 12;
+        return point.Y - 14;
     }
 
     private static double GetPodLabelX((double X, double Y) point, (double X, double Y) anchor)
@@ -263,7 +258,7 @@
 
     private static double GetPodLabelY((double X, double Y) point)
     {
-        return point.Y + 14;
+        return point.Y + 18;
     }
 
     private static string GetTextAnchor((double X, double Y) point, (double X, double Y) anchor)
@@ -279,11 +274,6 @@
         }
 
         return pod.Length <= 18 ? pod : pod[..17] + "…";
-    }
-
-    private static string GetTerritoryMeta(KpiTerritory territory)
-    {
-        return $"{territory.Nodes.Count} champions • {territory.GoalLabel} • W {territory.Weight}";
     }
 
     private static string Fmt(double value)
