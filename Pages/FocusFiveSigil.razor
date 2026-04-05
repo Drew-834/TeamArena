@@ -1,16 +1,12 @@
 @using System.Globalization
 
 <div class="focus-five-sigil @CssClass @SeverityClass">
-    @if (Labels != null && NormalizedData != null && Labels.Count > 2 && NormalizedData.Count == Labels.Count)
+    @if (Nodes.Any())
     {
-        <svg width="@Width" height="@Height" viewBox="0 0 220 220" class="focus-five-sigil-svg" role="img" aria-label="Focus Five pressure sigil">
+        <svg width="@Width" height="@Height" viewBox="0 0 220 220" class="focus-five-sigil-svg" role="img" aria-label="Focus Five constellation map">
             <defs>
-                <radialGradient id="@($"{_chartId}-fill")" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="rgba(200, 169, 78, 0.28)" />
-                    <stop offset="100%" stop-color="rgba(200, 169, 78, 0.04)" />
-                </radialGradient>
-                <filter id="@($"{_chartId}-glow")">
-                    <feGaussianBlur stdDeviation="2.3" result="blur" />
+                <filter id="@($"{_chartId}-constellation-glow")">
+                    <feGaussianBlur stdDeviation="2.8" result="blur" />
                     <feMerge>
                         <feMergeNode in="blur" />
                         <feMergeNode in="SourceGraphic" />
@@ -18,51 +14,55 @@
                 </filter>
             </defs>
 
-            <circle class="focus-five-sigil-halo" cx="110" cy="110" r="96" />
-            <circle class="focus-five-sigil-ring" cx="110" cy="110" r="88" />
-            <circle class="focus-five-sigil-ring focus-five-sigil-ring-dashed" cx="110" cy="110" r="72" />
+            <circle class="focus-five-constellation-halo" cx="110" cy="110" r="97" />
+            <circle class="focus-five-constellation-ring" cx="110" cy="110" r="88" />
+            <circle class="focus-five-constellation-ring focus-five-constellation-ring-dashed" cx="110" cy="110" r="70" />
 
-            @for (int i = 1; i <= 4; i++)
+            @foreach (var trail in GetTrails())
             {
-                <polygon points="@GetPolygonPoints(i * 18)"
-                         class="focus-five-sigil-grid" />
+                <path d="@trail"
+                      class="focus-five-constellation-trail" />
             }
 
-            @for (int i = 0; i < Labels.Count; i++)
+            @foreach (var bridge in GetPodBridges())
             {
-                <line x1="110" y1="110"
-                      x2="@GetAxisEndX(i)" y2="@GetAxisEndY(i)"
-                      class="focus-five-sigil-axis" />
+                <line x1="@bridge.X1.ToString("F2", CultureInfo.InvariantCulture)"
+                      y1="@bridge.Y1.ToString("F2", CultureInfo.InvariantCulture)"
+                      x2="@bridge.X2.ToString("F2", CultureInfo.InvariantCulture)"
+                      y2="@bridge.Y2.ToString("F2", CultureInfo.InvariantCulture)"
+                      class="focus-five-constellation-bridge" />
             }
 
-            <polygon points="@GetDataPoints()"
-                     fill="@($"url(#{_chartId}-fill)")"
-                     class="focus-five-sigil-shape"
-                     filter="@($"url(#{_chartId}-glow)")" />
+            <circle class="focus-five-constellation-core" cx="110" cy="110" r="28" />
+            <text x="110" y="103" class="focus-five-constellation-center" text-anchor="middle">@CenterLabel</text>
+            <text x="110" y="120" class="focus-five-constellation-sub" text-anchor="middle">@SubLabel</text>
 
-            @for (int i = 0; i < Labels.Count; i++)
+            @foreach (var node in Nodes.Select((item, index) => new { Item = item, Index = index }))
             {
-                <circle cx="@GetDataPointX(i)"
-                        cy="@GetDataPointY(i)"
-                        r="3.5"
-                        class="focus-five-sigil-node" />
-            }
+                var point = GetPoint(node.Index);
+                var radius = GetNodeRadius(node.Item.Importance);
+                var podLabel = GetPodLabel(node.Item.Pod);
 
-            @for (int i = 0; i < Labels.Count; i++)
-            {
-                var shortLabel = GetMetricShortName(Labels[i]);
-                <g>
-                    <text x="@GetLabelX(i)"
-                          y="@GetLabelY(i)"
-                          class="focus-five-sigil-label"
-                          text-anchor="@GetTextAnchor(i)"
-                          dominant-baseline="@GetDominantBaseline(i)">@shortLabel</text>
+                <g class="focus-five-constellation-node-group @GetNodeSeverityClass(node.Item.Severity)">
+                    <circle class="focus-five-constellation-node-aura"
+                            cx="@point.X.ToString("F2", CultureInfo.InvariantCulture)"
+                            cy="@point.Y.ToString("F2", CultureInfo.InvariantCulture)"
+                            r="@(radius + 5).ToString("F2", CultureInfo.InvariantCulture)"
+                            filter="@($"url(#{_chartId}-constellation-glow)")" />
+                    <circle class="focus-five-constellation-node"
+                            cx="@point.X.ToString("F2", CultureInfo.InvariantCulture)"
+                            cy="@point.Y.ToString("F2", CultureInfo.InvariantCulture)"
+                            r="@radius.ToString("F2", CultureInfo.InvariantCulture)" />
+                    <text x="@GetNameLabelX(node.Index).ToString("F2", CultureInfo.InvariantCulture)"
+                          y="@GetNameLabelY(node.Index).ToString("F2", CultureInfo.InvariantCulture)"
+                          class="focus-five-constellation-name"
+                          text-anchor="@GetTextAnchor(node.Index)">@node.Item.Name</text>
+                    <text x="@GetPodLabelX(node.Index).ToString("F2", CultureInfo.InvariantCulture)"
+                          y="@GetPodLabelY(node.Index).ToString("F2", CultureInfo.InvariantCulture)"
+                          class="focus-five-constellation-pod"
+                          text-anchor="@GetTextAnchor(node.Index)">@podLabel</text>
                 </g>
             }
-
-            <circle class="focus-five-sigil-core" cx="110" cy="110" r="28" />
-            <text x="110" y="104" class="focus-five-sigil-center" text-anchor="middle">@CenterLabel</text>
-            <text x="110" y="121" class="focus-five-sigil-sub" text-anchor="middle">@SubLabel</text>
         </svg>
     }
 </div>
@@ -74,98 +74,116 @@
     [Parameter] public string Height { get; set; } = "220px";
     [Parameter] public string CenterLabel { get; set; } = "";
     [Parameter] public string SubLabel { get; set; } = "";
-    [Parameter] public List<string>? Labels { get; set; }
-    [Parameter] public List<double>? NormalizedData { get; set; }
+    [Parameter] public List<ConstellationNode> Nodes { get; set; } = new();
+
+    public sealed class ConstellationNode
+    {
+        public string Name { get; set; } = "";
+        public string Pod { get; set; } = "";
+        public double Importance { get; set; }
+        public double Severity { get; set; }
+    }
 
     private readonly string _chartId = $"focus-five-sigil-{Guid.NewGuid():N}";
 
-    private string GetPolygonPoints(int radius)
+    private static readonly (double X, double Y)[] _points =
     {
-        if (Labels == null || Labels.Count == 0)
-        {
-            return "";
-        }
+        (110, 52),
+        (156, 84),
+        (145, 154),
+        (78, 167),
+        (54, 103)
+    };
 
-        var points = new List<string>();
-        for (int i = 0; i < Labels.Count; i++)
-        {
-            double angle = GetAngle(i);
-            double x = 110 + radius * Math.Cos(angle);
-            double y = 110 + radius * Math.Sin(angle);
-            points.Add($"{x.ToString("F2", CultureInfo.InvariantCulture)},{y.ToString("F2", CultureInfo.InvariantCulture)}");
-        }
-
-        return string.Join(" ", points);
+    private (double X, double Y) GetPoint(int index)
+    {
+        return index < _points.Length ? _points[index] : _points[^1];
     }
 
-    private string GetDataPoints()
+    private IEnumerable<string> GetTrails()
     {
-        if (Labels == null || NormalizedData == null || Labels.Count != NormalizedData.Count)
+        if (Nodes.Count < 2)
         {
-            return "";
+            yield break;
         }
 
-        var points = new List<string>();
-        for (int i = 0; i < Labels.Count; i++)
+        for (int i = 0; i < Nodes.Count - 1; i++)
         {
-            points.Add($"{GetDataPointX(i).ToString("F2", CultureInfo.InvariantCulture)},{GetDataPointY(i).ToString("F2", CultureInfo.InvariantCulture)}");
+            var start = GetPoint(i);
+            var end = GetPoint(i + 1);
+            var midX = (start.X + end.X) / 2;
+            var midY = ((start.Y + end.Y) / 2) - (i % 2 == 0 ? 10 : -8);
+            yield return $"M {start.X.ToString("F2", CultureInfo.InvariantCulture)} {start.Y.ToString("F2", CultureInfo.InvariantCulture)} Q {midX.ToString("F2", CultureInfo.InvariantCulture)} {midY.ToString("F2", CultureInfo.InvariantCulture)} {end.X.ToString("F2", CultureInfo.InvariantCulture)} {end.Y.ToString("F2", CultureInfo.InvariantCulture)}";
+        }
+    }
+
+    private IEnumerable<(double X1, double Y1, double X2, double Y2)> GetPodBridges()
+    {
+        for (int i = 1; i < Nodes.Count; i++)
+        {
+            if (!string.Equals(Nodes[i].Pod, Nodes[0].Pod, StringComparison.OrdinalIgnoreCase))
+            {
+                var start = GetPoint(0);
+                var end = GetPoint(i);
+                yield return (start.X, start.Y, end.X, end.Y);
+            }
+        }
+    }
+
+    private double GetNodeRadius(double importance)
+    {
+        return 4.5 + (Math.Clamp(importance, 0, 100) / 100.0) * 8.5;
+    }
+
+    private string GetNodeSeverityClass(double severity)
+    {
+        if (severity >= 85)
+        {
+            return "is-critical";
         }
 
-        return string.Join(" ", points);
-    }
-
-    private double GetAngle(int index)
-    {
-        int count = Labels?.Count ?? 1;
-        return (2 * Math.PI * index / count) - (Math.PI / 2);
-    }
-
-    private double GetScaledRadius(int index)
-    {
-        if (NormalizedData == null || index >= NormalizedData.Count)
+        if (severity >= 55)
         {
-            return 0;
+            return "is-warning";
         }
 
-        return Math.Clamp(NormalizedData[index], 0, 100) * 0.72;
+        return "is-watch";
     }
 
-    private double GetDataPointX(int index) => 110 + GetScaledRadius(index) * Math.Cos(GetAngle(index));
+    private double GetNameLabelX(int index)
+    {
+        var point = GetPoint(index);
+        return point.X + (index <= 1 ? 12 : index == 2 ? 10 : -12);
+    }
 
-    private double GetDataPointY(int index) => 110 + GetScaledRadius(index) * Math.Sin(GetAngle(index));
+    private double GetNameLabelY(int index)
+    {
+        var point = GetPoint(index);
+        return point.Y + (index == 0 ? -12 : index >= 3 ? 16 : -10);
+    }
 
-    private double GetAxisEndX(int index) => 110 + 82 * Math.Cos(GetAngle(index));
+    private double GetPodLabelX(int index)
+    {
+        return GetNameLabelX(index);
+    }
 
-    private double GetAxisEndY(int index) => 110 + 82 * Math.Sin(GetAngle(index));
-
-    private double GetLabelX(int index) => 110 + 95 * Math.Cos(GetAngle(index));
-
-    private double GetLabelY(int index) => 110 + 95 * Math.Sin(GetAngle(index));
+    private double GetPodLabelY(int index)
+    {
+        return GetNameLabelY(index) + 12;
+    }
 
     private string GetTextAnchor(int index)
     {
-        var x = Math.Cos(GetAngle(index));
-        if (Math.Abs(x) < 0.3)
-        {
-            return "middle";
-        }
-
-        return x > 0 ? "start" : "end";
+        return index >= 3 ? "end" : "start";
     }
 
-    private string GetDominantBaseline(int index)
+    private static string GetPodLabel(string pod)
     {
-        var y = Math.Sin(GetAngle(index));
-        if (Math.Abs(y) < 0.3)
+        if (string.IsNullOrWhiteSpace(pod))
         {
-            return "middle";
+            return "";
         }
 
-        return y > 0 ? "hanging" : "auto";
-    }
-
-    private static string GetMetricShortName(string label)
-    {
-        return label.Length <= 6 ? label : label[..4] + ".";
+        return pod.Length <= 14 ? pod : pod[..13] + "…";
     }
 }

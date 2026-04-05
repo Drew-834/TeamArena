@@ -160,8 +160,7 @@
                                     <p class="tracker-focus-lane-summary">@GetFocusLaneSummary(lane.Key, lane.Value)</p>
 
                                     <div class="tracker-focus-viz-shell">
-                                        <FocusFiveSigil Labels="_focusSigilLabels"
-                                                        NormalizedData="focusVisual.Values"
+                                        <FocusFiveSigil Nodes="focusVisual.Nodes"
                                                         SeverityClass="@laneClass"
                                                         CenterLabel="@focusVisual.CenterLabel"
                                                         SubLabel="@focusVisual.SubLabel"
@@ -557,7 +556,7 @@
 
     private sealed class FocusLaneVisual
     {
-        public List<double> Values { get; set; } = new();
+        public List<FocusFiveSigil.ConstellationNode> Nodes { get; set; } = new();
         public string CenterLabel { get; set; } = "";
         public string SubLabel { get; set; } = "";
     }
@@ -578,7 +577,6 @@
     private HashSet<int> _membersPendingDepartmentUpdate = new();
 
     // ── Constants ──
-    private static readonly List<string> _focusSigilLabels = new() { "Sever", "Impact", "Spread", "Weight", "Heat" };
     private static readonly List<string> _podMetricKeys = PodMetricCatalog.AllMetrics.ToList();
     private static readonly Dictionary<string, int> _metricWeights = PodMetricCatalog.MetricWeights.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, double> _metricTargets = PodMetricCatalog.MetricTargets.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
@@ -1564,25 +1562,25 @@
     private FocusLaneVisual BuildFocusLaneVisual(string metricKey, List<FocusFiveEntry> entries)
     {
         var topPercent = entries.Any() ? Math.Abs(entries[0].PercentOff) : 0;
-        var averagePercent = entries.Any() ? entries.Average(entry => Math.Abs(entry.PercentOff)) : 0;
         var topImpact = entries.Any() ? entries.Max(entry => entry.Impact) : 0;
-        var maxImpact = GetOrderedFocusLanes()
+        var maxImpactAcrossBoard = GetOrderedFocusLanes()
             .SelectMany(lane => lane.Value)
             .Select(entry => entry.Impact)
             .DefaultIfEmpty(0)
             .Max();
-        var maxWeight = _metricWeights.Values.DefaultIfEmpty(1).Max();
 
         return new FocusLaneVisual
         {
-            Values = new List<double>
-            {
-                NormalizeToHundred(topPercent, 45),
-                NormalizeToHundred(topImpact, maxImpact <= 0 ? 1 : maxImpact),
-                NormalizeToHundred(entries.Count, 5),
-                NormalizeToHundred(_metricWeights.GetValueOrDefault(metricKey, 0), maxWeight),
-                NormalizeToHundred(averagePercent, 35)
-            },
+            Nodes = entries
+                .Take(5)
+                .Select((entry, index) => new FocusFiveSigil.ConstellationNode
+                {
+                    Name = entry.Name,
+                    Pod = entry.Pod,
+                    Importance = GetConstellationImportance(entry, entries, index, maxImpactAcrossBoard),
+                    Severity = GetConstellationSeverity(entry),
+                })
+                .ToList(),
             CenterLabel = entries.Any() ? $"{topPercent.ToString("F0", CultureInfo.InvariantCulture)}%" : "CLEAR",
             SubLabel = entries.Any() ? "OFF PACE" : "STABLE"
         };
@@ -1596,6 +1594,19 @@
         }
 
         return Math.Clamp((value / max) * 100.0, 0, 100);
+    }
+
+    private double GetConstellationImportance(FocusFiveEntry entry, List<FocusFiveEntry> entries, int rankIndex, double maxImpactAcrossBoard)
+    {
+        var localImpact = NormalizeToHundred(entry.Impact, entries.Max(item => item.Impact <= 0 ? 1 : item.Impact));
+        var globalImpact = NormalizeToHundred(entry.Impact, maxImpactAcrossBoard <= 0 ? 1 : maxImpactAcrossBoard);
+        var rankBias = Math.Max(0, 100 - (rankIndex * 16));
+        return Math.Clamp((localImpact * 0.45) + (globalImpact * 0.35) + (rankBias * 0.20), 0, 100);
+    }
+
+    private double GetConstellationSeverity(FocusFiveEntry entry)
+    {
+        return NormalizeToHundred(Math.Abs(entry.PercentOff), 45);
     }
 
     private string GetFocusSeverityLabel(double severity)
