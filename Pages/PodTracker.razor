@@ -138,14 +138,37 @@
                     @if (GetOrderedFocusLanes().Any())
                     {
                         var orderedLanes = GetOrderedFocusLanes();
-                        var focusMap = BuildFocusMapVisual(orderedLanes);
+                        var focusCarousel = BuildFocusCarouselVisual(orderedLanes);
 
-                        <div class="tracker-focus-map-stage">
-                            <div class="tracker-focus-map-shell">
-                                <FocusFiveSigil Territories="focusMap.Territories"
-                                                CenterLabel="@focusMap.CenterLabel"
-                                                SubLabel="@focusMap.SubLabel"
-                                                CssClass="tracker-focus-map" />
+                        <div class="tracker-focus-carousel-stage">
+                            <div class="tracker-focus-carousel-shell">
+                                <div class="tracker-focus-carousel-header">
+                                    <div class="tracker-focus-carousel-kicker">KPI Constellations</div>
+                                    <div class="tracker-focus-carousel-meta">
+                                        <span>@focusCarousel.Slides.Count active slides</span>
+                                        <span>@GetFocusPressureCount() lanes under pressure</span>
+                                    </div>
+                                </div>
+
+                                <div class="champion-carousel tracker-focus-carousel" id="focus-five-carousel">
+                                    <div class="carousel-track tracker-focus-carousel-track">
+                                        @foreach (var slide in focusCarousel.Slides)
+                                        {
+                                            <article class="tracker-focus-slide" @key="slide.MetricKey">
+                                                <FocusFiveSigil Slide="slide" CssClass="tracker-focus-skill-tree" />
+                                            </article>
+                                        }
+                                    </div>
+
+                                    <div class="carousel-slider-wrap tracker-focus-carousel-slider-wrap">
+                                        <input type="range"
+                                               id="focus-five-slider"
+                                               class="carousel-slider tracker-focus-carousel-slider"
+                                               min="0"
+                                               max="1000"
+                                               value="0" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     }
@@ -473,6 +496,7 @@
     private Dictionary<int, Dictionary<string, string>> _inputValues = new();
     private List<TeamMember>? _allPodMembers;
     private Dictionary<string, List<RankedMember>>? _podRankings;
+    private bool _focusCarouselInitialized;
 
     // ── Focus 5 ──
     private Dictionary<string, List<FocusFiveEntry>>? _focusFiveByKpi;
@@ -485,11 +509,9 @@
         public double Impact { get; set; }
     }
 
-    private sealed class FocusMapVisual
+    private sealed class FocusCarouselVisual
     {
-        public List<FocusFiveSigil.KpiTerritory> Territories { get; set; } = new();
-        public string CenterLabel { get; set; } = "";
-        public string SubLabel { get; set; } = "";
+        public List<FocusFiveSigil.KpiSlide> Slides { get; set; } = new();
     }
 
     private sealed class PodStandingRow
@@ -625,6 +647,18 @@
                 await Task.Delay(50);
                 _showPasswordModal = true;
                 await InvokeAsync(StateHasChanged);
+            }
+        }
+
+        if (_isAuthenticated && !_focusCarouselInitialized && GetOrderedFocusLanes().Any())
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eldenCarousel.init", "focus-five-carousel", "focus-five-slider");
+                _focusCarouselInitialized = true;
+            }
+            catch
+            {
             }
         }
     }
@@ -1491,7 +1525,7 @@
         return $"{GetFocusPressureCount()} focus lanes and {GetFocusChampionCount()} distinct champions need leadership attention.";
     }
 
-    private FocusMapVisual BuildFocusMapVisual(IEnumerable<KeyValuePair<string, List<FocusFiveEntry>>>? lanes = null)
+    private FocusCarouselVisual BuildFocusCarouselVisual(IEnumerable<KeyValuePair<string, List<FocusFiveEntry>>>? lanes = null)
     {
         var orderedLanes = (lanes ?? GetOrderedFocusLanes()).ToList();
         var maxImpactAcrossBoard = orderedLanes
@@ -1500,16 +1534,19 @@
             .DefaultIfEmpty(0)
             .Max();
 
-        return new FocusMapVisual
+        return new FocusCarouselVisual
         {
-            Territories = orderedLanes
-                .Select(lane => new FocusFiveSigil.KpiTerritory
+            Slides = orderedLanes
+                .Select((lane, slideIndex) => new FocusFiveSigil.KpiSlide
                 {
                     MetricKey = lane.Key,
                     Label = TeamMember.GetMetricDisplayName(lane.Key),
                     GoalLabel = FormatMetricTarget(lane.Key),
                     Weight = _metricWeights.GetValueOrDefault(lane.Key, 0),
                     Severity = lane.Value.Any() ? Math.Abs(lane.Value[0].PercentOff) : 0,
+                    SeverityLabel = GetFocusSeverityLabel(lane.Value.Any() ? Math.Abs(lane.Value[0].PercentOff) : 0),
+                    SlideNumber = slideIndex + 1,
+                    SlideCount = orderedLanes.Count,
                     Nodes = lane.Value
                         .Take(5)
                         .Select((entry, index) => new FocusFiveSigil.ConstellationNode
@@ -1518,17 +1555,12 @@
                             Pod = entry.Pod,
                             Importance = GetConstellationImportance(entry, lane.Value, index, maxImpactAcrossBoard),
                             Severity = GetConstellationSeverity(entry),
+                            DeltaLabel = entry.PercentOff.ToString("+0;-0", CultureInfo.InvariantCulture) + "%",
+                            ImpactLabel = entry.Impact.ToString("F0", CultureInfo.InvariantCulture)
                         })
                         .ToList()
                 })
-                .ToList(),
-            CenterLabel = orderedLanes.Any() ? orderedLanes.Count.ToString(CultureInfo.InvariantCulture) : "CLEAR",
-            SubLabel = orderedLanes.Count switch
-            {
-                0 => "ALL STABLE",
-                1 => "ACTIVE LANE",
-                _ => "ACTIVE LANES"
-            }
+                .ToList()
         };
     }
 
@@ -1553,6 +1585,26 @@
     private double GetConstellationSeverity(FocusFiveEntry entry)
     {
         return NormalizeToHundred(Math.Abs(entry.PercentOff), 45);
+    }
+
+    private static string GetFocusSeverityLabel(double severity)
+    {
+        if (severity > 40)
+        {
+            return "Critical";
+        }
+
+        if (severity > 20)
+        {
+            return "Elevated";
+        }
+
+        if (severity > 0)
+        {
+            return "Watch";
+        }
+
+        return "Stable";
     }
 
     private List<PodStandingRow> GetPodStandingRows()

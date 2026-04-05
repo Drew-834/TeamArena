@@ -1,15 +1,24 @@
 @using System.Globalization
 
-<div class="focus-five-starfield @CssClass">
-    @if (Territories.Any())
+<div class="focus-five-skill-tree @CssClass @(Slide is null ? "" : GetSlideSeverityClass(Slide.Severity))">
+    @if (Slide != null)
     {
-        <svg viewBox="0 0 1200 760" class="focus-five-starfield-svg" role="img" aria-label="Focus Five constellation pressure map">
+        <div class="focus-five-skill-tree-hud">
+            <div class="focus-five-skill-tree-overline">KPI Focus @Slide.SlideNumber/@Slide.SlideCount</div>
+            <div class="focus-five-skill-tree-header">
+                <div>
+                    <h3 class="focus-five-skill-tree-title">@Slide.Label</h3>
+                    <div class="focus-five-skill-tree-goal">Goal @Slide.GoalLabel</div>
+                </div>
+                <div class="focus-five-skill-tree-badges">
+                    <span class="focus-five-skill-tree-badge">@Slide.SeverityLabel</span>
+                    <span class="focus-five-skill-tree-badge">W @Slide.Weight</span>
+                </div>
+            </div>
+        </div>
+
+        <svg viewBox="0 0 1200 760" class="focus-five-skill-tree-svg" role="img" aria-label="@($"{Slide.Label} skill tree")">
             <defs>
-                <radialGradient id="@($"{_chartId}-center-glow")" cx="50%" cy="50%" r="65%">
-                    <stop offset="0%" stop-color="rgba(231, 206, 136, 0.26)" />
-                    <stop offset="65%" stop-color="rgba(231, 206, 136, 0.08)" />
-                    <stop offset="100%" stop-color="rgba(231, 206, 136, 0)" />
-                </radialGradient>
                 <filter id="@($"{_chartId}-node-glow")">
                     <feGaussianBlur stdDeviation="4.4" result="blur" />
                     <feMerge>
@@ -19,95 +28,70 @@
                 </filter>
             </defs>
 
-            <rect x="0" y="0" width="1200" height="760" class="focus-five-starfield-backdrop" />
+            <g class="focus-five-skill-tree-network">
+                @foreach (var branch in GetBranches())
+                {
+                    <path d="@branch"
+                          class="focus-five-skill-tree-branch" />
+                }
 
-            @foreach (var bridge in GetRegionBridges())
-            {
-                <path d="@bridge"
-                      class="focus-five-starfield-bridge" />
-            }
+                <circle cx="@Fmt(_rootPoint.X)"
+                        cy="@Fmt(_rootPoint.Y)"
+                        r="22"
+                        class="focus-five-skill-tree-root-aura" />
+                <circle cx="@Fmt(_rootPoint.X)"
+                        cy="@Fmt(_rootPoint.Y)"
+                        r="10"
+                        class="focus-five-skill-tree-root" />
 
-            <circle cx="600" cy="380" r="154" class="focus-five-starfield-center-halo" fill="@($"url(#{_chartId}-center-glow)")" />
-            <circle cx="600" cy="380" r="112" class="focus-five-starfield-center-ring" />
-            <circle cx="600" cy="380" r="52" class="focus-five-starfield-center-core" />
-            <text x="600" y="374" class="focus-five-starfield-center-title" text-anchor="middle">@CenterLabel</text>
-            <text x="600" y="408" class="focus-five-starfield-center-sub" text-anchor="middle">@SubLabel</text>
+                @foreach (var node in Slide.Nodes.Select((item, index) => new { Item = item, Index = index }))
+                {
+                    var point = GetPoint(node.Index);
+                    var radius = GetNodeRadius(node.Item.Importance);
 
-            @foreach (var territory in Territories.Select((item, index) => new { Item = item, Index = index }))
-            {
-                var anchor = GetRegionAnchor(territory.Index, Territories.Count);
-                var rotation = GetRegionRotation(territory.Index);
-
-                <g class="focus-five-starfield-region @GetTerritorySeverityClass(territory.Item.Severity)">
-                    <ellipse cx="@Fmt(anchor.X)"
-                             cy="@Fmt(anchor.Y)"
-                             rx="150"
-                             ry="102"
-                             transform="rotate(@Fmt(rotation) @Fmt(anchor.X) @Fmt(anchor.Y))"
-                             class="focus-five-starfield-territory-aura" />
-                    <ellipse cx="@Fmt(anchor.X)"
-                             cy="@Fmt(anchor.Y)"
-                             rx="122"
-                             ry="80"
-                             transform="rotate(@Fmt(rotation) @Fmt(anchor.X) @Fmt(anchor.Y))"
-                             class="focus-five-starfield-territory-ring" />
-                    <circle cx="@Fmt(anchor.X)"
-                            cy="@Fmt(anchor.Y)"
-                            r="15"
-                            class="focus-five-starfield-territory-core" />
-                    <text x="@Fmt(anchor.X)"
-                          y="@Fmt(anchor.Y - 114)"
-                          class="focus-five-starfield-territory-label"
-                          text-anchor="middle">@territory.Item.Label</text>
-                    @foreach (var node in territory.Item.Nodes.Select((item, index) => new { Item = item, Index = index }))
-                    {
-                        var point = GetNodePoint(anchor, node.Index, territory.Index, territory.Item.Nodes.Count);
-                        var radius = GetNodeRadius(node.Item.Importance);
-
-                        <line x1="@Fmt(anchor.X)"
-                              y1="@Fmt(anchor.Y)"
-                              x2="@Fmt(point.X)"
-                              y2="@Fmt(point.Y)"
-                              class="focus-five-starfield-spoke" />
-                        <g class="focus-five-starfield-node-group @GetNodeSeverityClass(node.Item.Severity)">
-                            <circle class="focus-five-starfield-node-aura"
-                                    cx="@Fmt(point.X)"
-                                    cy="@Fmt(point.Y)"
-                                    r="@Fmt(radius + 7)"
-                                    filter="@($"url(#{_chartId}-node-glow)")" />
-                            <circle class="focus-five-starfield-node"
-                                    cx="@Fmt(point.X)"
-                                    cy="@Fmt(point.Y)"
-                                    r="@Fmt(radius)" />
-                            <text x="@Fmt(GetNameLabelX(point, anchor))"
-                                  y="@Fmt(GetNameLabelY(point))"
-                                  class="focus-five-starfield-node-name"
-                                  text-anchor="@GetTextAnchor(point, anchor)">@node.Item.Name</text>
-                            <text x="@Fmt(GetPodLabelX(point, anchor))"
-                                  y="@Fmt(GetPodLabelY(point))"
-                                  class="focus-five-starfield-node-pod"
-                                  text-anchor="@GetTextAnchor(point, anchor)">@GetPodLabel(node.Item.Pod)</text>
-                        </g>
-                    }
-                </g>
-            }
+                    <g class="focus-five-skill-tree-node-group @GetNodeSeverityClass(node.Item.Severity)">
+                        <circle class="focus-five-skill-tree-node-aura"
+                                cx="@Fmt(point.X)"
+                                cy="@Fmt(point.Y)"
+                                r="@Fmt(radius + 9)"
+                                filter="@($"url(#{_chartId}-node-glow)")" />
+                        <circle class="focus-five-skill-tree-node"
+                                cx="@Fmt(point.X)"
+                                cy="@Fmt(point.Y)"
+                                r="@Fmt(radius)" />
+                        <text x="@Fmt(GetNameLabelX(point))"
+                              y="@Fmt(GetNameLabelY(point))"
+                              class="focus-five-skill-tree-node-name"
+                              text-anchor="@GetTextAnchor(point)">@node.Item.Name</text>
+                        <text x="@Fmt(GetPodLabelX(point))"
+                              y="@Fmt(GetPodLabelY(point))"
+                              class="focus-five-skill-tree-node-pod"
+                              text-anchor="@GetTextAnchor(point)">@GetPodLabel(node.Item.Pod)</text>
+                        <text x="@Fmt(GetDeltaLabelX(point))"
+                              y="@Fmt(GetDeltaLabelY(point))"
+                              class="focus-five-skill-tree-node-delta"
+                              text-anchor="@GetTextAnchor(point)">@node.Item.DeltaLabel</text>
+                    </g>
+                }
+            </g>
         </svg>
     }
 </div>
 
 @code {
     [Parameter] public string CssClass { get; set; } = "";
-    [Parameter] public string CenterLabel { get; set; } = "";
-    [Parameter] public string SubLabel { get; set; } = "";
-    [Parameter] public List<KpiTerritory> Territories { get; set; } = new();
+    [Parameter] public KpiSlide? Slide { get; set; }
 
-    public sealed class KpiTerritory
+    public sealed class KpiSlide
     {
         public string MetricKey { get; set; } = "";
         public string Label { get; set; } = "";
         public string GoalLabel { get; set; } = "";
         public int Weight { get; set; }
         public double Severity { get; set; }
+        public string SeverityLabel { get; set; } = "";
+        public int SlideNumber { get; set; }
+        public int SlideCount { get; set; }
         public List<ConstellationNode> Nodes { get; set; } = new();
     }
 
@@ -117,98 +101,61 @@
         public string Pod { get; set; } = "";
         public double Importance { get; set; }
         public double Severity { get; set; }
+        public string DeltaLabel { get; set; } = "";
+        public string ImpactLabel { get; set; } = "";
     }
 
-    private readonly string _chartId = $"focus-five-starfield-{Guid.NewGuid():N}";
+    private readonly string _chartId = $"focus-five-skill-tree-{Guid.NewGuid():N}";
 
-    private static readonly (double X, double Y)[] _presetAnchors =
+    private static readonly (double X, double Y) _rootPoint = (600, 612);
+
+    private static readonly (double X, double Y)[] _points =
     {
-        (276, 208),
-        (928, 214),
-        (924, 556),
-        (270, 554),
-        (600, 144)
+        (600, 470),
+        (390, 372),
+        (812, 372),
+        (270, 224),
+        (930, 216)
     };
 
-    private static readonly (double X, double Y)[] _nodeOffsets =
+    private IEnumerable<string> GetBranches()
     {
-        (-104, -30),
-        (94, -52),
-        (124, 24),
-        (70, 92),
-        (-96, 80)
-    };
-
-    private (double X, double Y) GetRegionAnchor(int index, int total)
-    {
-        if (total <= _presetAnchors.Length && index < _presetAnchors.Length)
+        if (Slide == null)
         {
-            return _presetAnchors[index];
+            yield break;
         }
 
-        var angle = (-90 + (360.0 / Math.Max(total, 1)) * index) * Math.PI / 180.0;
-        return
-        (
-            600 + Math.Cos(angle) * 314,
-            380 + Math.Sin(angle) * 258
-        );
-    }
-
-    private IEnumerable<string> GetRegionBridges()
-    {
-        for (int i = 0; i < Territories.Count; i++)
+        for (int i = 0; i < Slide.Nodes.Count; i++)
         {
-            var anchor = GetRegionAnchor(i, Territories.Count);
-            var controlX = 600 + ((anchor.X - 600) * 0.55);
-            var controlY = 380 + ((anchor.Y - 380) * 0.55) + (i % 2 == 0 ? -28 : 28);
-            yield return $"M {Fmt(600)} {Fmt(380)} Q {Fmt(controlX)} {Fmt(controlY)} {Fmt(anchor.X)} {Fmt(anchor.Y)}";
+            var point = GetPoint(i);
+            var start = GetBranchStart(i);
+            var midX = (start.X + point.X) / 2;
+            var midY = ((start.Y + point.Y) / 2) - (i == 0 ? 34 : 18);
+            yield return $"M {Fmt(start.X)} {Fmt(start.Y)} Q {Fmt(midX)} {Fmt(midY)} {Fmt(point.X)} {Fmt(point.Y)}";
         }
     }
 
-    private static double GetRegionRotation(int index)
+    private static (double X, double Y) GetBranchStart(int nodeIndex)
     {
-        return index switch
+        return nodeIndex switch
         {
-            0 => -12,
-            1 => 10,
-            2 => -8,
-            3 => 14,
-            _ => 0
+            0 => _rootPoint,
+            1 => _points[0],
+            2 => _points[0],
+            3 => _points[1],
+            4 => _points[2],
+            _ => _rootPoint
         };
     }
 
-    private static (double X, double Y) RotatePoint((double X, double Y) point, double angleDegrees)
+    private static (double X, double Y) GetPoint(int index)
     {
-        var radians = angleDegrees * Math.PI / 180.0;
-        var cos = Math.Cos(radians);
-        var sin = Math.Sin(radians);
-        return
-        (
-            (point.X * cos) - (point.Y * sin),
-            (point.X * sin) + (point.Y * cos)
-        );
-    }
-
-    private (double X, double Y) GetNodePoint((double X, double Y) anchor, int nodeIndex, int territoryIndex, int nodeCount)
-    {
-        var baseOffset = _nodeOffsets[Math.Min(nodeIndex, _nodeOffsets.Length - 1)];
-        var rotation = GetRegionRotation(territoryIndex) + ((territoryIndex % 2 == 0 ? 1 : -1) * 10);
-        var rotated = RotatePoint(baseOffset, rotation);
-        var spread = nodeCount switch
-        {
-            <= 1 => 0.62,
-            2 => 0.78,
-            3 => 0.88,
-            4 => 0.96,
-            _ => 1.0
-        };
-
-        return (anchor.X + (rotated.X * spread), anchor.Y + (rotated.Y * spread));
+        return _points[Math.Min(index, _points.Length - 1)];
     }
 
     private static double GetNodeRadius(double importance)
     {
-        return 5.5 + (Math.Clamp(importance, 0, 100) / 100.0) * 10.5;
+        return 11 + (Math.Clamp(importance, 0, 100) / 100.0) * 18;
     }
 
     private static string GetNodeSeverityClass(double severity)
@@ -226,7 +173,7 @@
         return "is-watch";
     }
 
-    private static string GetTerritorySeverityClass(double severity)
+    private static string GetSlideSeverityClass(double severity)
     {
         if (severity > 40)
         {
@@ -241,29 +188,39 @@
         return "is-watch";
     }
 
-    private static double GetNameLabelX((double X, double Y) point, (double X, double Y) anchor)
+    private static double GetNameLabelX((double X, double Y) point)
     {
-        return point.X + (point.X >= anchor.X ? 18 : -18);
+        return point.X + (point.X >= 600 ? 24 : -24);
     }
 
     private static double GetNameLabelY((double X, double Y) point)
     {
-        return point.Y - 14;
+        return point.Y - 16;
     }
 
-    private static double GetPodLabelX((double X, double Y) point, (double X, double Y) anchor)
+    private static double GetPodLabelX((double X, double Y) point)
     {
-        return GetNameLabelX(point, anchor);
+        return GetNameLabelX(point);
     }
 
     private static double GetPodLabelY((double X, double Y) point)
     {
-        return point.Y + 18;
+        return point.Y + 20;
     }
 
-    private static string GetTextAnchor((double X, double Y) point, (double X, double Y) anchor)
+    private static double GetDeltaLabelX((double X, double Y) point)
     {
-        return point.X >= anchor.X ? "start" : "end";
+        return GetNameLabelX(point);
+    }
+
+    private static double GetDeltaLabelY((double X, double Y) point)
+    {
+        return point.Y + 40;
+    }
+
+    private static string GetTextAnchor((double X, double Y) point)
+    {
+        return point.X >= 600 ? "start" : "end";
     }
 
     private static string GetPodLabel(string pod)
