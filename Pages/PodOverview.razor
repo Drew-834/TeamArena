@@ -12,9 +12,7 @@
 @inject AppState AppState
 @implements IDisposable
 
-<div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
-    <button @onclick="NavigateBack" class="elden-btn mb-6">&larr; Back to Teams</button>
-
+<div class="min-h-screen p-6 md:p-8" style="color: var(--er-text);">
     <div class="text-center mb-4">
         <h1 class="title-glow text-3xl md:text-4xl mb-1">@PodName</h1>
         <p class="font-body" style="color: var(--er-text-dim);">Team Performance Overview</p>
@@ -134,30 +132,6 @@
     }
     else
     {
-        <!-- Pod Leaderboard -->
-        @if (_podLeaderboard != null && _podLeaderboard.Any())
-        {
-            <div class="mb-10 elden-panel">
-                <h2 class="font-heading text-xl text-center mb-4" style="color: var(--er-gold);">Team Leaderboard</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    @foreach (var pod in _podLeaderboard)
-                    {
-                        bool isCurrent = pod.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase);
-                        string rankClass = pod.Rank == 1 ? "rank-1" : pod.Rank == 2 ? "rank-2" : pod.Rank == 3 ? "rank-3" : "";
-                        string rankColor = pod.Rank == 1 ? "elden-rank-gold" : pod.Rank == 2 ? "elden-rank-silver" : pod.Rank == 3 ? "elden-rank-bronze" : "";
-
-                        <div @onclick="() => SwitchToPod(pod.Name)"
-                             class="elden-rank-card @rankClass @(isCurrent ? "elden-border-bright" : "")">
-                            <div class="font-heading text-3xl font-bold @rankColor mb-1">#@pod.Rank</div>
-                            <div class="font-heading text-sm mb-1" style="color: @(isCurrent ? "var(--er-gold-bright)" : "var(--er-text)");">@pod.Name</div>
-                            <div class="font-mono text-2xl font-bold" style="color: var(--er-text);">@pod.Score.ToString("F1")</div>
-                            <div class="font-body text-xs" style="color: var(--er-text-dim);">avg weighted score</div>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
         <!-- KPI Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
             @foreach (var metricKey in GetOverviewMetrics(PodName))
@@ -283,6 +257,34 @@
                 <input type="range" id="champion-slider" class="carousel-slider" min="0" max="1000" value="0" />
             </div>
         </div>
+
+        @if (_podLeaderboard != null && _podLeaderboard.Any())
+        {
+            <footer class="mt-12 elden-dashboard-section">
+                <div class="elden-dashboard-section-header">
+                    <div>
+                        <div class="elden-dashboard-eyebrow">Pod Atlas</div>
+                        <h2 class="elden-dashboard-section-title">Switch Teams</h2>
+                        <p class="elden-dashboard-section-copy">The council footer keeps every pod close at hand without crowding the overview itself.</p>
+                    </div>
+                    <div class="font-body text-sm" style="color: var(--er-text-dim);">@_podLeaderboard.Count teams</div>
+                </div>
+                <div class="pod-atlas-grid">
+                    @foreach (var pod in _podLeaderboard)
+                    {
+                        bool isCurrent = pod.Name.Equals(PodName, StringComparison.OrdinalIgnoreCase);
+                        string rankColor = pod.Rank == 1 ? "var(--er-gold-bright)" : pod.Rank == 2 ? "#c0c0c0" : pod.Rank == 3 ? "var(--er-bronze)" : "var(--er-text-dim)";
+
+                        <button @onclick="() => SwitchToPod(pod.Name)"
+                                class="pod-atlas-button @(isCurrent ? "is-current" : "")">
+                            <span class="pod-atlas-rank" style="color: @rankColor;">#@pod.Rank</span>
+                            <span class="pod-atlas-name">@pod.Name</span>
+                            <span class="pod-atlas-score">@pod.Score.ToString("F1")</span>
+                        </button>
+                    }
+                </div>
+            </footer>
+        }
     }
 </div>
 
@@ -335,25 +337,6 @@
 
     private static List<string> GetOverviewMetrics(string department) =>
         PodMetricCatalog.GetApplicableMetrics(department).ToList();
-
-    private static DateTime ParsePeriodEndDate(string period)
-    {
-        try
-        {
-            if (DateTime.TryParseExact(period, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out var isoDate))
-                return isoDate;
-
-            var parts = period.Split('-');
-            if (parts.Length < 2) return DateTime.MinValue;
-            var monthStartDate = DateTime.ParseExact(
-                "01-" + parts[1], "dd-MMM yyyy", CultureInfo.InvariantCulture);
-            return parts[0].Equals("Mid", StringComparison.OrdinalIgnoreCase)
-                ? monthStartDate.AddDays(14)
-                : monthStartDate.AddMonths(1).AddDays(-1);
-        }
-        catch { return DateTime.MinValue; }
-    }
 
     private static bool IsLowerBetter(string metricKey) => PodMetricCatalog.IsLowerBetter(metricKey);
 
@@ -494,14 +477,7 @@
 
         if (teamMembersInDepartment.Any())
         {
-            _latestPeriod = teamMembersInDepartment
-                .SelectMany(m => m.MetricRecords ?? Enumerable.Empty<MetricRecord>())
-                .Select(r => r.Period)
-                .Where(p => !string.IsNullOrEmpty(p))
-                .Distinct()
-                .Select(p => new { Period = p, EndDate = ParsePeriodEndDate(p) })
-                .OrderByDescending(x => x.EndDate)
-                .FirstOrDefault()?.Period;
+            _latestPeriod = PodLeaderboardCalculator.DetermineLatestPeriod(teamMembersInDepartment);
 
             _teamMembers = string.IsNullOrEmpty(_latestPeriod)
                 ? teamMembersInDepartment
@@ -524,29 +500,9 @@
             .Select(g => g.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        CalculatePodLeaderboard(_allMembersCache.Where(m => podsWithData.Contains(m.Department)).ToList());
-    }
-
-    private void CalculatePodLeaderboard(List<TeamMember> allMembers)
-    {
-        var podGroups = allMembers
-            .Where(m => IsPodDepartment(m.Department))
-            .GroupBy(m => m.Department, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var podScores = new List<(string Name, double AvgScore)>();
-
-        foreach (var group in podGroups)
-        {
-            var scores = group.Select(m => GetWeightedScore(m)).Where(s => s > 0).ToList();
-            double avgScore = scores.Any() ? scores.Average() : 0;
-            podScores.Add((group.Key, avgScore));
-        }
-
-        _podLeaderboard = podScores
-            .OrderByDescending(p => p.AvgScore)
-            .Select((p, idx) => new RankedMember { Id = idx, Name = p.Name, Department = p.Name, Score = p.AvgScore, Rank = idx + 1 })
-            .ToList();
+        _podLeaderboard = PodLeaderboardCalculator.CalculatePodLeaderboard(
+            _allMembersCache.Where(m => podsWithData.Contains(m.Department)),
+            _latestPeriod);
     }
 
     private void CalculateSummary()
@@ -640,63 +596,12 @@
 
     private double? GetMemberMetricValue(TeamMember member, string metricKey)
     {
-        foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(metricKey, member.Department))
-        {
-            var record = member.MetricRecords?.FirstOrDefault(r =>
-                r.MetricKey.Equals(lookupKey, StringComparison.OrdinalIgnoreCase) &&
-                r.Period == _latestPeriod);
-            if (record?.Value != null && double.TryParse(record.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
-                return val;
-        }
-
-        return null;
+        return PodLeaderboardCalculator.GetMetricValue(member, metricKey, _latestPeriod);
     }
 
     private double GetWeightedScore(TeamMember member)
     {
-        double totalWeightedScore = 0;
-        int applicableWeight = 0;
-
-        var metricsForMember = GetMetricsForDepartment(member.Department);
-        foreach (var metricKey in metricsForMember)
-        {
-            int weight = PodMetricCatalog.GetWeight(metricKey);
-            double? rawValue = GetMemberMetricValue(member, metricKey);
-            if (!rawValue.HasValue) continue;
-
-            if ((metricKey == "AppEff" || metricKey == "PMEff") && rawValue.Value >= 20000) continue;
-
-            if (metricKey == "Surveys" && rawValue.Value == 0)
-            {
-                applicableWeight += weight;
-                continue;
-            }
-
-            double target = PodMetricCatalog.GetTarget(metricKey);
-            double normalizedScore;
-
-            if (IsLowerBetter(metricKey))
-            {
-                normalizedScore = target > 0 && rawValue.Value > 0 ? (target / rawValue.Value) * 100.0 : 0;
-            }
-            else
-            {
-                normalizedScore = target > 0 ? (rawValue.Value / target) * 100.0 : 0;
-            }
-
-            if (normalizedScore > 100)
-            {
-                double excess = normalizedScore - 100;
-                double bonus = 15.0 * Math.Log(1 + excess / 20.0);
-                normalizedScore = 100 + Math.Min(bonus, 25.0);
-            }
-
-            normalizedScore = Math.Clamp(normalizedScore, 0, 125);
-            totalWeightedScore += normalizedScore * weight;
-            applicableWeight += weight;
-        }
-
-        return applicableWeight > 0 ? Math.Min(totalWeightedScore / applicableWeight, 125) : 0;
+        return PodLeaderboardCalculator.GetWeightedScore(member, _latestPeriod);
     }
 
     private string? GetStrongestWeightedArea(TeamMember member)
@@ -895,7 +800,6 @@
             NavigationManager.NavigateTo($"/pods/{podName}");
     }
 
-    private void NavigateBack() => NavigationManager.NavigateTo("/pods");
     private void NavigateToMember(int memberId) => NavigationManager.NavigateTo($"/character/{memberId}");
 
     public void Dispose()

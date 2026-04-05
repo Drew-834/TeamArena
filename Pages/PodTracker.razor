@@ -7,11 +7,10 @@
 @using System.Globalization
 
 @inject IDataService DataService
-@inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject AppState AppState
 
-<div class="min-h-screen p-6 md:p-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
+<div class="min-h-screen p-6 md:p-8" style="color: var(--er-text);">
 
     @if (!_isAuthenticated)
     {
@@ -34,19 +33,18 @@
     }
     else
     {
-        <div class="mx-auto max-w-7xl space-y-8">
-            <section class="elden-dashboard-section elden-dashboard-hero animate-fade-in-up">
+        <div class="mx-auto max-w-[1600px] space-y-8 tracker-desktop-shell">
+            <section class="elden-dashboard-section elden-dashboard-hero elden-lively-panel animate-fade-in-up">
                 <div class="relative z-10 space-y-6">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div class="space-y-3 max-w-3xl">
-                            <button @onclick="NavigateBack" class="elden-btn">&larr; Back to Teams</button>
+                        <div class="space-y-3 max-w-4xl">
                             <div class="elden-dashboard-eyebrow">Leader Dashboard</div>
                             <h1 class="font-heading text-3xl md:text-4xl" style="color: var(--er-gold-bright);">Tracker Command Chamber</h1>
                             <p class="font-body text-lg" style="color: var(--er-text-dim);">
                                 Monitor business health, surface strategic pressure, and shepherd imports into the live roster without leaving the war room.
                             </p>
                         </div>
-                        <div class="elden-dashboard-grid metrics w-full lg:max-w-3xl">
+                        <div class="elden-dashboard-grid metrics w-full tracker-hero-grid">
                             <div class="elden-dashboard-card">
                                 <div class="elden-dashboard-eyebrow">Reporting Period</div>
                                 <div class="elden-dashboard-value">@_selectedPeriod</div>
@@ -72,7 +70,7 @@
                 </div>
             </section>
 
-            <section class="elden-dashboard-grid dual">
+            <section class="elden-dashboard-grid dual tracker-focus-layout">
                 <div class="elden-dashboard-section">
                     <div class="elden-dashboard-section-header">
                         <div>
@@ -1989,5 +1987,4 @@
     // ── Clear / Nav ──
     private void ClearInputs() { InitializeInputValues(); _saveError = null; _saveSuccessMessage = null; StateHasChanged(); }
     private void ClearParseResults() { _parseResults = null; _parseLog.Clear(); _parsedPodData.Clear(); StateHasChanged(); }
-    private void NavigateBack() => NavigationManager.NavigateTo("/pods");
 }
