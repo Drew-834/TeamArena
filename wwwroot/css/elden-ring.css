@@ -1023,10 +1023,96 @@ html, body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
+    margin-top: 1rem;
 }
 
 .council-rank-card {
     min-height: 220px;
+}
+
+.council-top-three-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.council-top-three-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.8rem 1.15rem;
+    border-radius: 999px;
+    border: 1px solid rgba(200, 169, 78, 0.18);
+    background: linear-gradient(180deg, rgba(16, 16, 20, 0.92) 0%, rgba(8, 8, 12, 0.86) 100%);
+    color: var(--er-text);
+    transition: transform var(--er-motion-fast) var(--er-ease-soft), border-color var(--er-motion-fast) ease, box-shadow var(--er-motion-fast) ease;
+}
+
+.council-top-three-toggle:hover {
+    transform: translateY(-1px);
+    border-color: rgba(200, 169, 78, 0.32);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22), 0 0 18px rgba(200, 169, 78, 0.08);
+}
+
+.council-top-three-toggle-kicker {
+    font-family: var(--font-heading);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--er-gold-dim);
+}
+
+.council-top-three-toggle-title {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    color: var(--er-gold-bright);
+}
+
+.council-top-three-toggle-copy {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--er-text-dim);
+}
+
+.council-top-three-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(200, 169, 78, 0.14);
+    background: linear-gradient(180deg, rgba(16, 16, 20, 0.96) 0%, rgba(8, 8, 12, 0.9) 100%);
+    text-align: left;
+    transition: transform var(--er-motion-fast) var(--er-ease-soft), border-color var(--er-motion-fast) ease, box-shadow var(--er-motion-fast) ease;
+}
+
+.council-top-three-pill:hover {
+    transform: translateY(-2px);
+    border-color: rgba(200, 169, 78, 0.28);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22), 0 0 16px rgba(200, 169, 78, 0.08);
+}
+
+.council-top-three-pill-rank {
+    min-width: 2.4rem;
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    letter-spacing: 0.16em;
+    color: var(--er-gold-dim);
+}
+
+.council-top-three-pill-name {
+    flex: 1 1 auto;
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+}
+
+.council-top-three-pill-score {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--er-gold-bright);
 }
 
 .pod-index-grid {

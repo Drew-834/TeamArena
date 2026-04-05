@@ -14,7 +14,7 @@
                 <div class="text-center mb-6">
                     <div class="elden-dashboard-eyebrow">Council Navigation</div>
                     <h1 class="title-glow text-4xl mb-2">War Council</h1>
-                    <p class="font-body text-lg max-w-3xl mx-auto" style="color: var(--er-text-dim);">The strongest teams rise here first. Enter the council, read the top three, then descend into the roster floor below for a specific pod.</p>
+                    <p class="font-body text-lg max-w-3xl mx-auto" style="color: var(--er-text-dim);">Use the council to quickly find a team. The top three stay available as context, but the roster floor below remains the main path.</p>
                     <div class="elden-divider-ornate mx-auto mt-4" style="max-width: 300px;"></div>
                 </div>
 
@@ -43,22 +43,37 @@
                 }
                 else
                 {
-                    <div class="council-top-three-grid">
-                        @foreach (var pod in _podLeaderboard.Take(3))
-                        {
-                            string rankClass = pod.Rank == 1 ? "rank-1" : pod.Rank == 2 ? "rank-2" : "rank-3";
-                            string rankColor = pod.Rank == 1 ? "elden-rank-gold" : pod.Rank == 2 ? "elden-rank-silver" : "elden-rank-bronze";
-
-                            <button @onclick="() => NavigateToPod(pod.Name)"
-                                    @onmouseover="PlayHover"
-                                    class="elden-rank-card council-rank-card @rankClass">
-                                <div class="font-heading text-xs uppercase tracking-[0.28em] mb-2" style="color: var(--er-text-dim);">Rank #@pod.Rank</div>
-                                <div class="font-heading text-xl mb-2 @rankColor">@pod.Name</div>
-                                <div class="font-mono text-3xl mb-1" style="color: var(--er-gold-bright);">@pod.Score.ToString("F1")</div>
-                                <div class="font-body text-xs" style="color: var(--er-text-dim);">average weighted score</div>
-                            </button>
-                        }
+                    <div class="council-top-three-toggle-wrap">
+                        <button type="button"
+                                class="council-top-three-toggle"
+                                @onclick="ToggleCouncilLeaders"
+                                @onmouseover="PlayHover"
+                                aria-expanded="@_showCouncilTopThree"
+                                aria-controls="council-top-three-panel">
+                            <span class="council-top-three-toggle-kicker">War Council</span>
+                            <span class="council-top-three-toggle-title">Top 3 Teams</span>
+                            <span class="council-top-three-toggle-copy">@(_showCouncilTopThree ? "Hide council lead" : "Show council lead")</span>
+                        </button>
                     </div>
+
+                    @if (_showCouncilTopThree)
+                    {
+                        <div id="council-top-three-panel" class="council-top-three-grid">
+                            @foreach (var pod in _podLeaderboard.Take(3))
+                            {
+                                string rankClass = pod.Rank == 1 ? "rank-1" : pod.Rank == 2 ? "rank-2" : "rank-3";
+                                string rankColor = pod.Rank == 1 ? "elden-rank-gold" : pod.Rank == 2 ? "elden-rank-silver" : "elden-rank-bronze";
+
+                                <button @onclick="() => NavigateToPod(pod.Name)"
+                                        @onmouseover="PlayHover"
+                                        class="council-top-three-pill @rankClass">
+                                    <span class="council-top-three-pill-rank">#@pod.Rank</span>
+                                    <span class="council-top-three-pill-name @rankColor">@pod.Name</span>
+                                    <span class="council-top-three-pill-score">@pod.Score.ToString("F1")</span>
+                                </button>
+                            }
+                        </div>
+                    }
                 }
             </div>
         </section>
@@ -125,6 +140,7 @@
     private List<RankedMember> _podLeaderboard = new();
     private string? _latestPeriod;
     private bool _isLoading = true;
+    private bool _showCouncilTopThree;
     private string _loadingStatus = "Connecting to server...";
     private string? _errorMessage;
 
@@ -177,6 +193,8 @@
     }
 
     private async Task RetryLoad() => await LoadPodsAsync();
+
+    private void ToggleCouncilLeaders() => _showCouncilTopThree = !_showCouncilTopThree;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
