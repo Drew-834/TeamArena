@@ -1308,16 +1308,16 @@ html, body {
 
 .focus-five-starfield-bridge {
     fill: none;
-    stroke: rgba(200, 169, 78, 0.14);
-    stroke-width: 1.2;
-    stroke-dasharray: 4 8;
+    stroke: rgba(200, 169, 78, 0.08);
+    stroke-width: 1;
+    stroke-dasharray: 3 10;
     stroke-linecap: round;
 }
 
 .focus-five-starfield-center-ring {
     fill: none;
-    stroke: rgba(231, 206, 136, 0.22);
-    stroke-width: 1.3;
+    stroke: rgba(231, 206, 136, 0.18);
+    stroke-width: 1.1;
 }
 
 .focus-five-starfield-center-core {
@@ -1331,26 +1331,31 @@ html, body {
     font-family: var(--font-heading);
     font-size: 1.75rem;
     letter-spacing: 0.2em;
+    stroke: rgba(7, 7, 10, 0.95);
+    stroke-width: 6px;
+    paint-order: stroke fill;
 }
 
 .focus-five-starfield-center-sub {
     fill: var(--er-text-muted);
     font-size: 0.84rem;
     letter-spacing: 0.26em;
+    stroke: rgba(7, 7, 10, 0.92);
+    stroke-width: 4px;
+    paint-order: stroke fill;
 }
 
 .focus-five-starfield-territory-aura {
-    fill: rgba(200, 169, 78, 0.05);
-    stroke: rgba(200, 169, 78, 0.12);
-    stroke-width: 1.1;
-    animation: focus-five-region-pulse 7s ease-in-out infinite;
+    fill: rgba(200, 169, 78, 0.035);
+    stroke: rgba(200, 169, 78, 0.09);
+    stroke-width: 1;
 }
 
 .focus-five-starfield-territory-ring {
     fill: none;
-    stroke: rgba(200, 169, 78, 0.15);
-    stroke-width: 1;
-    stroke-dasharray: 6 10;
+    stroke: rgba(200, 169, 78, 0.12);
+    stroke-width: 0.9;
+    stroke-dasharray: 4 12;
 }
 
 .focus-five-starfield-territory-core {
@@ -1364,17 +1369,20 @@ html, body {
     font-family: var(--font-heading);
     font-size: 1.08rem;
     letter-spacing: 0.1em;
+    stroke: rgba(7, 7, 10, 0.96);
+    stroke-width: 5px;
+    paint-order: stroke fill;
 }
 
 .focus-five-starfield-spoke {
-    stroke: rgba(231, 206, 136, 0.18);
-    stroke-width: 0.9;
+    stroke: rgba(231, 206, 136, 0.1);
+    stroke-width: 0.8;
     stroke-linecap: round;
 }
 
 .focus-five-starfield-node-aura {
-    fill: rgba(200, 169, 78, 0.16);
-    opacity: 0.42;
+    fill: rgba(200, 169, 78, 0.1);
+    opacity: 0.24;
 }
 
 .focus-five-starfield-node {
@@ -1388,27 +1396,33 @@ html, body {
     font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.03em;
+    stroke: rgba(7, 7, 10, 0.98);
+    stroke-width: 5px;
+    paint-order: stroke fill;
 }
 
 .focus-five-starfield-node-pod {
     fill: var(--er-text-muted);
     font-size: 0.7rem;
     letter-spacing: 0.08em;
+    stroke: rgba(7, 7, 10, 0.96);
+    stroke-width: 4px;
+    paint-order: stroke fill;
 }
 
 .focus-five-starfield-region.is-warning .focus-five-starfield-territory-aura {
-    fill: rgba(196, 120, 48, 0.08);
-    stroke: rgba(231, 182, 110, 0.2);
+    fill: rgba(196, 120, 48, 0.045);
+    stroke: rgba(231, 182, 110, 0.12);
 }
 
 .focus-five-starfield-region.is-critical .focus-five-starfield-territory-aura {
-    fill: rgba(255, 112, 112, 0.08);
-    stroke: rgba(255, 164, 164, 0.22);
+    fill: rgba(255, 112, 112, 0.05);
+    stroke: rgba(255, 164, 164, 0.14);
 }
 
 .focus-five-starfield-node-group.is-warning .focus-five-starfield-node-aura {
-    fill: rgba(196, 120, 48, 0.24);
-    animation: focus-five-alert-soft 2.3s ease-in-out infinite;
+    fill: rgba(196, 120, 48, 0.14);
+    opacity: 0.28;
 }
 
 .focus-five-starfield-node-group.is-warning .focus-five-starfield-node {
@@ -1416,8 +1430,8 @@ html, body {
 }
 
 .focus-five-starfield-node-group.is-critical .focus-five-starfield-node-aura {
-    fill: rgba(255, 112, 112, 0.28);
-    animation: focus-five-alert 1.6s ease-in-out infinite;
+    fill: rgba(255, 112, 112, 0.16);
+    opacity: 0.32;
 }
 
 .focus-five-starfield-node-group.is-critical .focus-five-starfield-node {
