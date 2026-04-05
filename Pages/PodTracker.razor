@@ -247,35 +247,39 @@
                     }
 
                     @{
-                        var influenceRows = GetFocusInfluenceRows().Take(5).ToList();
+                        var sidebarFocusCarousel = BuildFocusCarouselVisual(GetOrderedFocusLanes());
                     }
-                    @if (influenceRows.Any())
+                    @if (sidebarFocusCarousel.Slides.Any())
                     {
-                        <section class="tracker-focus-sidebar">
-                            <div class="tracker-focus-sidebar-header">
-                                <div>
-                                    <div class="elden-dashboard-eyebrow">Focus Five</div>
-                                    <h3 class="tracker-focus-sidebar-title">Influence Summary</h3>
+                        @foreach (var slide in sidebarFocusCarousel.Slides.Select((item, index) => new { Item = item, Index = index }))
+                        {
+                            <section class="tracker-focus-sidebar @(slide.Index == 0 ? "is-active" : "")"
+                                     data-carousel-panel-index="@slide.Index">
+                                <div class="tracker-focus-sidebar-header">
+                                    <div>
+                                        <div class="elden-dashboard-eyebrow">Focus Five</div>
+                                        <h3 class="tracker-focus-sidebar-title">@slide.Item.Label Influence</h3>
+                                    </div>
+                                    <div class="tracker-focus-sidebar-meta">@slide.Item.Nodes.Count focuses</div>
                                 </div>
-                                <div class="tracker-focus-sidebar-meta">@influenceRows.Count focuses</div>
-                            </div>
 
-                            <ol class="tracker-focus-sidebar-list">
-                                @foreach (var row in influenceRows)
-                                {
-                                    <li class="tracker-focus-sidebar-row @row.SeverityClass">
-                                        <div class="tracker-focus-sidebar-copy">
-                                            <span class="tracker-focus-sidebar-name">@row.Name</span>
-                                            <span class="tracker-focus-sidebar-context">@row.MetricLabel • @row.Pod</span>
-                                        </div>
-                                        <div class="tracker-focus-sidebar-stats">
-                                            <span class="tracker-focus-sidebar-delta">@row.DeltaLabel</span>
-                                            <span class="tracker-focus-sidebar-impact">Impact @row.ImpactLabel</span>
-                                        </div>
-                                    </li>
-                                }
-                            </ol>
-                        </section>
+                                <ol class="tracker-focus-sidebar-list">
+                                    @foreach (var node in slide.Item.Nodes.Take(5))
+                                    {
+                                        <li class="tracker-focus-sidebar-row @GetFocusSeverityClassToken(node.Severity)">
+                                            <div class="tracker-focus-sidebar-copy">
+                                                <span class="tracker-focus-sidebar-name">@node.Name</span>
+                                                <span class="tracker-focus-sidebar-context">@slide.Item.Label • @node.Pod</span>
+                                            </div>
+                                            <div class="tracker-focus-sidebar-stats">
+                                                <span class="tracker-focus-sidebar-delta">@node.DeltaLabel</span>
+                                                <span class="tracker-focus-sidebar-impact">Impact @node.ImpactLabel</span>
+                                            </div>
+                                        </li>
+                                    }
+                                </ol>
+                            </section>
+                        }
                     }
                 </aside>
             </section>
@@ -559,17 +563,6 @@
     private sealed class FocusCarouselVisual
     {
         public List<FocusFiveSigil.KpiSlide> Slides { get; set; } = new();
-    }
-
-    private sealed class FocusInfluenceRow
-    {
-        public string Name { get; set; } = "";
-        public string Pod { get; set; } = "";
-        public string MetricLabel { get; set; } = "";
-        public string DeltaLabel { get; set; } = "";
-        public string ImpactLabel { get; set; } = "";
-        public string SeverityClass { get; set; } = "";
-        public double Impact { get; set; }
     }
 
     private sealed class PodStandingRow
@@ -1620,24 +1613,6 @@
                 })
                 .ToList()
         };
-    }
-
-    private IEnumerable<FocusInfluenceRow> GetFocusInfluenceRows()
-    {
-        return GetOrderedFocusLanes()
-            .SelectMany(lane => lane.Value.Select(entry => new FocusInfluenceRow
-            {
-                Name = entry.Name,
-                Pod = entry.Pod,
-                MetricLabel = TeamMember.GetMetricDisplayName(lane.Key),
-                DeltaLabel = entry.PercentOff.ToString("+0;-0", CultureInfo.InvariantCulture) + "%",
-                ImpactLabel = entry.Impact.ToString("F0", CultureInfo.InvariantCulture),
-                SeverityClass = GetFocusSeverityClassToken(Math.Abs(entry.PercentOff)),
-                Impact = entry.Impact
-            }))
-            .OrderByDescending(row => row.Impact)
-            .ThenBy(row => row.Name)
-            .ToList();
     }
 
     private static double NormalizeToHundred(double value, double max)
