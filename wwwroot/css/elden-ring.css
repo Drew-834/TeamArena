@@ -1257,10 +1257,50 @@ html, body {
     text-transform: uppercase;
 }
 
-.tracker-focus-grid {
+.tracker-focus-map-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.72fr);
+    gap: 1rem;
+    align-items: stretch;
+    margin-top: 1rem;
+}
+
+.tracker-focus-map-shell {
+    position: relative;
+    overflow: hidden;
+    border-radius: 26px;
+    border: 1px solid rgba(200, 169, 78, 0.14);
+    background:
+        radial-gradient(circle at 50% 46%, rgba(200, 169, 78, 0.08), transparent 36%),
+        linear-gradient(180deg, rgba(18, 18, 24, 0.98) 0%, rgba(7, 7, 10, 0.95) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 24px 44px rgba(0, 0, 0, 0.22);
+}
+
+.tracker-focus-map-shell::before {
+    content: '';
+    position: absolute;
+    inset: 10% 14%;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(231, 206, 136, 0.08), transparent 70%);
+    pointer-events: none;
+}
+
+.tracker-focus-map {
+    position: relative;
+    z-index: 1;
+}
+
+.tracker-focus-map-vitals {
+    display: grid;
+    gap: 0.75rem;
+    align-content: start;
+}
+
+.tracker-focus-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+    margin-top: 1rem;
 }
 
 .tracker-focus-lane {
@@ -1329,158 +1369,14 @@ html, body {
     color: var(--er-text-dim);
     font-size: 0.86rem;
     margin: 0.9rem 0 1rem;
-    max-width: 48ch;
-}
-
-.tracker-focus-viz-shell {
-    display: grid;
-    grid-template-columns: minmax(185px, 220px) minmax(0, 1fr);
-    gap: 1rem;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.tracker-focus-sigil {
-    justify-self: center;
-}
-
-.focus-five-sigil {
-    position: relative;
-    width: 220px;
-    max-width: 100%;
-}
-
-.focus-five-sigil-svg {
-    display: block;
-    width: 100%;
-    height: auto;
-}
-
-.focus-five-constellation-halo {
-    fill: none;
-    stroke: rgba(200, 169, 78, 0.16);
-    stroke-width: 1.5;
-    opacity: 0.7;
-}
-
-.focus-five-constellation-ring {
-    fill: none;
-    stroke: rgba(200, 169, 78, 0.2);
-    stroke-width: 0.85;
-}
-
-.focus-five-constellation-ring-dashed {
-    stroke-dasharray: 4 6;
-    opacity: 0.6;
-}
-
-.focus-five-constellation-trail {
-    fill: none;
-    stroke: rgba(200, 169, 78, 0.22);
-    stroke-width: 1.15;
-    stroke-linecap: round;
-}
-
-.focus-five-constellation-bridge {
-    stroke: rgba(200, 169, 78, 0.11);
-    stroke-width: 0.7;
-    stroke-dasharray: 2 4;
-}
-
-.focus-five-constellation-core {
-    fill: rgba(10, 10, 15, 0.88);
-    stroke: rgba(200, 169, 78, 0.24);
-    stroke-width: 1;
-}
-
-.focus-five-constellation-center {
-    fill: var(--er-gold-bright);
-    font-family: var(--font-heading);
-    font-size: 13px;
-    letter-spacing: 0.08em;
-}
-
-.focus-five-constellation-sub {
-    fill: var(--er-text-muted);
-    font-size: 7px;
-    letter-spacing: 0.16em;
-}
-
-.focus-five-constellation-node-group {
-    transform-origin: center;
-}
-
-.focus-five-constellation-node-aura {
-    fill: rgba(200, 169, 78, 0.18);
-    opacity: 0.42;
-}
-
-.focus-five-constellation-node {
-    fill: rgba(232, 210, 130, 0.95);
-    stroke: rgba(255, 248, 214, 0.88);
-    stroke-width: 0.9;
-}
-
-.focus-five-constellation-name {
-    fill: var(--er-text);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-}
-
-.focus-five-constellation-pod {
-    fill: var(--er-text-muted);
-    font-size: 7px;
-    letter-spacing: 0.08em;
-}
-
-.focus-five-constellation-node-group.is-watch .focus-five-constellation-node-aura {
-    fill: rgba(200, 169, 78, 0.16);
-}
-
-.focus-five-constellation-node-group.is-warning .focus-five-constellation-node-aura {
-    fill: rgba(196, 120, 48, 0.24);
-    animation: focus-five-alert-soft 2.3s ease-in-out infinite;
-}
-
-.focus-five-constellation-node-group.is-warning .focus-five-constellation-node {
-    fill: rgba(231, 182, 110, 0.96);
-}
-
-.focus-five-constellation-node-group.is-critical .focus-five-constellation-node-aura {
-    fill: rgba(255, 112, 112, 0.28);
-    animation: focus-five-alert 1.6s ease-in-out infinite;
-}
-
-.focus-five-constellation-node-group.is-critical .focus-five-constellation-node {
-    fill: rgba(255, 164, 164, 0.96);
-    stroke: rgba(255, 223, 223, 0.96);
-}
-
-.focus-five-constellation-node-group.is-critical .focus-five-constellation-name {
-    fill: #ffd6d6;
-}
-
-.tracker-focus-lane.severity-high .focus-five-constellation-halo {
-    stroke: rgba(255, 112, 112, 0.42);
-}
-
-.tracker-focus-lane.severity-mid .focus-five-constellation-halo {
-    stroke: rgba(196, 120, 48, 0.36);
-}
-
-.tracker-focus-lane.severity-high .focus-five-constellation-trail {
-    stroke: rgba(255, 164, 164, 0.26);
-}
-
-.tracker-focus-lane.severity-mid .focus-five-constellation-trail {
-    stroke: rgba(231, 182, 110, 0.24);
+    max-width: 50ch;
 }
 
 .tracker-focus-vitals {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.7rem;
+    margin-bottom: 1rem;
 }
 
 .tracker-focus-vital {
@@ -1488,6 +1384,10 @@ html, body {
     border-radius: 14px;
     border: 1px solid rgba(200, 169, 78, 0.12);
     background: rgba(10, 10, 15, 0.6);
+}
+
+.tracker-focus-map-vitals .tracker-focus-vital {
+    min-height: 88px;
 }
 
 .tracker-focus-vital-label {
@@ -1504,6 +1404,152 @@ html, body {
     font-family: var(--font-heading);
     font-size: 0.9rem;
     margin-top: 0.25rem;
+}
+
+.focus-five-starfield {
+    position: relative;
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+}
+
+.focus-five-starfield-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.focus-five-starfield-backdrop {
+    fill: rgba(0, 0, 0, 0.01);
+}
+
+.focus-five-starfield-bridge {
+    fill: none;
+    stroke: rgba(200, 169, 78, 0.14);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 8;
+    stroke-linecap: round;
+}
+
+.focus-five-starfield-center-ring {
+    fill: none;
+    stroke: rgba(231, 206, 136, 0.22);
+    stroke-width: 1.3;
+}
+
+.focus-five-starfield-center-core {
+    fill: rgba(10, 10, 15, 0.92);
+    stroke: rgba(231, 206, 136, 0.28);
+    stroke-width: 1.2;
+}
+
+.focus-five-starfield-center-title {
+    fill: var(--er-gold-bright);
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    letter-spacing: 0.16em;
+}
+
+.focus-five-starfield-center-sub {
+    fill: var(--er-text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+}
+
+.focus-five-starfield-territory-aura {
+    fill: rgba(200, 169, 78, 0.05);
+    stroke: rgba(200, 169, 78, 0.12);
+    stroke-width: 1.1;
+    animation: focus-five-region-pulse 7s ease-in-out infinite;
+}
+
+.focus-five-starfield-territory-ring {
+    fill: none;
+    stroke: rgba(200, 169, 78, 0.15);
+    stroke-width: 1;
+    stroke-dasharray: 6 10;
+}
+
+.focus-five-starfield-territory-core {
+    fill: rgba(231, 206, 136, 0.78);
+    stroke: rgba(255, 248, 214, 0.88);
+    stroke-width: 1;
+}
+
+.focus-five-starfield-territory-label {
+    fill: var(--er-gold-bright);
+    font-family: var(--font-heading);
+    font-size: 0.96rem;
+    letter-spacing: 0.08em;
+}
+
+.focus-five-starfield-territory-meta {
+    fill: var(--er-text-muted);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+}
+
+.focus-five-starfield-spoke {
+    stroke: rgba(231, 206, 136, 0.18);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+}
+
+.focus-five-starfield-node-aura {
+    fill: rgba(200, 169, 78, 0.16);
+    opacity: 0.42;
+}
+
+.focus-five-starfield-node {
+    fill: rgba(232, 210, 130, 0.96);
+    stroke: rgba(255, 248, 214, 0.92);
+    stroke-width: 1;
+}
+
+.focus-five-starfield-node-name {
+    fill: var(--er-text);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.focus-five-starfield-node-pod {
+    fill: var(--er-text-muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+}
+
+.focus-five-starfield-region.is-warning .focus-five-starfield-territory-aura {
+    fill: rgba(196, 120, 48, 0.08);
+    stroke: rgba(231, 182, 110, 0.2);
+}
+
+.focus-five-starfield-region.is-critical .focus-five-starfield-territory-aura {
+    fill: rgba(255, 112, 112, 0.08);
+    stroke: rgba(255, 164, 164, 0.22);
+}
+
+.focus-five-starfield-node-group.is-warning .focus-five-starfield-node-aura {
+    fill: rgba(196, 120, 48, 0.24);
+    animation: focus-five-alert-soft 2.3s ease-in-out infinite;
+}
+
+.focus-five-starfield-node-group.is-warning .focus-five-starfield-node {
+    fill: rgba(231, 182, 110, 0.96);
+}
+
+.focus-five-starfield-node-group.is-critical .focus-five-starfield-node-aura {
+    fill: rgba(255, 112, 112, 0.28);
+    animation: focus-five-alert 1.6s ease-in-out infinite;
+}
+
+.focus-five-starfield-node-group.is-critical .focus-five-starfield-node {
+    fill: rgba(255, 164, 164, 0.96);
+    stroke: rgba(255, 223, 223, 0.96);
+}
+
+.focus-five-starfield-node-group.is-critical .focus-five-starfield-node-name {
+    fill: #ffd6d6;
 }
 
 .tracker-focus-entry-list {
@@ -1737,6 +1783,11 @@ html, body {
     50% { opacity: 0.78; transform: scale(1.015); }
 }
 
+@keyframes focus-five-region-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.95; }
+}
+
 @keyframes gold-pulse {
     0%, 100% { opacity: 0.6; }
     50% { opacity: 1; }
@@ -1829,7 +1880,8 @@ html, body {
 @media (max-width: 1180px) {
     .tracker-command-grid,
     .tracker-focus-shell,
-    .tracker-focus-viz-shell,
+    .tracker-focus-map-stage,
+    .tracker-focus-summary-grid,
     .tracker-operations-layout {
         grid-template-columns: 1fr;
     }
@@ -1872,14 +1924,18 @@ html, body {
     .tracker-command-callouts,
     .tracker-health-band,
     .tracker-focus-shell,
-    .tracker-focus-grid,
-    .tracker-focus-viz-shell,
+    .tracker-focus-map-stage,
+    .tracker-focus-summary-grid,
     .tracker-focus-vitals,
     .tracker-operations-layout,
     .council-top-three-grid,
     .pod-index-grid,
     .pod-atlas-grid {
         grid-template-columns: 1fr;
+    }
+
+    .focus-five-starfield {
+        max-width: 100%;
     }
 
     .tracker-focus-context {
