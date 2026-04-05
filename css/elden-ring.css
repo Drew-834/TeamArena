@@ -1257,190 +1257,259 @@ html, body {
     text-transform: uppercase;
 }
 
-.tracker-focus-map-stage {
-    display: block;
+.tracker-focus-carousel-stage {
     margin-top: 1rem;
 }
 
-.tracker-focus-map-shell {
+.tracker-focus-carousel-shell {
     position: relative;
     overflow: hidden;
     margin-inline: -0.35rem;
     border-radius: 30px;
     border: 1px solid rgba(200, 169, 78, 0.14);
-    background:
-        radial-gradient(circle at 50% 48%, rgba(200, 169, 78, 0.1), transparent 38%),
-        linear-gradient(180deg, rgba(18, 18, 24, 0.98) 0%, rgba(7, 7, 10, 0.95) 100%);
+    background: linear-gradient(180deg, rgba(16, 16, 22, 0.98) 0%, rgba(6, 6, 10, 0.96) 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 24px 44px rgba(0, 0, 0, 0.22);
 }
 
-.tracker-focus-map-shell::before {
+.tracker-focus-carousel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem 0;
+}
+
+.tracker-focus-carousel-kicker {
+    color: var(--er-gold-bright);
+    font-family: var(--font-heading);
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.tracker-focus-carousel-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    color: var(--er-text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+}
+
+.tracker-focus-carousel-meta > span {
+    padding: 0.22rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(200, 169, 78, 0.08);
+}
+
+.tracker-focus-carousel {
+    padding: 0.3rem 0 0.6rem;
+}
+
+.tracker-focus-carousel-track {
+    gap: 1rem;
+    padding: 0.35rem 1rem 1rem;
+}
+
+.tracker-focus-slide {
+    width: 100%;
+    min-width: 100%;
+}
+
+.tracker-focus-carousel-slider-wrap {
+    padding-top: 0;
+}
+
+.tracker-focus-carousel-slider {
+    max-width: 420px;
+}
+
+.focus-five-skill-tree {
+    position: relative;
+    overflow: hidden;
+    min-height: 690px;
+    border-radius: 26px;
+    border: 1px solid rgba(200, 169, 78, 0.12);
+    background: linear-gradient(180deg, rgba(9, 10, 14, 0.76) 0%, rgba(6, 6, 10, 0.9) 100%);
+}
+
+.focus-five-skill-tree::before {
     content: '';
     position: absolute;
-    inset: 7% 10%;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(231, 206, 136, 0.1), transparent 70%);
+    inset: 0;
+    background-image:
+        linear-gradient(180deg, rgba(5, 5, 8, 0.3) 0%, rgba(5, 5, 8, 0.58) 100%),
+        url('/images/focus/focus-five-sky.png');
+    background-size: cover;
+    background-position: center 42%;
+    transform: scale(1.06);
+    animation: focus-five-sky-pan 24s ease-in-out infinite alternate;
+}
+
+.focus-five-skill-tree::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 68%, rgba(229, 205, 141, 0.08), transparent 28%),
+        radial-gradient(circle at 50% 50%, rgba(10, 12, 18, 0.12), transparent 55%);
     pointer-events: none;
 }
 
-.tracker-focus-map {
+.focus-five-skill-tree-hud,
+.focus-five-skill-tree-svg {
     position: relative;
     z-index: 1;
-    padding: 0.35rem;
 }
 
-.focus-five-starfield {
-    position: relative;
-    width: 100%;
-    max-width: none;
-    margin: 0 auto;
+.focus-five-skill-tree-hud {
+    padding: 1.15rem 1.15rem 0;
 }
 
-.focus-five-starfield-svg {
+.focus-five-skill-tree-overline {
+    color: rgba(255, 239, 196, 0.82);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+.focus-five-skill-tree-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.55rem;
+}
+
+.focus-five-skill-tree-title {
+    color: var(--er-gold-bright);
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    letter-spacing: 0.08em;
+    line-height: 1;
+}
+
+.focus-five-skill-tree-goal {
+    margin-top: 0.45rem;
+    color: var(--er-text-dim);
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.focus-five-skill-tree-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.focus-five-skill-tree-badge {
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(10, 10, 15, 0.5);
+    border: 1px solid rgba(200, 169, 78, 0.14);
+    color: var(--er-text);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    backdrop-filter: blur(4px);
+}
+
+.focus-five-skill-tree-svg {
     display: block;
     width: 100%;
     height: auto;
+    margin-top: -0.5rem;
 }
 
-.focus-five-starfield-backdrop {
-    fill: rgba(0, 0, 0, 0.01);
+.focus-five-skill-tree-root-aura {
+    fill: rgba(229, 205, 141, 0.12);
 }
 
-.focus-five-starfield-bridge {
-    fill: none;
-    stroke: rgba(200, 169, 78, 0.08);
-    stroke-width: 1;
-    stroke-dasharray: 3 10;
-    stroke-linecap: round;
-}
-
-.focus-five-starfield-center-ring {
-    fill: none;
-    stroke: rgba(231, 206, 136, 0.18);
-    stroke-width: 1.1;
-}
-
-.focus-five-starfield-center-core {
-    fill: rgba(10, 10, 15, 0.92);
-    stroke: rgba(231, 206, 136, 0.28);
+.focus-five-skill-tree-root {
+    fill: rgba(236, 214, 161, 0.92);
+    stroke: rgba(255, 246, 220, 0.95);
     stroke-width: 1.2;
 }
 
-.focus-five-starfield-center-title {
-    fill: var(--er-gold-bright);
-    font-family: var(--font-heading);
-    font-size: 1.75rem;
-    letter-spacing: 0.2em;
-    stroke: rgba(7, 7, 10, 0.95);
-    stroke-width: 6px;
-    paint-order: stroke fill;
-}
-
-.focus-five-starfield-center-sub {
-    fill: var(--er-text-muted);
-    font-size: 0.84rem;
-    letter-spacing: 0.26em;
-    stroke: rgba(7, 7, 10, 0.92);
-    stroke-width: 4px;
-    paint-order: stroke fill;
-}
-
-.focus-five-starfield-territory-aura {
-    fill: rgba(200, 169, 78, 0.035);
-    stroke: rgba(200, 169, 78, 0.09);
-    stroke-width: 1;
-}
-
-.focus-five-starfield-territory-ring {
+.focus-five-skill-tree-branch {
     fill: none;
-    stroke: rgba(200, 169, 78, 0.12);
-    stroke-width: 0.9;
-    stroke-dasharray: 4 12;
-}
-
-.focus-five-starfield-territory-core {
-    fill: rgba(231, 206, 136, 0.78);
-    stroke: rgba(255, 248, 214, 0.88);
-    stroke-width: 1;
-}
-
-.focus-five-starfield-territory-label {
-    fill: var(--er-gold-bright);
-    font-family: var(--font-heading);
-    font-size: 1.08rem;
-    letter-spacing: 0.1em;
-    stroke: rgba(7, 7, 10, 0.96);
-    stroke-width: 5px;
-    paint-order: stroke fill;
-}
-
-.focus-five-starfield-spoke {
-    stroke: rgba(231, 206, 136, 0.1);
-    stroke-width: 0.8;
+    stroke: rgba(240, 227, 184, 0.28);
+    stroke-width: 2;
     stroke-linecap: round;
 }
 
-.focus-five-starfield-node-aura {
-    fill: rgba(200, 169, 78, 0.1);
-    opacity: 0.24;
+.focus-five-skill-tree-node-aura {
+    fill: rgba(232, 210, 130, 0.16);
+    opacity: 0.35;
 }
 
-.focus-five-starfield-node {
-    fill: rgba(232, 210, 130, 0.96);
-    stroke: rgba(255, 248, 214, 0.92);
-    stroke-width: 1;
+.focus-five-skill-tree-node {
+    fill: rgba(232, 210, 130, 0.97);
+    stroke: rgba(255, 248, 214, 0.94);
+    stroke-width: 1.2;
 }
 
-.focus-five-starfield-node-name {
+.focus-five-skill-tree-node-name,
+.focus-five-skill-tree-node-pod,
+.focus-five-skill-tree-node-delta {
+    paint-order: stroke fill;
+}
+
+.focus-five-skill-tree-node-name {
     fill: var(--er-text);
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     letter-spacing: 0.03em;
-    stroke: rgba(7, 7, 10, 0.98);
-    stroke-width: 5px;
-    paint-order: stroke fill;
+    stroke: rgba(4, 4, 7, 0.98);
+    stroke-width: 6px;
 }
 
-.focus-five-starfield-node-pod {
-    fill: var(--er-text-muted);
-    font-size: 0.7rem;
+.focus-five-skill-tree-node-pod {
+    fill: rgba(233, 224, 196, 0.88);
+    font-size: 0.76rem;
     letter-spacing: 0.08em;
-    stroke: rgba(7, 7, 10, 0.96);
+    stroke: rgba(4, 4, 7, 0.96);
     stroke-width: 4px;
-    paint-order: stroke fill;
 }
 
-.focus-five-starfield-region.is-warning .focus-five-starfield-territory-aura {
-    fill: rgba(196, 120, 48, 0.045);
-    stroke: rgba(231, 182, 110, 0.12);
+.focus-five-skill-tree-node-delta {
+    fill: var(--er-gold-bright);
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    stroke: rgba(4, 4, 7, 0.96);
+    stroke-width: 4px;
 }
 
-.focus-five-starfield-region.is-critical .focus-five-starfield-territory-aura {
-    fill: rgba(255, 112, 112, 0.05);
-    stroke: rgba(255, 164, 164, 0.14);
+.focus-five-skill-tree.is-watch .focus-five-skill-tree-badge:first-child {
+    border-color: rgba(200, 169, 78, 0.2);
 }
 
-.focus-five-starfield-node-group.is-warning .focus-five-starfield-node-aura {
-    fill: rgba(196, 120, 48, 0.14);
-    opacity: 0.28;
-}
-
-.focus-five-starfield-node-group.is-warning .focus-five-starfield-node {
+.focus-five-skill-tree.is-warning .focus-five-skill-tree-badge:first-child,
+.focus-five-skill-tree-node-group.is-warning .focus-five-skill-tree-node {
+    border-color: rgba(231, 182, 110, 0.24);
     fill: rgba(231, 182, 110, 0.96);
 }
 
-.focus-five-starfield-node-group.is-critical .focus-five-starfield-node-aura {
-    fill: rgba(255, 112, 112, 0.16);
-    opacity: 0.32;
+.focus-five-skill-tree-node-group.is-warning .focus-five-skill-tree-node-aura {
+    fill: rgba(196, 120, 48, 0.22);
 }
 
-.focus-five-starfield-node-group.is-critical .focus-five-starfield-node {
-    fill: rgba(255, 164, 164, 0.96);
-    stroke: rgba(255, 223, 223, 0.96);
+.focus-five-skill-tree.is-critical .focus-five-skill-tree-badge:first-child,
+.focus-five-skill-tree-node-group.is-critical .focus-five-skill-tree-node {
+    border-color: rgba(255, 164, 164, 0.26);
+    fill: rgba(255, 164, 164, 0.98);
+    stroke: rgba(255, 226, 226, 0.98);
 }
 
-.focus-five-starfield-node-group.is-critical .focus-five-starfield-node-name {
-    fill: #ffd6d6;
+.focus-five-skill-tree-node-group.is-critical .focus-five-skill-tree-node-aura {
+    fill: rgba(255, 112, 112, 0.24);
+}
+
+.focus-five-skill-tree-node-group.is-critical .focus-five-skill-tree-node-name {
+    fill: #ffe0e0;
 }
 
 .tracker-focus-entry-list {
@@ -1674,9 +1743,9 @@ html, body {
     50% { opacity: 0.78; transform: scale(1.015); }
 }
 
-@keyframes focus-five-region-pulse {
-    0%, 100% { opacity: 0.55; }
-    50% { opacity: 0.95; }
+@keyframes focus-five-sky-pan {
+    0% { background-position: center 42%; }
+    100% { background-position: center 56%; }
 }
 
 @keyframes gold-pulse {
@@ -1778,6 +1847,10 @@ html, body {
     .tracker-command-callouts {
         grid-template-columns: 1fr;
     }
+
+    .focus-five-skill-tree {
+        min-height: 620px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1819,13 +1892,23 @@ html, body {
         grid-template-columns: 1fr;
     }
 
-    .tracker-focus-map-shell {
+    .tracker-focus-carousel-shell {
         margin-inline: -0.2rem;
         border-radius: 24px;
     }
 
-    .focus-five-starfield {
-        max-width: 100%;
+    .tracker-focus-carousel-header,
+    .focus-five-skill-tree-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .focus-five-skill-tree-badges {
+        justify-content: flex-start;
+    }
+
+    .focus-five-skill-tree {
+        min-height: 560px;
     }
 
     .tracker-focus-context {
