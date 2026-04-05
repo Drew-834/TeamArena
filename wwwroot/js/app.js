@@ -144,7 +144,8 @@ window.eldenCarousel = {
         }
 
         function updatePanels() {
-            var panels = Array.from(container.parentElement?.parentElement?.querySelectorAll('[data-carousel-panel-index]') || []);
+            var shell = container.closest('.tracker-focus-shell');
+            var panels = Array.from(shell?.querySelectorAll('[data-carousel-panel-index]') || []);
             panels.forEach(function (panel, index) {
                 var isActive = index === currentIndex;
                 panel.classList.toggle('is-active', isActive);

@@ -38,8 +38,8 @@
     {
         <header class="elden-shell-header @(_showSearch ? "shell-is-searching" : "")">
             <div class="elden-shell-header-inner">
-                <button class="elden-shell-nav-btn" @onclick="NavigateToHome" title="Return to the Roundtable">
-                    Return
+                <button class="elden-shell-nav-btn" @onclick="NavigateViaShell" title="@_contextNavLabel">
+                    @_contextNavLabel
                 </button>
                 <div class="elden-shell-titleblock">
                     <div class="elden-shell-kicker">Guided By Grace</div>
@@ -111,7 +111,7 @@
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "Admin321";
+    private const string CorrectPassword = "1411Advisor"; // Keep index/home Sealed Passage on 1411Advisor unless the user explicitly requests a change.
 
     // Existing state
     private bool _showTermsModal = false;
@@ -121,6 +121,8 @@
     private bool _isRouteTransitionActive = false;
     private string _currentChamberTitle = "Roundtable Hold";
     private string _currentRouteDescriptor = "Character Select";
+    private string _contextNavLabel = "Home";
+    private string _contextNavTarget = "/";
     private string _routeKey = "route-initial";
 
     protected override void OnInitialized()
@@ -352,6 +354,8 @@
         {
             _currentChamberTitle = "Roundtable Hold";
             _currentRouteDescriptor = "Character Select";
+            _contextNavLabel = "Home";
+            _contextNavTarget = "/";
             return;
         }
 
@@ -363,33 +367,51 @@
             case "pods":
                 _currentChamberTitle = "War Council";
                 _currentRouteDescriptor = segments.Length > 1 ? Uri.UnescapeDataString(segments[^1]).Replace('-', ' ') : "Team Index";
+                _contextNavLabel = segments.Length > 1 ? "Back to Teams" : "Back to Home";
+                _contextNavTarget = segments.Length > 1 ? "/pods" : "/";
                 break;
             case "podtracker":
                 _currentChamberTitle = "Leader Dashboard";
                 _currentRouteDescriptor = "Tracker Command";
+                _contextNavLabel = "Back to Teams";
+                _contextNavTarget = "/pods";
                 break;
             case "character":
                 _currentChamberTitle = "Champion Ledger";
                 _currentRouteDescriptor = "Individual Dossier";
+                _contextNavLabel = "Back to Home";
+                _contextNavTarget = "/";
                 break;
             case "departments":
                 _currentChamberTitle = "Department Chronicle";
                 _currentRouteDescriptor = segments.Length > 1 ? Uri.UnescapeDataString(segments[^1]).Replace('-', ' ') : "Overview";
+                _contextNavLabel = "Back to Home";
+                _contextNavTarget = "/";
                 break;
             case "weeklytracker":
                 _currentChamberTitle = "Hidden Archives";
                 _currentRouteDescriptor = "Weekly Command";
+                _contextNavLabel = "Back to Home";
+                _contextNavTarget = "/";
+                break;
+            case "archivedtrackers":
+                _currentChamberTitle = "Archive Vault";
+                _currentRouteDescriptor = "Weekly Records";
+                _contextNavLabel = "Back to Tracker";
+                _contextNavTarget = "/weeklytracker";
                 break;
             default:
                 _currentChamberTitle = "The Lands Between";
                 _currentRouteDescriptor = Uri.UnescapeDataString(relative).Replace('-', ' ');
+                _contextNavLabel = "Back to Home";
+                _contextNavTarget = "/";
                 break;
         }
     }
 
-    private void NavigateToHome()
+    private void NavigateViaShell()
     {
-        NavigationManager.NavigateTo("/");
+        NavigationManager.NavigateTo(_contextNavTarget);
     }
 
     public void Dispose()
