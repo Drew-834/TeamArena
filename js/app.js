@@ -143,6 +143,14 @@ window.eldenCarousel = {
             });
         }
 
+        function updatePanels() {
+            var panels = Array.from(container.parentElement?.parentElement?.querySelectorAll('[data-carousel-panel-index]') || []);
+            panels.forEach(function (panel, index) {
+                var isActive = index === currentIndex;
+                panel.classList.toggle('is-active', isActive);
+            });
+        }
+
         function snapToIndex(index, smooth) {
             var offsets = getSlideOffsets();
             if (!offsets.length) return;
@@ -152,6 +160,7 @@ window.eldenCarousel = {
             setTransform(smooth !== false);
             updateSlider();
             updateGuides();
+            updatePanels();
         }
 
         // --- Slider ---
@@ -262,6 +271,7 @@ window.eldenCarousel = {
             updateSlider();
         }
         updateGuides();
+        updatePanels();
 
         console.log('[Carousel] Fully initialized. Ready.');
     }

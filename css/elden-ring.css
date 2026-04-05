@@ -1726,10 +1726,15 @@ html, body {
 }
 
 .tracker-focus-sidebar {
+    display: none;
     padding: 1rem;
     border-radius: 18px;
     border: 1px solid rgba(200, 169, 78, 0.1);
     background: linear-gradient(180deg, rgba(14, 14, 20, 0.88) 0%, rgba(8, 8, 12, 0.82) 100%);
+}
+
+.tracker-focus-sidebar.is-active {
+    display: block;
 }
 
 .tracker-focus-sidebar-header {
