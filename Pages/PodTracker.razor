@@ -143,6 +143,7 @@
                                 var topEntry = lane.Value.FirstOrDefault();
                                 var severity = topEntry != null ? Math.Abs(topEntry.PercentOff) : 0;
                                 var laneClass = severity > 40 ? "severity-high" : severity > 20 ? "severity-mid" : "severity-low";
+                                var focusVisual = BuildFocusLaneVisual(lane.Key, lane.Value);
 
                                 <article class="tracker-focus-lane @laneClass">
                                     <div class="tracker-focus-lane-header">
@@ -158,10 +159,38 @@
 
                                     <p class="tracker-focus-lane-summary">@GetFocusLaneSummary(lane.Key, lane.Value)</p>
 
+                                    <div class="tracker-focus-viz-shell">
+                                        <FocusFiveSigil Labels="_focusSigilLabels"
+                                                        NormalizedData="focusVisual.Values"
+                                                        SeverityClass="@laneClass"
+                                                        CenterLabel="@focusVisual.CenterLabel"
+                                                        SubLabel="@focusVisual.SubLabel"
+                                                        CssClass="tracker-focus-sigil" />
+
+                                        <div class="tracker-focus-vitals">
+                                            <div class="tracker-focus-vital">
+                                                <span class="tracker-focus-vital-label">Top Champion</span>
+                                                <span class="tracker-focus-vital-value">@(topEntry?.Name ?? "Clear")</span>
+                                            </div>
+                                            <div class="tracker-focus-vital">
+                                                <span class="tracker-focus-vital-label">Lane Pressure</span>
+                                                <span class="tracker-focus-vital-value">@GetFocusSeverityLabel(severity)</span>
+                                            </div>
+                                            <div class="tracker-focus-vital">
+                                                <span class="tracker-focus-vital-label">Affected</span>
+                                                <span class="tracker-focus-vital-value">@lane.Value.Count champions</span>
+                                            </div>
+                                            <div class="tracker-focus-vital">
+                                                <span class="tracker-focus-vital-label">Peak Impact</span>
+                                                <span class="tracker-focus-vital-value">@GetPeakImpactLabel(lane.Value)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     @if (lane.Value.Any())
                                     {
                                         <div class="tracker-focus-entry-list">
-                                            @foreach (var entry in lane.Value)
+                                            @foreach (var entry in lane.Value.Take(3))
                                             {
                                                 var entrySeverity = Math.Abs(entry.PercentOff);
                                                 var entryClass = entrySeverity > 40 ? "entry-critical" : entrySeverity > 20 ? "entry-warning" : "entry-watch";
@@ -170,6 +199,9 @@
                                                     <div class="tracker-focus-entry-copy">
                                                         <span class="tracker-focus-entry-name">@entry.Name</span>
                                                         <span class="tracker-focus-entry-pod">@entry.Pod</span>
+                                                        <div class="tracker-focus-entry-meter">
+                                                            <span style="width: @GetFocusEntryBarWidth(entry, lane.Value).ToString("F0", CultureInfo.InvariantCulture)%"></span>
+                                                        </div>
                                                     </div>
                                                     <div class="tracker-focus-entry-stats">
                                                         <span class="tracker-focus-entry-delta">@entry.PercentOff.ToString("+0;-0")%</span>
@@ -523,6 +555,13 @@
         public double Impact { get; set; }
     }
 
+    private sealed class FocusLaneVisual
+    {
+        public List<double> Values { get; set; } = new();
+        public string CenterLabel { get; set; } = "";
+        public string SubLabel { get; set; } = "";
+    }
+
     private sealed class PodStandingRow
     {
         public string Pod { get; set; } = "";
@@ -539,6 +578,7 @@
     private HashSet<int> _membersPendingDepartmentUpdate = new();
 
     // ── Constants ──
+    private static readonly List<string> _focusSigilLabels = new() { "Sever", "Impact", "Spread", "Weight", "Heat" };
     private static readonly List<string> _podMetricKeys = PodMetricCatalog.AllMetrics.ToList();
     private static readonly Dictionary<string, int> _metricWeights = PodMetricCatalog.MetricWeights.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, double> _metricTargets = PodMetricCatalog.MetricTargets.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
@@ -1521,6 +1561,73 @@
         return $"{GetFocusPressureCount()} focus lanes and {GetFocusChampionCount()} distinct champions need leadership attention.";
     }
 
+    private FocusLaneVisual BuildFocusLaneVisual(string metricKey, List<FocusFiveEntry> entries)
+    {
+        var topPercent = entries.Any() ? Math.Abs(entries[0].PercentOff) : 0;
+        var averagePercent = entries.Any() ? entries.Average(entry => Math.Abs(entry.PercentOff)) : 0;
+        var topImpact = entries.Any() ? entries.Max(entry => entry.Impact) : 0;
+        var maxImpact = GetOrderedFocusLanes()
+            .SelectMany(lane => lane.Value)
+            .Select(entry => entry.Impact)
+            .DefaultIfEmpty(0)
+            .Max();
+        var maxWeight = _metricWeights.Values.DefaultIfEmpty(1).Max();
+
+        return new FocusLaneVisual
+        {
+            Values = new List<double>
+            {
+                NormalizeToHundred(topPercent, 45),
+                NormalizeToHundred(topImpact, maxImpact <= 0 ? 1 : maxImpact),
+                NormalizeToHundred(entries.Count, 5),
+                NormalizeToHundred(_metricWeights.GetValueOrDefault(metricKey, 0), maxWeight),
+                NormalizeToHundred(averagePercent, 35)
+            },
+            CenterLabel = entries.Any() ? $"{topPercent.ToString("F0", CultureInfo.InvariantCulture)}%" : "CLEAR",
+            SubLabel = entries.Any() ? "OFF PACE" : "STABLE"
+        };
+    }
+
+    private static double NormalizeToHundred(double value, double max)
+    {
+        if (max <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Clamp((value / max) * 100.0, 0, 100);
+    }
+
+    private string GetFocusSeverityLabel(double severity)
+    {
+        if (severity > 40)
+        {
+            return "Critical";
+        }
+
+        if (severity > 20)
+        {
+            return "Elevated";
+        }
+
+        if (severity > 0)
+        {
+            return "Watch";
+        }
+
+        return "Stable";
+    }
+
+    private string GetPeakImpactLabel(List<FocusFiveEntry> entries)
+    {
+        if (entries == null || !entries.Any())
+        {
+            return "0";
+        }
+
+        return entries.Max(entry => entry.Impact).ToString("F0", CultureInfo.InvariantCulture);
+    }
+
     private string GetFocusLaneSummary(string metricKey, List<FocusFiveEntry> entries)
     {
         if (entries == null || !entries.Any())
@@ -1530,6 +1637,17 @@
 
         var topEntry = entries[0];
         return $"{entries.Count} champions are off pace. Highest pressure is {topEntry.Name} at {topEntry.PercentOff.ToString("+0;-0")}% with impact {topEntry.Impact.ToString("F0")}.";
+    }
+
+    private double GetFocusEntryBarWidth(FocusFiveEntry entry, List<FocusFiveEntry> entries)
+    {
+        if (entry == null || entries == null || !entries.Any())
+        {
+            return 0;
+        }
+
+        var maxImpact = entries.Max(item => item.Impact);
+        return NormalizeToHundred(entry.Impact, maxImpact <= 0 ? 1 : maxImpact);
     }
 
     private List<PodStandingRow> GetPodStandingRows()

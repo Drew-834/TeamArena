@@ -1,0 +1,171 @@
+@using System.Globalization
+
+<div class="focus-five-sigil @CssClass @SeverityClass">
+    @if (Labels != null && NormalizedData != null && Labels.Count > 2 && NormalizedData.Count == Labels.Count)
+    {
+        <svg width="@Width" height="@Height" viewBox="0 0 220 220" class="focus-five-sigil-svg" role="img" aria-label="Focus Five pressure sigil">
+            <defs>
+                <radialGradient id="@($"{_chartId}-fill")" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(200, 169, 78, 0.28)" />
+                    <stop offset="100%" stop-color="rgba(200, 169, 78, 0.04)" />
+                </radialGradient>
+                <filter id="@($"{_chartId}-glow")">
+                    <feGaussianBlur stdDeviation="2.3" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <circle class="focus-five-sigil-halo" cx="110" cy="110" r="96" />
+            <circle class="focus-five-sigil-ring" cx="110" cy="110" r="88" />
+            <circle class="focus-five-sigil-ring focus-five-sigil-ring-dashed" cx="110" cy="110" r="72" />
+
+            @for (int i = 1; i <= 4; i++)
+            {
+                <polygon points="@GetPolygonPoints(i * 18)"
+                         class="focus-five-sigil-grid" />
+            }
+
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                <line x1="110" y1="110"
+                      x2="@GetAxisEndX(i)" y2="@GetAxisEndY(i)"
+                      class="focus-five-sigil-axis" />
+            }
+
+            <polygon points="@GetDataPoints()"
+                     fill="@($"url(#{_chartId}-fill)")"
+                     class="focus-five-sigil-shape"
+                     filter="@($"url(#{_chartId}-glow)")" />
+
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                <circle cx="@GetDataPointX(i)"
+                        cy="@GetDataPointY(i)"
+                        r="3.5"
+                        class="focus-five-sigil-node" />
+            }
+
+            @for (int i = 0; i < Labels.Count; i++)
+            {
+                var shortLabel = GetMetricShortName(Labels[i]);
+                <g>
+                    <text x="@GetLabelX(i)"
+                          y="@GetLabelY(i)"
+                          class="focus-five-sigil-label"
+                          text-anchor="@GetTextAnchor(i)"
+                          dominant-baseline="@GetDominantBaseline(i)">@shortLabel</text>
+                </g>
+            }
+
+            <circle class="focus-five-sigil-core" cx="110" cy="110" r="28" />
+            <text x="110" y="104" class="focus-five-sigil-center" text-anchor="middle">@CenterLabel</text>
+            <text x="110" y="121" class="focus-five-sigil-sub" text-anchor="middle">@SubLabel</text>
+        </svg>
+    }
+</div>
+
+@code {
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public string SeverityClass { get; set; } = "";
+    [Parameter] public string Width { get; set; } = "220px";
+    [Parameter] public string Height { get; set; } = "220px";
+    [Parameter] public string CenterLabel { get; set; } = "";
+    [Parameter] public string SubLabel { get; set; } = "";
+    [Parameter] public List<string>? Labels { get; set; }
+    [Parameter] public List<double>? NormalizedData { get; set; }
+
+    private readonly string _chartId = $"focus-five-sigil-{Guid.NewGuid():N}";
+
+    private string GetPolygonPoints(int radius)
+    {
+        if (Labels == null || Labels.Count == 0)
+        {
+            return "";
+        }
+
+        var points = new List<string>();
+        for (int i = 0; i < Labels.Count; i++)
+        {
+            double angle = GetAngle(i);
+            double x = 110 + radius * Math.Cos(angle);
+            double y = 110 + radius * Math.Sin(angle);
+            points.Add($"{x.ToString("F2", CultureInfo.InvariantCulture)},{y.ToString("F2", CultureInfo.InvariantCulture)}");
+        }
+
+        return string.Join(" ", points);
+    }
+
+    private string GetDataPoints()
+    {
+        if (Labels == null || NormalizedData == null || Labels.Count != NormalizedData.Count)
+        {
+            return "";
+        }
+
+        var points = new List<string>();
+        for (int i = 0; i < Labels.Count; i++)
+        {
+            points.Add($"{GetDataPointX(i).ToString("F2", CultureInfo.InvariantCulture)},{GetDataPointY(i).ToString("F2", CultureInfo.InvariantCulture)}");
+        }
+
+        return string.Join(" ", points);
+    }
+
+    private double GetAngle(int index)
+    {
+        int count = Labels?.Count ?? 1;
+        return (2 * Math.PI * index / count) - (Math.PI / 2);
+    }
+
+    private double GetScaledRadius(int index)
+    {
+        if (NormalizedData == null || index >= NormalizedData.Count)
+        {
+            return 0;
+        }
+
+        return Math.Clamp(NormalizedData[index], 0, 100) * 0.72;
+    }
+
+    private double GetDataPointX(int index) => 110 + GetScaledRadius(index) * Math.Cos(GetAngle(index));
+
+    private double GetDataPointY(int index) => 110 + GetScaledRadius(index) * Math.Sin(GetAngle(index));
+
+    private double GetAxisEndX(int index) => 110 + 82 * Math.Cos(GetAngle(index));
+
+    private double GetAxisEndY(int index) => 110 + 82 * Math.Sin(GetAngle(index));
+
+    private double GetLabelX(int index) => 110 + 95 * Math.Cos(GetAngle(index));
+
+    private double GetLabelY(int index) => 110 + 95 * Math.Sin(GetAngle(index));
+
+    private string GetTextAnchor(int index)
+    {
+        var x = Math.Cos(GetAngle(index));
+        if (Math.Abs(x) < 0.3)
+        {
+            return "middle";
+        }
+
+        return x > 0 ? "start" : "end";
+    }
+
+    private string GetDominantBaseline(int index)
+    {
+        var y = Math.Sin(GetAngle(index));
+        if (Math.Abs(y) < 0.3)
+        {
+            return "middle";
+        }
+
+        return y > 0 ? "hanging" : "auto";
+    }
+
+    private static string GetMetricShortName(string label)
+    {
+        return label.Length <= 6 ? label : label[..4] + ".";
+    }
+}
