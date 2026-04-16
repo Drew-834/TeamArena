@@ -528,7 +528,13 @@
     private bool _showPasswordModal = false;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "Admin321"; // Keep leadership/back-office tracker access on Admin321 unless the user explicitly requests a change.
+    // Admin Sealed Passage gate for pod tracker data entry.
+    // IMPORTANT: Keep this as Admin321 for admin-only access.
+    // Do not replace with the public/index password (1411Advisor).
+    private const string AdminGatePassword = "Admin321";
+    private const string AdminAuthSessionKey = "adminGateAuthenticated";
+    private const string AdminAuthTimeSessionKey = "adminGateAuthTime";
+    private const long AuthTimeoutMs = 30 * 60 * 1000; // 30 minutes
 
     // ── Page state ──
     private bool _isSaving = false;
@@ -673,15 +679,15 @@
         {
             try
             {
-                // Check for session timeout (30 minutes)
-                var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthTime");
+                // Check session timeout for admin tracker authentication.
+                var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", AdminAuthTimeSessionKey);
                 if (!string.IsNullOrEmpty(authTime) && long.TryParse(authTime, out long timestamp))
                 {
                     var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - timestamp;
-                    if (elapsed > 30 * 60 * 1000) // 30 minutes
+                    if (elapsed > AuthTimeoutMs)
                     {
-                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthenticated");
-                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "managerAuthTime");
+                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", AdminAuthSessionKey);
+                        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", AdminAuthTimeSessionKey);
                         _isAuthenticated = false;
                         _showPasswordModal = true;
                         await InvokeAsync(StateHasChanged);
@@ -689,7 +695,7 @@
                     }
                 }
 
-                var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
+                var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", AdminAuthSessionKey);
                 if (isAuth == "true") { _isAuthenticated = true; _showPasswordModal = false; await InvokeAsync(StateHasChanged); return; }
             }
             catch { }
@@ -1898,12 +1904,12 @@
     // ── Auth ──
     private async Task CheckPassword()
     {
-        if (_passwordInput == CorrectPassword)
+        if (_passwordInput == AdminGatePassword)
         {
             _passwordError = string.Empty; _isAuthenticated = true; _showPasswordModal = false;
             try {
-                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true");
-                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthTime", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", AdminAuthSessionKey, "true");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", AdminAuthTimeSessionKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
             } catch { }
         }
         else

@@ -196,7 +196,11 @@
     private string _enteredPassword = string.Empty;
     private string _passwordInput = string.Empty;
     private string _passwordError = string.Empty;
-    private const string CorrectPassword = "Admin321"; // Keep leadership/back-office tracker access on Admin321 unless the user explicitly requests a change.
+    // Admin Sealed Passage gate for tracker data entry.
+    // IMPORTANT: Keep this as Admin321 for admin-only input routes.
+    // Do not replace with the public/index password (1411Advisor).
+    private const string AdminGatePassword = "Admin321";
+    private const string AdminAuthSessionKey = "adminGateAuthenticated";
     private bool _isSaving = false; // For loading state on save button
     private string? _saveError = null;
     private string? _uploadStatusMessage = null;
@@ -300,7 +304,7 @@
             // Check if manager is already authenticated in this session
             try
             {
-                var isManagerAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "managerAuthenticated");
+                var isManagerAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", AdminAuthSessionKey);
                 if (isManagerAuth == "true")
                 {
                     _isAuthenticated = true;
@@ -456,7 +460,7 @@
     {
         _enteredPassword = _passwordInput; // Update the actual variable *before* checking
 
-        if (_enteredPassword == CorrectPassword)
+        if (_enteredPassword == AdminGatePassword)
         {
             _passwordError = string.Empty;
             _isAuthenticated = true;
@@ -465,7 +469,7 @@
             // Store manager auth in session (persists until browser tab is closed)
             try
             {
-                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "managerAuthenticated", "true");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", AdminAuthSessionKey, "true");
             }
             catch { /* sessionStorage not available */ }
         }
