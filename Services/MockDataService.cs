@@ -657,6 +657,7 @@ namespace GameScoreboard.Services
             {
                 // Update TotalExperience primarily
                 existingMember.TotalExperience = member.TotalExperience;
+                existingMember.CompanyRank = member.CompanyRank;
                 
                 // Update other basic info IF provided (less critical for this app)
                 // existingMember.Name = member.Name;

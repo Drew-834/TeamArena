@@ -99,6 +99,7 @@ namespace GameScoreboard.Services
                     member.Role,
                     member.AvatarUrl,
                     member.TotalExperience,
+                    member.CompanyRank,
                     member.RphGoal,
                     member.AppEffGoal,
                     member.PmEffGoal,

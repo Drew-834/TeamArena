@@ -143,7 +143,7 @@
                                 <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
                                 @if (_todayShiftGoals.AnyBuffed)
                                 {
-                                    <p class="font-body text-xs mb-3" style="color: var(--er-red-bright);">Behind pace - targets buffed to catch up.</p>
+                                    <p class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Off-track rows show today&apos;s target; red tags show your current performance.</p>
                                 }
                                 else
                                 {
@@ -153,14 +153,14 @@
                                     <div class="@(_todayShiftGoals.RphBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
                                         @if (_todayShiftGoals.RphBuffed) { <span class="quest-exclamation">!</span> }
                                         RPH Goal: @_todayShiftGoals.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
-                                        @if (_todayShiftGoals.RphBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.RphBuffPercent)%)</span> }
+                                        @if (_todayShiftGoals.RphBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("RPH")</span> }
                                     </div>
                                     @if (_todayShiftGoals.AppGoal.HasValue)
                                     {
                                         <div class="@(_todayShiftGoals.AppBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
                                             @if (_todayShiftGoals.AppBuffed) { <span class="quest-exclamation">!</span> }
                                             App Goal: @_todayShiftGoals.AppGoal.Value.ToString("N0") apps
-                                            @if (_todayShiftGoals.AppBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.AppBuffPercent)%)</span> }
+                                            @if (_todayShiftGoals.AppBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("AppEff")</span> }
                                         </div>
                                     }
                                     @if (_todayShiftGoals.PmGoal.HasValue)
@@ -168,7 +168,7 @@
                                         <div class="@(_todayShiftGoals.PmBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
                                             @if (_todayShiftGoals.PmBuffed) { <span class="quest-exclamation">!</span> }
                                             PM Goal: @_todayShiftGoals.PmGoal.Value.ToString("N0") PMs
-                                            @if (_todayShiftGoals.PmBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.PmBuffPercent)%)</span> }
+                                            @if (_todayShiftGoals.PmBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("PMEff")</span> }
                                         </div>
                                     }
                                     @if (_todayShiftGoals.WarrantyAttachGoalPercent.HasValue)
@@ -176,7 +176,7 @@
                                         <div class="@(_todayShiftGoals.WarrantyBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
                                             @if (_todayShiftGoals.WarrantyBuffed) { <span class="quest-exclamation">!</span> }
                                             Warranty Attach: @_todayShiftGoals.WarrantyAttachGoalPercent.Value.ToString("F1")%
-                                            @if (_todayShiftGoals.WarrantyBuffed) { <span style="color: var(--er-red-bright);"> (buffed +@(_todayShiftGoals.WarrantyBuffPercent)%)</span> }
+                                            @if (_todayShiftGoals.WarrantyBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("WarrantyAttach")</span> }
                                         </div>
                                     }
                                 </div>
@@ -1049,6 +1049,13 @@
     }
 
     private DailyShiftGoals? _todayShiftGoals;
+
+    private string GetQuestOffTrackWithCurrent(string metricKey)
+    {
+        if (!_latestMetricsDict.TryGetValue(metricKey, out var raw) || raw == null)
+            return "  Off-track";
+        return "  Off-track — " + FormatMetricValue(metricKey, raw);
+    }
 
     private void ComputeTodayShiftGoals()
     {
