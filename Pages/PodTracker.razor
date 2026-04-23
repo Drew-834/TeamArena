@@ -35,85 +35,54 @@
     {
         <div class="mx-auto max-w-[1680px] space-y-8 tracker-desktop-shell">
             <section class="elden-dashboard-section elden-dashboard-hero elden-lively-panel tracker-command-overview animate-fade-in-up">
-                <div class="relative z-10 tracker-command-grid">
-                    <div class="tracker-command-copy">
-                        <div class="space-y-3">
-                            <div class="elden-dashboard-eyebrow">Leader Dashboard</div>
-                            <h1 class="font-heading text-3xl md:text-5xl" style="color: var(--er-gold-bright);">Tracker Command Chamber</h1>
-                            <p class="font-body text-lg tracker-command-summary" style="color: var(--er-text-dim);">
-                                Read business pressure first, then descend into the live ingest and save workflow only when the chamber calls for action.
-                            </p>
-                        </div>
-
-                        <div class="tracker-command-pills">
-                            <div class="tracker-command-pill">
-                                <span class="tracker-command-pill-label">Scope</span>
-                                <span class="tracker-command-pill-value">@GetLeadershipScopeLabel()</span>
-                            </div>
-                            <div class="tracker-command-pill">
-                                <span class="tracker-command-pill-label">Primary Focus</span>
-                                <span class="tracker-command-pill-value">@GetPrimaryPressureMetricLabel()</span>
-                            </div>
-                            <div class="tracker-command-pill">
-                                <span class="tracker-command-pill-label">Operations</span>
-                                <span class="tracker-command-pill-value">@GetImportReadinessLabel()</span>
-                            </div>
-                        </div>
-
-                        <div class="tracker-command-callouts">
-                            <div class="tracker-callout-card">
-                                <div class="tracker-callout-label">Pressure Lane</div>
-                                <div class="tracker-callout-value">@GetPrimaryPressureMetricLabel()</div>
-                                <div class="tracker-callout-copy">@GetPrimaryPressureCaption()</div>
-                            </div>
-                            <div class="tracker-callout-card">
-                                <div class="tracker-callout-label">At-Risk Champions</div>
-                                <div class="tracker-callout-value">@GetFocusChampionCount()</div>
-                                <div class="tracker-callout-copy">Distinct champions currently appearing across all active focus lanes.</div>
-                            </div>
-                            <div class="tracker-callout-card">
-                                <div class="tracker-callout-label">Parse Warnings</div>
-                                <div class="tracker-callout-value">@GetParseWarningCount()</div>
-                                <div class="tracker-callout-copy">Warnings or errors that still need review before a live write.</div>
-                            </div>
-                        </div>
+                <div class="relative z-10 tracker-command-compact">
+                    <div class="mb-4 space-y-1">
+                        <div class="elden-dashboard-eyebrow">Leader Dashboard</div>
+                        <h1 class="font-heading text-2xl md:text-4xl" style="color: var(--er-gold-bright);">Tracker Command Chamber</h1>
+                        <p class="font-body text-sm md:text-base tracker-command-summary" style="color: var(--er-text-dim);">
+                            @GetPrimaryPressureCaption()
+                        </p>
                     </div>
-
-                    <div class="tracker-hero-stack">
-                        <div class="elden-dashboard-grid metrics w-full tracker-hero-grid">
-                            <div class="elden-dashboard-card">
-                                <div class="elden-dashboard-eyebrow">Reporting Period</div>
-                                <div class="elden-dashboard-value">@_selectedPeriod</div>
-                                <div class="elden-dashboard-caption">Current live save label</div>
-                            </div>
-                            <div class="elden-dashboard-card">
-                                <div class="elden-dashboard-eyebrow">Teams In Command</div>
-                                <div class="elden-dashboard-value">@_pods.Count</div>
-                                <div class="elden-dashboard-caption">Pods with active or staged data</div>
-                            </div>
-                            <div class="elden-dashboard-card">
-                                <div class="elden-dashboard-eyebrow">Strategic Pressure</div>
-                                <div class="elden-dashboard-value">@GetFocusPressureCount()</div>
-                                <div class="elden-dashboard-caption">KPI lanes currently off track</div>
-                            </div>
-                            <div class="elden-dashboard-card">
-                                <div class="elden-dashboard-eyebrow">Import Readiness</div>
-                                <div class="elden-dashboard-value">@GetImportReadinessLabel()</div>
-                                <div class="elden-dashboard-caption">@GetImportReadinessCaption()</div>
-                            </div>
+                    <div class="tracker-command-pills" role="list">
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Scope</span>
+                            <span class="tracker-command-pill-value">@GetLeadershipScopeLabel()</span>
                         </div>
-
-                        <div class="tracker-health-band">
-                            <div class="tracker-health-card">
-                                <div class="tracker-health-label">Business Health</div>
-                                <div class="tracker-health-value">@GetBusinessHealthLabel()</div>
-                                <div class="tracker-health-copy">@GetBusinessHealthCaption()</div>
-                            </div>
-                            <div class="tracker-health-card">
-                                <div class="tracker-health-label">Review Focus</div>
-                                <div class="tracker-health-value">@GetLeadershipScopeLabel()</div>
-                                <div class="tracker-health-copy">@GetSelectionSummary()</div>
-                            </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Period</span>
+                            <span class="tracker-command-pill-value">@_selectedPeriod</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Teams</span>
+                            <span class="tracker-command-pill-value">@_pods.Count</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Primary KPI</span>
+                            <span class="tracker-command-pill-value">@GetPrimaryPressureMetricLabel()</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Off-Track Lanes</span>
+                            <span class="tracker-command-pill-value">@GetFocusPressureCount()</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">At-Risk</span>
+                            <span class="tracker-command-pill-value">@GetFocusChampionCount()</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Parse Warnings</span>
+                            <span class="tracker-command-pill-value">@GetParseWarningCount()</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Import</span>
+                            <span class="tracker-command-pill-value">@GetImportReadinessLabel()</span>
+                        </div>
+                        <div class="tracker-command-pill" role="listitem">
+                            <span class="tracker-command-pill-label">Health</span>
+                            <span class="tracker-command-pill-value">@GetBusinessHealthLabel()</span>
+                        </div>
+                        <div class="tracker-command-pill tracker-command-pill--wrap" role="listitem">
+                            <span class="tracker-command-pill-label">Review</span>
+                            <span class="tracker-command-pill-value tracker-command-pill-value--multiline">@GetSelectionSummary()</span>
                         </div>
                     </div>
                 </div>
@@ -584,6 +553,8 @@
     private List<PodParseInfo>? _parseResults;
     private List<string> _parseLog = new();
     private Dictionary<string, Dictionary<int, Dictionary<string, string>>> _parsedPodData = new();
+    /// <summary>Per-member company rank from latest paste (new format); applied on save.</summary>
+    private Dictionary<int, int?> _parsedCompanyRanks = new();
     private HashSet<int> _membersPendingDepartmentUpdate = new();
 
     // ── Constants ──
@@ -790,6 +761,7 @@
         _parseResults = null;
         _parseLog.Clear();
         _parsedPodData.Clear();
+        _parsedCompanyRanks.Clear();
         _uploadStatusMessage = null;
         _uploadSuccess = false;
         _isParsing = true;
@@ -1124,6 +1096,7 @@
         _parseResults = null;
         _parseLog.Clear();
         _parsedPodData.Clear();
+        _parsedCompanyRanks.Clear();
         _uploadStatusMessage = null;
         _uploadSuccess = false;
         _isParsing = true;
@@ -1244,6 +1217,7 @@
                 }
 
                 podData[member.Id] = new Dictionary<string, string>(row.MetricValues, StringComparer.OrdinalIgnoreCase);
+                _parsedCompanyRanks[member.Id] = row.CompanyRank;
 
                 if (row.Match.Kind == PodMemberMatchKind.NewMember)
                 {
@@ -2082,8 +2056,17 @@
         {
             if (!inputValues.TryGetValue(member.Id, out var memberInputs)) continue;
 
+            bool hasParsedRank = _parsedCompanyRanks.TryGetValue(member.Id, out var pr) && pr.HasValue;
+            if (hasParsedRank)
+                member.CompanyRank = pr;
+
             bool hasAnyValue = memberInputs.Values.Any(v => !string.IsNullOrWhiteSpace(v));
-            if (!hasAnyValue) continue;
+            if (!hasAnyValue)
+            {
+                if (hasParsedRank)
+                    updateTasks.Add(DataService.UpdateTeamMemberAsync(member));
+                continue;
+            }
 
             var records = new List<MetricRecord>();
             double totalWeightedScore = 0;
@@ -2136,7 +2119,7 @@
 
             updateTasks.Add(DataService.SaveMetricRecordsForPeriodAsync(member.Id, _selectedPeriod!, records));
 
-            bool shouldPersistMember = _membersPendingDepartmentUpdate.Contains(member.Id);
+            bool shouldPersistMember = _membersPendingDepartmentUpdate.Contains(member.Id) || hasParsedRank;
             if (applicableWeight > 0 && !alreadyHadData)
             {
                 const double xpMultiplier = 0.25;
@@ -2159,13 +2142,17 @@
             _membersPendingDepartmentUpdate.Remove(member.Id);
         }
 
-        // Sync XP to master list
+        // Sync XP and CompanyRank to master list
         if (_allPodMembers != null)
         {
             foreach (var updated in members)
             {
                 var global = _allPodMembers.FirstOrDefault(m => m.Id == updated.Id);
-                if (global != null) global.TotalExperience = updated.TotalExperience;
+                if (global != null)
+                {
+                    global.TotalExperience = updated.TotalExperience;
+                    global.CompanyRank = updated.CompanyRank;
+                }
             }
         }
     }
@@ -2354,5 +2341,5 @@
 
     // ── Clear / Nav ──
     private void ClearInputs() { InitializeInputValues(); _saveError = null; _saveSuccessMessage = null; StateHasChanged(); }
-    private void ClearParseResults() { _parseResults = null; _parseLog.Clear(); _parsedPodData.Clear(); StateHasChanged(); }
+    private void ClearParseResults() { _parseResults = null; _parseLog.Clear(); _parsedPodData.Clear(); _parsedCompanyRanks.Clear(); StateHasChanged(); }
 }

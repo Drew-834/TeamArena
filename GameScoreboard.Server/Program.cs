@@ -86,6 +86,22 @@ public class Program
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.EnsureCreated();
                 Console.WriteLine("Database connection successful, tables ensured.");
+
+                if (db.Database.ProviderName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    try
+                    {
+                        db.Database.ExecuteSqlRaw("""
+                            IF NOT EXISTS (SELECT 1 FROM sys.columns
+                                WHERE object_id = OBJECT_ID(N'[TeamMembers]') AND name = N'CompanyRank')
+                            ALTER TABLE [TeamMembers] ADD [CompanyRank] int NULL;
+                            """);
+                    }
+                    catch (Exception sqlEx)
+                    {
+                        Console.WriteLine($"Schema patch CompanyRank (optional): {sqlEx.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {

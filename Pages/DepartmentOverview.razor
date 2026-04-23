@@ -41,8 +41,8 @@
                 var lowPerformer = _lowPerformerNames.GetValueOrDefault(metricKey);
                 var goal = GetMetricGoal(metricKey);
 
-                <div class="elden-panel elden-panel-gold">
-                    <h3 class="font-heading text-sm tracking-wide mb-2" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(metricKey)</h3>
+                <div class="elden-panel elden-panel-gold elden-panel-spotlight">
+                    <h3 class="font-heading text-sm tracking-wide mb-2 title-glow" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(metricKey)</h3>
                     <div class="flex justify-between items-baseline mb-3">
                         @{ var statusColor = GetAverageStatusColor(avgData.Average, goal); }
                         <span class="font-mono text-2xl font-bold @statusColor">@FormatMetricValue(avgData.Average, metricKey)</span>
@@ -84,7 +84,7 @@
                 var strongestAreaInfo = GetStrongestAreaForMember(member);
 
                 <div @key="member.Id"
-                     class="elden-character-card @(isKpiWinner ? "elden-border-gold" : "")"
+                     class="elden-character-card @(CompanyRankTiers.GetChampionCardTierClass(member.CompanyRank)) @(isKpiWinner ? "elden-border-gold" : "")"
                      style="width: 200px; height: 320px;"
                      @onclick="() => NavigateToMember(member.Id)">
                     <div class="card-bg-avatar">
@@ -120,16 +120,13 @@
 
                         <div>
                             <div class="flex justify-between items-center text-xs mb-1 px-1">
-                                @{
-                                    int level = member.CurrentLevel;
-                                    double xpInLevel = member.ExperienceTowardsNextLevel;
-                                    double progressPercent = member.ProgressToNextLevelPercentage;
-                                }
-                                <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
-                                <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/@TeamMember.XpPerLevel.ToString("F0")</span>
+                                <span class="font-heading font-bold" style="color: var(--er-purple);">Rank</span>
+                                <span class="font-mono" style="color: var(--er-text-dim);">
+                                    @(member.CompanyRank.HasValue ? $"#{member.CompanyRank}" : "—")
+                                </span>
                             </div>
                             <div class="elden-xp-bar mx-1">
-                                <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                                <div class="elden-xp-fill" style="width: @CompanyRankTiers.GetRankBarPercent(member.CompanyRank).ToString("F1", CultureInfo.InvariantCulture)%;"></div>
                             </div>
                         </div>
                     </div>

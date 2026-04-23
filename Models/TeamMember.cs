@@ -28,6 +28,9 @@ namespace GameScoreboard.Models
         
         public double TotalExperience { get; set; } = 0; // Initialize XP to 0
 
+        /// <summary>Company rank from the dashboard "Rank" column (parser); lower = better in typical exports.</summary>
+        public int? CompanyRank { get; set; }
+
         // Optional per-person pod metric targets (override pod defaults when present)
         public double? RphGoal { get; set; }
         public double? AppEffGoal { get; set; }

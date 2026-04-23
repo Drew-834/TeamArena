@@ -1,3 +1,4 @@
+using System.Globalization;
 using GameScoreboard.Models;
 
 namespace GameScoreboard.Services.Tracking;
@@ -72,6 +73,8 @@ public sealed class PodImportRow
     public required PodMemberMatchResult Match { get; init; }
 
     public required Dictionary<string, string> MetricValues { get; init; }
+
+    public int? CompanyRank { get; init; }
 }
 
 public sealed class PodTrackerImportParser
@@ -126,7 +129,7 @@ public sealed class PodTrackerImportParser
 
         result.Logs.Add(new ImportLogEntry(
             ImportLogSeverity.Info,
-            $"Header found at row {headerRowIndex + 1}. Core columns: Employee={layout.NameColumn}, RPH={layout.RphColumn}, AppEff={layout.AppEffColumn}, PMEff={layout.PmEffColumn}, Surveys={layout.SurveysColumn}, Warranty={layout.WarrantyColumn}."));
+            $"Header found at row {headerRowIndex + 1}. Core columns: Employee={layout.NameColumn}, RPH={layout.RphColumn}, AppEff={layout.AppEffColumn}, PMEff={layout.PmEffColumn}, Surveys={layout.SurveysColumn}, Warranty={layout.WarrantyColumn}, Rank={layout.RankColumn}."));
 
         PodImportSection? currentPod = null;
         for (var rowIndex = headerRowIndex + 1; rowIndex < lines.Length; rowIndex++)
@@ -234,17 +237,21 @@ public sealed class PodTrackerImportParser
             }
 
             var values = ParseMetricValues(cells, layout, currentPod);
+            var companyRank = TryParseRankColumn(cells, layout);
+
             currentPod.Rows.Add(new PodImportRow
             {
                 RowNumber = rowNumber,
                 MemberName = nameCell,
                 Match = match,
-                MetricValues = values
+                MetricValues = values,
+                CompanyRank = companyRank
             });
 
+            var rankForLog = companyRank.HasValue ? companyRank.Value.ToString(CultureInfo.InvariantCulture) : "—";
             result.Logs.Add(new ImportLogEntry(
                 ImportLogSeverity.Info,
-                $"Row {rowNumber}: Name={nameCell} | Pod={currentPod.SystemName} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Surveys={values["Surveys"]} | Warranty={values["WarrantyAttach"]}."));
+                $"Row {rowNumber}: Name={nameCell} | Pod={currentPod.SystemName} | RPH={values["RPH"]} | AppEff={values["AppEff"]} | PMEff={values["PMEff"]} | Surveys={values["Surveys"]} | Warranty={values["WarrantyAttach"]} | Rank={rankForLog}."));
         }
 
         result.StatusMessage = result.HasRows
@@ -359,6 +366,17 @@ public sealed class PodTrackerImportParser
         }
 
         return result;
+    }
+
+    private static int? TryParseRankColumn(string[] cells, DashboardColumnLayout layout)
+    {
+        if (layout.RankColumn < 0) return null;
+        var raw = SafeGet(cells, layout.RankColumn).Trim();
+        if (string.IsNullOrEmpty(raw) || raw.Equals("#N/A", StringComparison.OrdinalIgnoreCase))
+            return null;
+        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) && i > 0)
+            return i;
+        return null;
     }
 
     private static Dictionary<string, string> ParseMetricValues(string[] cells, DashboardColumnLayout layout, PodImportSection currentPod)

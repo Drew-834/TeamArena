@@ -19,13 +19,25 @@
         <p class="font-mono text-xs mt-1" style="color: var(--er-text-muted);">@FormatPeriodDisplay(_latestPeriod)</p>
     </div>
 
-    <div class="flex justify-center items-center gap-4 mb-6">
-        <button @onclick="BackupToDatabase" disabled="@_isSaving" class="elden-btn">
-            @(_isSaving ? "Saving..." : "Backup to Database")
+    <div class="flex flex-col items-center gap-2 mb-6">
+        <button type="button"
+                class="text-xs font-body tracking-wide opacity-80 hover:opacity-100 transition-opacity"
+                style="color: var(--er-gold-dim);"
+                @onclick="() => { _showPodActions = !_showPodActions; }"
+                aria-expanded="@_showPodActions">
+            @(_showPodActions ? "▼ Hide team actions" : "▸ Team data actions")
         </button>
-        <button @onclick="ToggleHistory" class="elden-btn">
-            @(_showHistory ? "Hide History" : "View History") (@_snapshots.Count)
-        </button>
+        @if (_showPodActions)
+        {
+            <div class="flex flex-wrap justify-center items-center gap-4">
+                <button @onclick="BackupToDatabase" disabled="@_isSaving" class="elden-btn">
+                    @(_isSaving ? "Saving..." : "Backup to Database")
+                </button>
+                <button @onclick="ToggleHistory" class="elden-btn">
+                    @(_showHistory ? "Hide History" : "View History") (@_snapshots.Count)
+                </button>
+            </div>
+        }
     </div>
 
     @if (!string.IsNullOrEmpty(_backupMessage))
@@ -142,9 +154,9 @@
                 var goal = GetMetricGoal(metricKey);
                 var weight = GetMetricWeight(metricKey);
 
-                <div class="elden-panel elden-panel-gold">
+                <div class="elden-panel elden-panel-gold elden-panel-spotlight">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="font-heading text-sm tracking-wide" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(metricKey)</h3>
+                        <h3 class="font-heading text-sm tracking-wide title-glow" style="color: var(--er-gold);">@TeamMember.GetMetricDisplayName(metricKey)</h3>
                         <span class="font-mono text-xs px-2 py-0.5" style="background: var(--er-bg-card); color: var(--er-text-dim); border: 1px solid var(--er-border);">@weight/32</span>
                     </div>
                     <div class="flex justify-between items-baseline mb-3">
@@ -196,7 +208,7 @@
                     bool isKpiWinner = _kpiWinnerByMember.TryGetValue(member.Name, out var wonKpi);
 
                     <div @key="member.Id"
-                         class="elden-character-card @(isKpiWinner ? "elden-border-gold" : "")"
+                         class="elden-character-card @(CompanyRankTiers.GetChampionCardTierClass(member.CompanyRank)) @(isKpiWinner ? "elden-border-gold" : "")"
                          style="width: 210px; min-width: 210px; height: 320px;"
                          @onclick="() => NavigateToMember(member.Id)">
                         <div class="card-bg-avatar">
@@ -237,16 +249,13 @@
 
                             <div>
                                 <div class="flex justify-between items-center text-xs mb-1 px-1">
-                                    @{
-                                        int level = member.CurrentLevel;
-                                        double xpInLevel = member.ExperienceTowardsNextLevel;
-                                        double progressPercent = member.ProgressToNextLevelPercentage;
-                                    }
-                                    <span class="font-heading font-bold" style="color: var(--er-purple);">Lv.@level</span>
-                                    <span class="font-mono" style="color: var(--er-text-dim);">@xpInLevel.ToString("F0")/@TeamMember.XpPerLevel.ToString("F0")</span>
+                                    <span class="font-heading font-bold" style="color: var(--er-purple);">Rank</span>
+                                    <span class="font-mono" style="color: var(--er-text-dim);">
+                                        @(member.CompanyRank.HasValue ? $"#{member.CompanyRank}" : "—")
+                                    </span>
                                 </div>
                                 <div class="elden-xp-bar mx-1">
-                                    <div class="elden-xp-fill" style="width: @progressPercent.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                                    <div class="elden-xp-fill" style="width: @CompanyRankTiers.GetRankBarPercent(member.CompanyRank).ToString("F1", CultureInfo.InvariantCulture)%;"></div>
                                 </div>
                             </div>
                         </div>
@@ -299,6 +308,7 @@
     private bool _isSaving;
     private string? _backupMessage;
     private bool _backupSuccess;
+    private bool _showPodActions;
     private bool _showHistory;
     private int? _expandedSnapshotId;
     private List<GameScoreboard.Models.PodSnapshot> _snapshots = new();
