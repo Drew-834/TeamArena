@@ -50,6 +50,7 @@ public class PodTrackerImportParserTests
         Assert.Equal("8.8", row.MetricValues["WarrantyAttach"]);
         Assert.Equal("68", row.MetricValues["PCBasket"]);
         Assert.Equal("0.05", row.MetricValues["Office"]);
+        Assert.Equal(2734, row.CompanyRank);
     }
 
     [Fact]

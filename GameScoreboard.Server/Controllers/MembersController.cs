@@ -99,6 +99,7 @@ public class MembersController : ControllerBase
         existing.Role = update.Role;
         existing.AvatarUrl = update.AvatarUrl;
         existing.TotalExperience = update.TotalExperience;
+        existing.CompanyRank = update.CompanyRank;
         existing.RphGoal = update.RphGoal;
         existing.AppEffGoal = update.AppEffGoal;
         existing.PmEffGoal = update.PmEffGoal;

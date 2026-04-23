@@ -210,27 +210,37 @@
             {
                 try
                 {
-                    // Check session timeout for the public/index gate only.
-                    var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", PublicAuthTimeSessionKey);
-                    if (!string.IsNullOrEmpty(authTime) && long.TryParse(authTime, out long timestamp))
-                    {
-                        var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - timestamp;
-                        if (elapsed > AuthTimeoutMs)
-                        {
-                            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", PublicAuthSessionKey);
-                            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", PublicAuthTimeSessionKey);
-                        }
-                    }
-
-                    var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", PublicAuthSessionKey);
-                    if (isAuth == "true")
+                    // Remembered on this device (no expiry; explicit clear only via site data).
+                    var remembered = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", PublicAuthSessionKey);
+                    if (remembered == "true")
                     {
                         _isAuthenticated = true;
                         _showPasswordModal = false;
                     }
                     else
                     {
-                        _showPasswordModal = true;
+                        // Short-lived session in sessionStorage
+                        var authTime = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", PublicAuthTimeSessionKey);
+                        if (!string.IsNullOrEmpty(authTime) && long.TryParse(authTime, out long timestamp))
+                        {
+                            var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - timestamp;
+                            if (elapsed > AuthTimeoutMs)
+                            {
+                                await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", PublicAuthSessionKey);
+                                await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", PublicAuthTimeSessionKey);
+                            }
+                        }
+
+                        var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", PublicAuthSessionKey);
+                        if (isAuth == "true")
+                        {
+                            _isAuthenticated = true;
+                            _showPasswordModal = false;
+                        }
+                        else
+                        {
+                            _showPasswordModal = true;
+                        }
                     }
                 }
                 catch
@@ -301,8 +311,10 @@
             _showTermsModal = true; // Show terms after successful auth
             try
             {
+                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
                 await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", PublicAuthSessionKey, "true");
-                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", PublicAuthTimeSessionKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", PublicAuthTimeSessionKey, now);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", PublicAuthSessionKey, "true");
             }
             catch { }
         }

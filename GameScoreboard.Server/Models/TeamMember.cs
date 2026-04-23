@@ -12,6 +12,8 @@ namespace GameScoreboard.Server.Models
         public string? AvatarUrl { get; set; }
         public double TotalExperience { get; set; }
 
+        public int? CompanyRank { get; set; }
+
         // Optional per-person pod metric targets (currently not mapped to the SQL schema)
         // These are ignored by EF Core on the server to avoid schema mismatches in production.
         [NotMapped]

@@ -391,6 +391,28 @@ html, body {
     border-left: 3px solid var(--er-gold-dim);
 }
 
+/* Soft radial spotlight (Team Arena / index hero) on metric panels */
+.elden-panel-spotlight {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.elden-panel-spotlight::before {
+    content: '';
+    position: absolute;
+    inset: -25% -8% 35% -8%;
+    background: radial-gradient(ellipse 85% 75% at 50% 0%, rgba(200, 169, 78, 0.24), transparent 60%);
+    opacity: 0.65;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.elden-panel-spotlight > * {
+    position: relative;
+    z-index: 1;
+}
+
 .elden-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--er-gold-dim), transparent);
@@ -532,9 +554,61 @@ html, body {
 
 .elden-xp-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--er-purple) 0%, #9a5aca 100%);
+    background: var(--er-purple);
     border-radius: 1px;
     transition: width 0.6s ease;
+}
+
+/* Tiers: CompanyRank from parser; 1-125 / 126-250 / 251-500; lower rank # = better. */
+@keyframes card-rank-breathe {
+    0%, 100% { box-shadow: 0 0 10px rgba(200, 169, 78, 0.22), 0 0 2px rgba(200, 169, 78, 0.35) inset; }
+    50% { box-shadow: 0 0 20px rgba(200, 169, 78, 0.42), 0 0 3px rgba(232, 210, 130, 0.45) inset; }
+}
+
+@keyframes card-rank-silver-breathe {
+    0%, 100% { box-shadow: 0 0 8px rgba(170, 185, 210, 0.35), 0 0 1px rgba(220, 230, 245, 0.25) inset; }
+    50% { box-shadow: 0 0 16px rgba(200, 210, 230, 0.5), 0 0 2px rgba(230, 240, 255, 0.35) inset; }
+}
+
+@keyframes rank-prism-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.elden-character-card--rank-gold {
+    border-color: rgba(200, 169, 78, 0.45) !important;
+    animation: card-rank-breathe 9s ease-in-out infinite;
+}
+
+.elden-character-card--rank-silver {
+    border-color: rgba(180, 195, 220, 0.45) !important;
+    animation: card-rank-silver-breathe 10s ease-in-out infinite;
+}
+
+.elden-character-card--rank-prismatic {
+    border-color: rgba(150, 200, 255, 0.5) !important;
+    /* Sheen is ::after only — avoids clashing with gold "breath" */
+}
+
+.elden-character-card--rank-prismatic::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: 2px;
+    opacity: 0.55;
+    background: linear-gradient(
+        125deg,
+        rgba(255, 80, 200, 0.18) 0%,
+        rgba(100, 220, 255, 0.16) 25%,
+        rgba(200, 255, 120, 0.12) 50%,
+        rgba(160, 100, 255, 0.2) 75%,
+        rgba(255, 200, 100, 0.14) 100%
+    );
+    background-size: 220% 220%;
+    animation: rank-prism-shift 10s ease-in-out infinite;
+    mix-blend-mode: color-dodge;
 }
 
 /* ===== LEADERBOARD / RANK ===== */
@@ -1178,6 +1252,10 @@ html, body {
     padding: 1.8rem;
 }
 
+.tracker-command-compact {
+    max-width: 100%;
+}
+
 .tracker-command-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(380px, 0.9fr);
@@ -1225,6 +1303,26 @@ html, body {
     font-size: 0.82rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    max-width: 32ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-command-pill--wrap {
+    max-width: min(100%, 22rem);
+    align-items: flex-start;
+}
+
+.tracker-command-pill-value--multiline {
+    text-transform: none;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
+    white-space: normal;
+    max-width: 28ch;
+    line-height: 1.35;
+    font-size: 0.78rem;
+    color: var(--er-gold);
 }
 
 .tracker-command-callouts {
