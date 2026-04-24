@@ -248,14 +248,17 @@
                             </div>
 
                             <div>
+                                @{
+                                    var rankBarPct = CompanyRankTiers.GetRankBarPercent(member.CompanyRank);
+                                }
                                 <div class="flex justify-between items-center text-xs mb-1 px-1">
                                     <span class="font-heading font-bold" style="color: var(--er-purple);">Rank</span>
                                     <span class="font-mono" style="color: var(--er-text-dim);">
                                         @(member.CompanyRank.HasValue ? $"#{member.CompanyRank}" : "—")
                                     </span>
                                 </div>
-                                <div class="elden-xp-bar mx-1">
-                                    <div class="elden-xp-fill" style="width: @CompanyRankTiers.GetRankBarPercent(member.CompanyRank).ToString("F1", CultureInfo.InvariantCulture)%;"></div>
+                                <div class="elden-xp-bar mx-1 @(rankBarPct <= 0 ? "elden-xp-bar--empty" : "")">
+                                    <div class="elden-xp-fill" style="width: @rankBarPct.ToString("F1", CultureInfo.InvariantCulture)%;"></div>
                                 </div>
                             </div>
                         </div>

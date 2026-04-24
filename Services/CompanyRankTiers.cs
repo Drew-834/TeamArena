@@ -13,12 +13,12 @@ public static class CompanyRankTiers
         _ => ""
     };
 
-    /// <summary>Bar fill 0-100: better rank (lower R) = fuller bar, capped to R≤500 for scale.</summary>
+    /// <summary>Bar fill 0-100: better rank (lower R) = fuller; empty for R &gt; 1250; R=1 full, R=1250 empty.</summary>
     public static double GetRankBarPercent(int? companyRank)
     {
         if (!companyRank.HasValue || companyRank.Value < 1) return 0;
         int r = companyRank.Value;
-        if (r > 500) return 0;
-        return 100.0 * (501.0 - r) / 500.0;
+        if (r > 1250) return 0;
+        return 100.0 * (1250.0 - r) / 1249.0;
     }
 }

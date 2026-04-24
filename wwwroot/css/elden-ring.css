@@ -559,6 +559,10 @@ html, body {
     transition: width 0.6s ease;
 }
 
+.elden-xp-bar--empty {
+    opacity: 0.45;
+}
+
 /* Tiers: CompanyRank from parser; 1-125 / 126-250 / 251-500; lower rank # = better. */
 @keyframes card-rank-breathe {
     0%, 100% { box-shadow: 0 0 10px rgba(200, 169, 78, 0.22), 0 0 2px rgba(200, 169, 78, 0.35) inset; }
@@ -2567,6 +2571,111 @@ html, body {
     border: 1px solid rgba(200, 169, 78, 0.3);
     color: var(--er-gold-bright);
     animation: goldShimmer 2.5s ease-in-out infinite;
+}
+
+/* Today’s Quest: click to copy */
+.quest-panel-clickable {
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
+}
+
+.quest-panel-clickable:hover {
+    box-shadow: 0 0 20px rgba(200, 169, 78, 0.12);
+}
+
+.quest-copy-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--er-gold-bright);
+    background: rgba(10, 10, 15, 0.92);
+    border: 1px solid rgba(200, 169, 78, 0.45);
+    box-shadow: 0 0 24px rgba(200, 169, 78, 0.25);
+    animation: questToastIn 0.25s ease-out;
+}
+
+@keyframes questToastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Champion / character page reveal (gacha-style) */
+.champion-reveal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(20, 18, 28, 0.97) 0%, rgba(0, 0, 0, 0.98) 70%);
+    pointer-events: all;
+}
+
+.champion-reveal-burst {
+    position: absolute;
+    inset: -20%;
+    background: conic-gradient(from 0deg, rgba(200, 169, 78, 0.15), transparent 25%, rgba(100, 80, 200, 0.08) 50%, transparent 75%, rgba(200, 169, 78, 0.12) 100%);
+    animation: championRevealSpin 10s linear infinite;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+@keyframes championRevealSpin {
+    to { transform: rotate(360deg); }
+}
+
+.champion-reveal-card {
+    position: relative;
+    z-index: 1;
+    width: min(20rem, 86vw);
+    min-height: 12rem;
+    padding: 2rem 1.5rem 2.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(200, 169, 78, 0.35);
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(28, 26, 36, 0.95) 0%, rgba(8, 8, 12, 0.92) 100%);
+    box-shadow:
+        0 0 40px rgba(200, 169, 78, 0.2),
+        inset 0 0 60px rgba(0, 0, 0, 0.5);
+    animation: championRevealCardPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes championRevealCardPulse {
+    0%, 100% { transform: scale(1) translateY(0); box-shadow: 0 0 30px rgba(200, 169, 78, 0.18), inset 0 0 50px rgba(0, 0, 0, 0.5); }
+    50% { transform: scale(1.02) translateY(-4px); box-shadow: 0 0 50px rgba(200, 169, 78, 0.35), inset 0 0 50px rgba(0, 0, 0, 0.45); }
+}
+
+.champion-reveal-rune {
+    margin-bottom: 0.75rem;
+}
+
+.champion-reveal-kicker {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--er-gold-dim);
+    margin: 0 0 0.5rem 0;
+}
+
+.champion-reveal-title {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--er-gold-bright);
+    text-shadow: 0 0 20px rgba(200, 169, 78, 0.35);
+    margin: 0;
 }
 
 #elden-particles-canvas {

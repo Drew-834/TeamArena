@@ -5,6 +5,8 @@
 @using GameScoreboard.Services
 @using GameScoreboard.Services.Tracking
 @using GameScoreboard.Data
+@using System.Text
+@using Microsoft.AspNetCore.Components.Web
 @inject IDataService DataService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -13,16 +15,30 @@
    across CharacterDetails, DepartmentOverview, and WeeklyTracker.
    TODO: Extract to a shared utility class in Services/ *@
 
-<div class="min-h-screen px-4 py-8" style="background-color: var(--er-bg-primary); color: var(--er-text);">
-    <div class="container mx-auto max-w-6xl">
-        @if (_teamMember == null)
+<div class="min-h-screen px-4 py-8 character-details-root" style="background-color: var(--er-bg-primary); color: var(--er-text); position: relative;">
+    @if (_questCopied)
+    {
+        <div class="quest-copy-toast" role="status">Copied!</div>
+    }
+    @if (_revealActive)
+    {
+        <div class="champion-reveal-overlay" aria-busy="true" aria-label="Loading champion">
+            <div class="champion-reveal-burst"></div>
+            <div class="champion-reveal-card">
+                <div class="champion-reveal-rune elden-loading-rune"></div>
+                <p class="champion-reveal-kicker">Champion Ledger</p>
+                <p class="champion-reveal-title">Sealing the wax…</p>
+            </div>
+        </div>
+    }
+    <div class="container mx-auto max-w-6xl" aria-hidden="@_revealActive">
+        @if (!_revealActive && _teamMember == null)
         {
             <div class="flex flex-col items-center justify-center mt-20">
-                <div class="elden-loading-rune mb-4"></div>
-                <p class="font-heading text-sm" style="color: var(--er-gold-dim);">Loading champion data...</p>
+                <p class="font-heading text-sm" style="color: var(--er-gold-dim);">Champion not found or could not be loaded.</p>
             </div>
         }
-        else
+        @if (!_revealActive && _teamMember != null)
         {
             <button @onclick="NavigateBack" class="elden-btn mb-6">
                 &larr; @(IsPodMember() ? "Back to Team" : "Back to Champions")
@@ -139,7 +155,11 @@
 
                         @if (_todayShiftGoals != null)
                         {
-                            <div class="mb-4 elden-panel" style="border-color: @(_todayShiftGoals.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");">
+                            <div class="mb-4 elden-panel quest-panel-clickable" style="border-color: @(_todayShiftGoals.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");"
+                                 role="button"
+                                 tabindex="0"
+                                 @onclick="CopyTodayQuestToClipboard"
+                                 @onkeydown="OnQuestPanelKeydown">
                                 <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
                                 @if (_todayShiftGoals.AnyBuffed)
                                 {
@@ -266,51 +286,72 @@
     private List<MetricRecord> _allLatestPeriodDeptRecords = new(); 
     
     // Field to hold the generated data for the radar chart
-    private object? _radarChartData = null; 
-    
+    private object? _radarChartData = null;
+
+    private bool _revealActive = true;
+    private bool _scrollAfterReveal;
+    private bool _questCopied;
+
+    private const int MinChampionRevealMs = 1800;
+
     protected override async Task OnInitializedAsync()
+    {
+        var loadStart = DateTime.UtcNow;
+        try
+        {
+            await LoadChampionDataCoreAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"CharacterDetails load: {ex.Message}");
+            _teamMember = null;
+        }
+
+        if (_teamMember == null)
+        {
+            _revealActive = false;
+        }
+        else
+        {
+            var elapsed = (DateTime.UtcNow - loadStart).TotalMilliseconds;
+            if (elapsed < MinChampionRevealMs)
+                await Task.Delay((int)(MinChampionRevealMs - elapsed));
+            _revealActive = false;
+            _scrollAfterReveal = true;
+        }
+    }
+
+    private async Task LoadChampionDataCoreAsync()
     {
         // 1. Fetch the basic team member info (includes TotalExperience)
         _teamMember = await DataService.GetTeamMemberByIdAsync(Id);
-        
-        if (_teamMember != null)
+
+        if (_teamMember == null) return;
+
+        _teamMember.AvatarUrl = AvatarResolver.Resolve(_teamMember.Name, _teamMember.AvatarUrl);
+
+        // 2. Fetch all metric records for this member across all periods
+        var allMemberRecords = await DataService.GetMetricRecordsAsync(memberId: Id);
+
+        // 3. Determine the latest period
+        _latestPeriod = GetLatestPeriod(allMemberRecords.Select(r => r.Period).Distinct());
+
+        if (_latestPeriod != null)
         {
-            _teamMember.AvatarUrl = AvatarResolver.Resolve(_teamMember.Name, _teamMember.AvatarUrl);
-
-            // 2. Fetch all metric records for this member across all periods
-            var allMemberRecords = await DataService.GetMetricRecordsAsync(memberId: Id);
-
-            // 3. Determine the latest period
-            // (Requires a helper to parse/compare period strings, assuming format like "EOM-MMM yyyy")
-            _latestPeriod = GetLatestPeriod(allMemberRecords.Select(r => r.Period).Distinct());
-
-            if (_latestPeriod != null)
-            {
-                 // 4. Filter records for the latest period
-                _latestMetricRecords = allMemberRecords.Where(r => r.Period == _latestPeriod).ToList();
-                // 5. Create a dictionary for easier lookup in UI (similar to old GetAllMetrics)
-                _latestMetricsDict = CreateMetricsDictionary(_latestMetricRecords);
-                
-                // Calculate radar chart data AFTER metrics dict is populated
-                _radarChartData = GenerateRadarChartData(); 
-            }
-            else
-            {
-                 _latestMetricRecords.Clear();
-                 _latestMetricsDict.Clear();
-                 _radarChartData = null; // Clear chart data if no period data
-            }
-
-            // 6. Fetch all team members for context (ranking, averages)
-            _allTeamMembers = await DataService.GetTeamMembersAsync(); 
-            // 7. Recalculate averages based on the LATEST period data for the relevant department
-            await CalculateTeamAveragesForLatestPeriod(); 
-
-            // 8. Compute today's shift goals for pods
-            ComputeTodayShiftGoals();
+            _latestMetricRecords = allMemberRecords.Where(r => r.Period == _latestPeriod).ToList();
+            _latestMetricsDict = CreateMetricsDictionary(_latestMetricRecords);
+            _radarChartData = GenerateRadarChartData();
         }
-        
-        StateHasChanged();
+        else
+        {
+            _latestMetricRecords.Clear();
+            _latestMetricsDict.Clear();
+            _radarChartData = null;
+        }
+
+        _allTeamMembers = await DataService.GetTeamMembersAsync();
+        await CalculateTeamAveragesForLatestPeriod();
+        ComputeTodayShiftGoals();
     }
 
     // --- Helper methods for Period and Metric Dictionary --- 
@@ -445,11 +486,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _teamMember != null)
+        if (_scrollAfterReveal && _teamMember != null)
         {
+            _scrollAfterReveal = false;
             try
             {
-                await Task.Delay(300);
+                await Task.Delay(200);
                 await JSRuntime.InvokeVoidAsync("scrollToCenter", detailsContainer);
             }
             catch (Exception ex)
@@ -1055,6 +1097,83 @@
         if (!_latestMetricsDict.TryGetValue(metricKey, out var raw) || raw == null)
             return "  Off-track";
         return "  Off-track — " + FormatMetricValue(metricKey, raw);
+    }
+
+    private string GetTodayQuestCopyText()
+    {
+        if (_todayShiftGoals == null) return string.Empty;
+        var g = _todayShiftGoals;
+        var en = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        var sb = new StringBuilder();
+        sb.AppendLine("Today's Quest (8-Hour Shift)");
+        if (g.AnyBuffed)
+            sb.AppendLine("Off-track rows show today's target; red tags show your current performance.");
+        else
+            sb.AppendLine("On track! Keep it up.");
+        sb.AppendLine();
+        sb.Append(g.RphBuffed ? "! " : string.Empty);
+        sb.Append("RPH Goal: ");
+        sb.Append(g.RphGoal.ToString("C0", en));
+        if (g.RphBuffed) sb.Append(GetQuestOffTrackWithCurrent("RPH"));
+        sb.AppendLine();
+        if (g.AppGoal.HasValue)
+        {
+            sb.Append(g.AppBuffed ? "! " : string.Empty);
+            sb.Append("App Goal: ");
+            sb.Append(g.AppGoal.Value.ToString("N0", en));
+            sb.Append(" apps");
+            if (g.AppBuffed) sb.Append(GetQuestOffTrackWithCurrent("AppEff"));
+            sb.AppendLine();
+        }
+        if (g.PmGoal.HasValue)
+        {
+            sb.Append(g.PmBuffed ? "! " : string.Empty);
+            sb.Append("PM Goal: ");
+            sb.Append(g.PmGoal.Value.ToString("N0", en));
+            sb.Append(" PMs");
+            if (g.PmBuffed) sb.Append(GetQuestOffTrackWithCurrent("PMEff"));
+            sb.AppendLine();
+        }
+        if (g.WarrantyAttachGoalPercent.HasValue)
+        {
+            sb.Append(g.WarrantyBuffed ? "! " : string.Empty);
+            sb.Append("Warranty Attach: ");
+            sb.Append(g.WarrantyAttachGoalPercent.Value.ToString("F1", en));
+            sb.Append("%");
+            if (g.WarrantyBuffed) sb.Append(GetQuestOffTrackWithCurrent("WarrantyAttach"));
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    private async Task CopyTodayQuestToClipboard()
+    {
+        if (_todayShiftGoals == null) return;
+        var text = GetTodayQuestCopyText();
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            var ok = await JSRuntime.InvokeAsync<bool>("eldenWriteClipboard", text);
+            if (ok)
+            {
+                _questCopied = true;
+                StateHasChanged();
+                await Task.Delay(1400);
+                _questCopied = false;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Copy quest: {ex.Message}");
+        }
+    }
+
+    private async Task OnQuestPanelKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
+        {
+            await CopyTodayQuestToClipboard();
+        }
     }
 
     private void ComputeTodayShiftGoals()

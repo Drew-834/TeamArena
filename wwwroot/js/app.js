@@ -282,3 +282,17 @@ window.scrollToCenter = (element) => {
     if (!element) return;
     element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 };
+
+/** Clipboard (Today's Quest copy); returns true on success. */
+window.eldenWriteClipboard = async function (text) {
+    if (!text) return false;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+    } catch (e) {
+        console.warn('[eldenWriteClipboard]', e);
+    }
+    return false;
+};
