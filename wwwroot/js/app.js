@@ -283,6 +283,11 @@ window.scrollToCenter = (element) => {
     element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 };
 
+/** Instant scroll to top; use on character page so route chrome + layout do not leave the viewport offset before the reveal. */
+window.eldenScrollToTop = () => {
+    window.scrollTo(0, 0);
+};
+
 /** Clipboard (Today's Quest copy); returns true on success. */
 window.eldenWriteClipboard = async function (text) {
     if (!text) return false;

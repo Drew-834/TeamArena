@@ -349,7 +349,12 @@
         UpdateRouteChrome(e.Location);
         _routeKey = $"route-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
 
-        if (_isAuthenticated)
+        var rel = NavigationManager.ToBaseRelativePath(e.Location);
+        rel = rel.Split('?', '#')[0].Trim('/');
+        var firstSeg = rel.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+        var skipRouteStageTransition = firstSeg.Equals("character", StringComparison.OrdinalIgnoreCase);
+
+        if (_isAuthenticated && !skipRouteStageTransition)
         {
             _isRouteTransitionActive = true;
             await InvokeAsync(StateHasChanged);

@@ -2661,6 +2661,40 @@ html, body {
     to { opacity: 1; }
 }
 
+/* Character dossier: mobile = hero → quest → radar → metrics → stats; md+ = two columns (default pod layout) */
+.champion-ledger-core {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .champion-ledger-core {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        column-gap: 1.5rem;
+        row-gap: 1.5rem;
+        align-items: start;
+        grid-template-areas:
+            "ledgerHero ledgerQuest"
+            "ledgerMetrics ledgerRadar"
+            "ledgerMetrics ledgerStats";
+    }
+
+    .champion-ledger-hero { grid-area: ledgerHero; }
+    .champion-ledger-quest { grid-area: ledgerQuest; }
+    .champion-ledger-radar { grid-area: ledgerRadar; }
+    .champion-ledger-metrics { grid-area: ledgerMetrics; }
+    .champion-ledger-stats { grid-area: ledgerStats; }
+
+    /* Non-pod: no quest row — top row is hero | radar (matches former flex column: radar under empty quest slot) */
+    .champion-ledger-core--no-quest {
+        grid-template-areas:
+            "ledgerHero ledgerRadar"
+            "ledgerMetrics ledgerStats";
+    }
+}
+
 .champion-reveal-burst {
     position: absolute;
     z-index: 0;
