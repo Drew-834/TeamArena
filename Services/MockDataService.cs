@@ -359,7 +359,7 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 120, Period = podPeriod, MetricKey = "AccAttach", Value = "8.3" }
                     }},
 
-                // Pod: Drew's Crew-Computing
+                // Pod: Drew's Crew-Computing (PC — PCBasket + Office on character card; mock was missing like live imports without these keys)
                 new TeamMember { Id = 130, Name = "Cesar Perez", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/gustavo1.png",
                     MetricRecords = new List<MetricRecord> {
                         new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "RPH", Value = "780" },
@@ -367,7 +367,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "PMEff", Value = "10275" },
                         new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.4" },
-                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "AccAttach", Value = "28.9" }
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "AccAttach", Value = "28.9" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "PCBasket", Value = "98.25" },
+                        new MetricRecord { TeamMemberId = 130, Period = podPeriod, MetricKey = "Office", Value = "19.0" }
                     }},
                 new TeamMember { Id = 131, Name = "Joao Aguiar", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ishack2.png",
                     MetricRecords = new List<MetricRecord> {
@@ -376,7 +378,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "PMEff", Value = "5851" },
                         new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "Surveys", Value = "4.7" },
                         new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "11.8" },
-                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "AccAttach", Value = "27.6" }
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "AccAttach", Value = "27.6" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "PCBasket", Value = "102.4" },
+                        new MetricRecord { TeamMemberId = 131, Period = podPeriod, MetricKey = "Office", Value = "17.4" }
                     }},
                 new TeamMember { Id = 132, Name = "Seyquan Williams", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/jon1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -385,7 +389,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "PMEff", Value = "4638" },
                         new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "0.0" },
-                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "AccAttach", Value = "15.6" }
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "AccAttach", Value = "15.6" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "PCBasket", Value = "128.50" },
+                        new MetricRecord { TeamMemberId = 132, Period = podPeriod, MetricKey = "Office", Value = "16.2" }
                     }},
                 new TeamMember { Id = 133, Name = "Liz Tejeda Moras", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/kla1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -394,7 +400,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "PMEff", Value = "1283" },
                         new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
                         new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "16.7" },
-                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" }
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "PCBasket", Value = "95.00" },
+                        new MetricRecord { TeamMemberId = 133, Period = podPeriod, MetricKey = "Office", Value = "22.1" }
                     }},
                 new TeamMember { Id = 134, Name = "Joao Richa", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ruben1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -403,7 +411,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "PMEff", Value = "1802" },
                         new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.5" },
-                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "AccAttach", Value = "17.2" }
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "AccAttach", Value = "17.2" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "PCBasket", Value = "110.75" },
+                        new MetricRecord { TeamMemberId = 134, Period = podPeriod, MetricKey = "Office", Value = "20.3" }
                     }},
                 new TeamMember { Id = 135, Name = "Victor Richa", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/drew1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -412,7 +422,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "PMEff", Value = "1501" },
                         new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
                         new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.0" },
-                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "AccAttach", Value = "19.4" }
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "AccAttach", Value = "19.4" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "PCBasket", Value = "118.00" },
+                        new MetricRecord { TeamMemberId = 135, Period = podPeriod, MetricKey = "Office", Value = "18.7" }
                     }},
                 new TeamMember { Id = 136, Name = "DJ Skelton", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/vinny2.png",
                     MetricRecords = new List<MetricRecord> {
@@ -421,7 +433,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "PMEff", Value = "35338" },
                         new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
                         new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "1.4" },
-                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "AccAttach", Value = "20.3" }
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "AccAttach", Value = "20.3" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "PCBasket", Value = "88.50" },
+                        new MetricRecord { TeamMemberId = 136, Period = podPeriod, MetricKey = "Office", Value = "14.8" }
                     }},
                 new TeamMember { Id = 137, Name = "Jeremy Morales", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/adam1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -430,7 +444,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "PMEff", Value = "2553" },
                         new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
                         new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "12.1" },
-                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "AccAttach", Value = "23.1" }
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "AccAttach", Value = "23.1" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "PCBasket", Value = "92.00" },
+                        new MetricRecord { TeamMemberId = 137, Period = podPeriod, MetricKey = "Office", Value = "21.5" }
                     }},
                 new TeamMember { Id = 138, Name = "Yerik Palacios", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/matthew1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -439,7 +455,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "PMEff", Value = "1609" },
                         new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.2" },
-                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "AccAttach", Value = "14.0" }
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "AccAttach", Value = "14.0" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "PCBasket", Value = "104.25" },
+                        new MetricRecord { TeamMemberId = 138, Period = podPeriod, MetricKey = "Office", Value = "19.4" }
                     }},
                 new TeamMember { Id = 139, Name = "Dakota French", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/gustavo1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -448,7 +466,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "PMEff", Value = "5707" },
                         new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.9" },
-                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" }
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "AccAttach", Value = "17.4" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "PCBasket", Value = "116.00" },
+                        new MetricRecord { TeamMemberId = 139, Period = podPeriod, MetricKey = "Office", Value = "18.0" }
                     }},
                 new TeamMember { Id = 140, Name = "Jesus Nessy", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ishack2.png",
                     MetricRecords = new List<MetricRecord> {
@@ -457,7 +477,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "PMEff", Value = "3639" },
                         new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "5.2" },
-                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "AccAttach", Value = "15.7" }
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "AccAttach", Value = "15.7" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "PCBasket", Value = "107.50" },
+                        new MetricRecord { TeamMemberId = 140, Period = podPeriod, MetricKey = "Office", Value = "17.2" }
                     }},
                 new TeamMember { Id = 141, Name = "Francisco Ramirez", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/ruben1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -466,7 +488,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "PMEff", Value = "3611" },
                         new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "Surveys", Value = "5" },
                         new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "6.6" },
-                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "AccAttach", Value = "19.5" }
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "AccAttach", Value = "19.5" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "PCBasket", Value = "112.00" },
+                        new MetricRecord { TeamMemberId = 141, Period = podPeriod, MetricKey = "Office", Value = "20.0" }
                     }},
                 new TeamMember { Id = 142, Name = "Dillan Rawlings", Department = "Drews Crew-Computing", AvatarUrl = "images/avatars/jon1.png",
                     MetricRecords = new List<MetricRecord> {
@@ -475,7 +499,9 @@ namespace GameScoreboard.Services
                         new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "PMEff", Value = "23971" },
                         new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "Surveys", Value = "0" },
                         new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "WarrantyAttach", Value = "4.9" },
-                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "AccAttach", Value = "16.3" }
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "AccAttach", Value = "16.3" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "PCBasket", Value = "79.00" },
+                        new MetricRecord { TeamMemberId = 142, Period = podPeriod, MetricKey = "Office", Value = "15.1" }
                     }},
 
                 // Pod: Front End

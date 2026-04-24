@@ -2620,8 +2620,50 @@ html, body {
     pointer-events: all;
 }
 
+.champion-reveal-curtain-in {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: #000;
+    pointer-events: none;
+    animation: championRevealFromBlack 1.2s var(--er-ease-soft) forwards;
+}
+
+@keyframes championRevealFromBlack {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.champion-reveal-curtain-exit {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: #000;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.champion-reveal-curtain-exit.is-active {
+    animation: championRevealToBlack 1s var(--er-ease-soft) forwards;
+}
+
+@keyframes championRevealToBlack {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.champion-ledger-wrap {
+    animation: championLedgerMount 0.95s var(--er-ease-soft) forwards;
+    opacity: 0;
+}
+
+@keyframes championLedgerMount {
+    to { opacity: 1; }
+}
+
 .champion-reveal-burst {
     position: absolute;
+    z-index: 0;
     inset: -20%;
     background: conic-gradient(from 0deg, rgba(200, 169, 78, 0.15), transparent 25%, rgba(100, 80, 200, 0.08) 50%, transparent 75%, rgba(200, 169, 78, 0.12) 100%);
     animation: championRevealSpin 10s linear infinite;

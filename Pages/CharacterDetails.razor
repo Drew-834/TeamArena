@@ -22,8 +22,11 @@
     }
     @if (_revealActive)
     {
-        <div class="champion-reveal-overlay" aria-busy="true" aria-label="Loading champion">
+        <div class="champion-reveal-overlay"
+             aria-busy="true" aria-label="Loading champion">
+            <div class="champion-reveal-curtain-in" aria-hidden="true"></div>
             <div class="champion-reveal-burst"></div>
+            <div class="champion-reveal-curtain-exit @(_revealExiting ? "is-active" : null)" aria-hidden="true"></div>
             <div class="champion-reveal-card">
                 <div class="champion-reveal-rune elden-loading-rune"></div>
                 <p class="champion-reveal-kicker">Champion Ledger</p>
@@ -34,17 +37,20 @@
     <div class="container mx-auto max-w-6xl" aria-hidden="@_revealActive">
         @if (!_revealActive && _teamMember == null)
         {
+            <div class="champion-ledger-wrap">
             <div class="flex flex-col items-center justify-center mt-20">
                 <p class="font-heading text-sm" style="color: var(--er-gold-dim);">Champion not found or could not be loaded.</p>
+            </div>
             </div>
         }
         @if (!_revealActive && _teamMember != null)
         {
+            <div class="champion-ledger-wrap">
             <button @onclick="NavigateBack" class="elden-btn mb-6">
                 &larr; @(IsPodMember() ? "Back to Team" : "Back to Champions")
             </button>
 
-            <div @ref="detailsContainer" id="character-details-container"
+            <div id="character-details-container"
                  class="elden-card elden-card-ornate overflow-hidden relative" style="border-color: var(--er-border-gold);">
                 <div class="absolute top-0 right-0 w-1/2 h-full opacity-10 z-0">
                     @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
@@ -264,6 +270,7 @@
                     </div>
                 </div>
             </div>
+            </div>
         }
     </div>
 </div>
@@ -275,7 +282,6 @@
     private TeamMember? _teamMember; 
     private List<TeamMember> _allTeamMembers = new List<TeamMember>();
     private Dictionary<string, double> _teamAverages = new Dictionary<string, double>();
-    private ElementReference detailsContainer;
     
     // New fields for period-specific data
     private string? _latestPeriod = null;
@@ -289,10 +295,11 @@
     private object? _radarChartData = null;
 
     private bool _revealActive = true;
-    private bool _scrollAfterReveal;
+    private bool _revealExiting;
     private bool _questCopied;
 
     private const int MinChampionRevealMs = 1800;
+    private const int RevealExitFadeMs = 1000;
 
     protected override async Task OnInitializedAsync()
     {
@@ -316,8 +323,11 @@
             var elapsed = (DateTime.UtcNow - loadStart).TotalMilliseconds;
             if (elapsed < MinChampionRevealMs)
                 await Task.Delay((int)(MinChampionRevealMs - elapsed));
+            _revealExiting = true;
+            StateHasChanged();
+            await Task.Delay(RevealExitFadeMs);
+            _revealExiting = false;
             _revealActive = false;
-            _scrollAfterReveal = true;
         }
     }
 
@@ -484,23 +494,6 @@
     // TODO: Update UI loop and helper methods (IsBestInMetric, IsWorstInMetric, GetMetricDoubleValue etc.)
     // to use _latestMetricsDict or _latestMetricRecords instead of _teamMember.MetricRecords
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_scrollAfterReveal && _teamMember != null)
-        {
-            _scrollAfterReveal = false;
-            try
-            {
-                await Task.Delay(200);
-                await JSRuntime.InvokeVoidAsync("scrollToCenter", detailsContainer);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error scrolling: {ex.Message}");
-            }
-        }
-    }
-    
     // private void CalculateTeamAverages() // Original method removed/replaced
     // { ... } 
     
@@ -1099,18 +1092,17 @@
         return "  Off-track — " + FormatMetricValue(metricKey, raw);
     }
 
+    private static IReadOnlyList<string> GetQuestCopySupplementKpis(string? department) =>
+        PodMetricCatalog.IsHTPod(department)
+            ? (IReadOnlyList<string>)new[] { "HTBasket", "ServAttach" }
+            : new[] { "PCBasket", "Office" };
+
     private string GetTodayQuestCopyText()
     {
-        if (_todayShiftGoals == null) return string.Empty;
+        if (_todayShiftGoals == null || _teamMember == null) return string.Empty;
         var g = _todayShiftGoals;
         var en = System.Globalization.CultureInfo.GetCultureInfo("en-US");
         var sb = new StringBuilder();
-        sb.AppendLine("Today's Quest (8-Hour Shift)");
-        if (g.AnyBuffed)
-            sb.AppendLine("Off-track rows show today's target; red tags show your current performance.");
-        else
-            sb.AppendLine("On track! Keep it up.");
-        sb.AppendLine();
         sb.Append(g.RphBuffed ? "! " : string.Empty);
         sb.Append("RPH Goal: ");
         sb.Append(g.RphGoal.ToString("C0", en));
@@ -1141,6 +1133,16 @@
             sb.Append(g.WarrantyAttachGoalPercent.Value.ToString("F1", en));
             sb.Append("%");
             if (g.WarrantyBuffed) sb.Append(GetQuestOffTrackWithCurrent("WarrantyAttach"));
+            sb.AppendLine();
+        }
+        sb.AppendLine();
+        sb.AppendLine("Other KPIs (latest period):");
+        foreach (var key in GetQuestCopySupplementKpis(_teamMember.Department))
+        {
+            var d = GetMetricDoubleValue(key);
+            sb.Append(TeamMember.GetMetricDisplayName(key));
+            sb.Append(": ");
+            sb.AppendLine(d.HasValue ? FormatMetricValue(key, d.Value) : "N/A");
         }
         return sb.ToString().TrimEnd();
     }
