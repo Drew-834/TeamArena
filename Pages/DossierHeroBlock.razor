@@ -1,0 +1,33 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+
+@{
+    var m = Page!.DossierMember!;
+    var all = Page.DossierAllTeamMembers;
+}
+<div>
+    <div class="flex items-center">
+        <div class="mr-4">
+            <div class="rounded-full overflow-hidden w-16 h-16" style="border: 2px solid var(--er-gold-dim); background: var(--er-bg-card);">
+                @if (!string.IsNullOrEmpty(m.AvatarUrl))
+                {
+                    <img src="@m.AvatarUrl" alt="@m.Name" class="w-full h-full object-cover" />
+                }
+                else
+                {
+                    <div class="w-full h-full flex items-center justify-center font-heading text-2xl font-bold" style="color: var(--er-gold-dim);">
+                        @m.Name[0]
+                    </div>
+                }
+            </div>
+        </div>
+        <div>
+            <h1 class="font-heading text-3xl" style="color: var(--er-text);">@m.Name</h1>
+            <p class="font-body text-lg italic" style="color: var(--er-gold-dim);">@m.GetChampionTitle(all)</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}

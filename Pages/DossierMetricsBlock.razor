@@ -1,0 +1,83 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+
+@{
+    var p = Page!;
+    var period = p.DossierLatestPeriod;
+}
+<div>
+    <h2 class="font-heading text-xl mb-4 pb-2" style="color: var(--er-gold); border-bottom: 1px solid var(--er-gold-dark);">
+        Performance Metrics <span class="font-mono text-sm" style="color: var(--er-text-dim);">(@period)</span>
+    </h2>
+    <div class="space-y-4">
+        @foreach (var metric in p.GetVisibleMetrics().OrderBy(x => TeamMember.GetMetricDisplayName(x.Key)))
+        {
+            var numericValue = p.GetMetricDoubleValue(metric.Key);
+
+            @if (numericValue.HasValue)
+            {
+                <div class="elden-panel elden-panel-gold" style="border-left-color: @p.GetMetricBorderColor(metric.Key, numericValue);">
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <div class="font-heading text-sm tracking-wide" style="color: var(--er-text);">
+                                @TeamMember.GetMetricDisplayName(metric.Key)
+                                @if (p.IsTopPerformer(metric.Key))
+                                {
+                                    <span class="gold-brilliance" title="Top performer">&#x2726;</span>
+                                }
+                            </div>
+                            <div class="font-body text-xs" style="color: var(--er-text-dim);">
+                                Team Avg: @p.FormatMetricValue(metric.Key, p.GetTeamAverage(metric.Key))
+                                @if (p.IsMetricOffTrack(metric.Key, numericValue))
+                                {
+                                    <span class="ml-1 font-bold" style="color: var(--er-orange, #c47830);" title="Off track from target">&#x26A0;</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="font-mono text-lg font-bold" style="color: @p.GetMetricValueColor(metric.Key, numericValue);">
+                            @p.FormatMetricValue(metric.Key, numericValue)
+                        </div>
+                    </div>
+
+                    <div class="mt-2 elden-progress relative" style="height: 10px;">
+                        <div class="elden-progress-bar @p.GetMetricBarCssClass(metric.Key, numericValue)"
+                             style="width: @p.GetMetricBarWidth(metric.Key, numericValue)"></div>
+                        <div class="absolute top-0 bottom-0 w-0.5 opacity-70"
+                             style="left: @p.GetAverageMarkerPosition(metric.Key); background: var(--er-text);"></div>
+                    </div>
+
+                    <div class="mt-1 flex justify-between font-mono text-xs" style="color: var(--er-text-dim);">
+                        @if (CharacterDetails.IsLowerBetterMetric(metric.Key))
+                        {
+                            <span>Best: @p.FormatMetricValue(metric.Key, p.GetMetricMinValue(metric.Key))</span>
+                            <span>Score: @p.GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                            <span>Focus: @p.FormatMetricValue(metric.Key, p.GetMetricMaxValue(metric.Key))</span>
+                        }
+                        else
+                        {
+                            <span>Min: @p.FormatMetricValue(metric.Key, p.GetMetricMinValue(metric.Key))</span>
+                            <span>Score: @p.GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
+                            <span>Max: @{ var displayMax = p.GetDisplayMaxValue(metric.Key); } @p.FormatMetricValue(metric.Key, displayMax)</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                if (metric.Key.Equals("MVP", StringComparison.OrdinalIgnoreCase) && metric.Value != null)
+                {
+                    <div class="elden-panel elden-panel-gold">
+                        <div class="flex justify-between items-center">
+                            <span class="font-heading text-sm" style="color: var(--er-text);">@TeamMember.GetMetricDisplayName(metric.Key)</span>
+                            <span class="font-mono text-lg font-bold" style="color: var(--er-gold);">@p.FormatMetricValue(metric.Key, metric.Value)</span>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}

@@ -6,11 +6,11 @@
     {
         <svg width="@Width" height="@Height" viewBox="0 0 250 250" class="radar-chart">
             <defs>
-                <radialGradient id="goldFill" cx="50%" cy="50%" r="50%">
+                <radialGradient id="@GoldFillId" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stop-color="rgba(200, 169, 78, 0.25)" />
                     <stop offset="100%" stop-color="rgba(200, 169, 78, 0.05)" />
                 </radialGradient>
-                <filter id="goldGlow">
+                <filter id="@GoldGlowId">
                     <feGaussianBlur stdDeviation="2" result="blur" />
                     <feMerge>
                         <feMergeNode in="blur" />
@@ -68,10 +68,10 @@
 
             <!-- Data polygon with golden gradient -->
             <polygon points="@GetDataPoints()"
-                     fill="url(#goldFill)"
+                     fill="@FillGradientUrl"
                      stroke="#c8a94e"
                      stroke-width="1.5"
-                     filter="url(#goldGlow)" />
+                     filter="@GlowFilterUrl" />
 
             <!-- Data points as golden orbs -->
             @for (int i = 0; i < Labels.Count; i++)
@@ -107,6 +107,10 @@
     [Parameter] public List<double>? NormalizedData { get; set; }
 
     private string ChartId = $"radar-chart-{Guid.NewGuid()}";
+    private string GoldFillId => ChartId + "-goldFill";
+    private string GoldGlowId => ChartId + "-goldGlow";
+    private string FillGradientUrl => $"url(#{GoldFillId})";
+    private string GlowFilterUrl => $"url(#{GoldGlowId})";
     private double RadiusScaleFactor => 100.0 / 100.0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

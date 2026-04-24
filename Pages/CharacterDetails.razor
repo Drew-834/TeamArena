@@ -55,218 +55,10 @@
                     }
                 </div>
 
-                <div class="elden-corners-inner p-6 champion-ledger-core relative z-10 @(IsPodMember() ? "" : "champion-ledger-core--no-quest")">
-                    <div class="champion-ledger-hero">
-                        <div class="flex items-center">
-                            <div class="mr-4">
-                                <div class="rounded-full overflow-hidden w-16 h-16" style="border: 2px solid var(--er-gold-dim); background: var(--er-bg-card);">
-                                    @if (!string.IsNullOrEmpty(_teamMember.AvatarUrl))
-                                    {
-                                        <img src="@_teamMember.AvatarUrl" alt="@_teamMember.Name" class="w-full h-full object-cover" />
-                                    }
-                                    else
-                                    {
-                                        <div class="w-full h-full flex items-center justify-center font-heading text-2xl font-bold" style="color: var(--er-gold-dim);">
-                                            @_teamMember.Name[0]
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                            <div>
-                                <h1 class="font-heading text-3xl" style="color: var(--er-text);">@_teamMember.Name</h1>
-                                <p class="font-body text-lg italic" style="color: var(--er-gold-dim);">@_teamMember.GetChampionTitle(_allTeamMembers)</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (IsPodMember())
-                    {
-                    <div class="champion-ledger-quest">
-                        @if (_todayShiftGoals != null)
-                        {
-                            <div class="mb-4 elden-panel quest-panel-clickable" style="border-color: @(_todayShiftGoals.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");"
-                                 role="button"
-                                 tabindex="0"
-                                 @onclick="CopyTodayQuestToClipboard"
-                                 @onkeydown="OnQuestPanelKeydown">
-                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
-                                @if (_todayShiftGoals.AnyBuffed)
-                                {
-                                    <p class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Off-track rows show today&apos;s target; red tags show your current performance.</p>
-                                }
-                                else
-                                {
-                                    <p class="font-body text-xs mb-3" style="color: var(--er-green-bright);">On track! Keep it up.</p>
-                                }
-                                <div class="space-y-1 font-mono text-sm">
-                                    <div class="@(_todayShiftGoals.RphBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
-                                        @if (_todayShiftGoals.RphBuffed) { <span class="quest-exclamation">!</span> }
-                                        RPH Goal: @_todayShiftGoals.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
-                                        @if (_todayShiftGoals.RphBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("RPH")</span> }
-                                    </div>
-                                    @if (_todayShiftGoals.AppGoal.HasValue)
-                                    {
-                                        <div class="@(_todayShiftGoals.AppBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
-                                            @if (_todayShiftGoals.AppBuffed) { <span class="quest-exclamation">!</span> }
-                                            App Goal: @_todayShiftGoals.AppGoal.Value.ToString("N0") apps
-                                            @if (_todayShiftGoals.AppBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("AppEff")</span> }
-                                        </div>
-                                    }
-                                    @if (_todayShiftGoals.PmGoal.HasValue)
-                                    {
-                                        <div class="@(_todayShiftGoals.PmBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
-                                            @if (_todayShiftGoals.PmBuffed) { <span class="quest-exclamation">!</span> }
-                                            PM Goal: @_todayShiftGoals.PmGoal.Value.ToString("N0") PMs
-                                            @if (_todayShiftGoals.PmBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("PMEff")</span> }
-                                        </div>
-                                    }
-                                    @if (_todayShiftGoals.WarrantyAttachGoalPercent.HasValue)
-                                    {
-                                        <div class="@(_todayShiftGoals.WarrantyBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
-                                            @if (_todayShiftGoals.WarrantyBuffed) { <span class="quest-exclamation">!</span> }
-                                            Warranty Attach: @_todayShiftGoals.WarrantyAttachGoalPercent.Value.ToString("F1")%
-                                            @if (_todayShiftGoals.WarrantyBuffed) { <span style="color: var(--er-red-bright);">@GetQuestOffTrackWithCurrent("WarrantyAttach")</span> }
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="mb-4 elden-panel" style="border-color: var(--er-border-gold);">
-                                <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
-                                <p class="font-body text-xs" style="color: var(--er-text-muted);">Not enough goal data yet to calculate today's targets.</p>
-                            </div>
-                        }
-                    </div>
-                    }
-
-                    <div class="champion-ledger-radar">
-                        <div class="mb-4 flex justify-center items-center elden-panel" style="min-height: 320px; border-color: var(--er-border-gold);">
-                            @if (_radarChartData != null && _latestMetricsDict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2)
-                            {
-                                var labels = (List<string>?)_radarChartData.GetType().GetProperty("labels")?.GetValue(_radarChartData);
-                                var datasets = (List<object>?)_radarChartData.GetType().GetProperty("datasets")?.GetValue(_radarChartData);
-                                var data = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
-
-                                <RadarChart
-                                    Labels="labels"
-                                    NormalizedData="data"
-                                    Width="320px"
-                                    Height="320px" />
-                            }
-                            else
-                            {
-                                <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="champion-ledger-metrics">
-                        <h2 class="font-heading text-xl mb-4 pb-2" style="color: var(--er-gold); border-bottom: 1px solid var(--er-gold-dark);">
-                            Performance Metrics <span class="font-mono text-sm" style="color: var(--er-text-dim);">(@_latestPeriod)</span>
-                        </h2>
-                        <div class="space-y-4">
-                            @foreach (var metric in GetVisibleMetrics().OrderBy(m => TeamMember.GetMetricDisplayName(m.Key)))
-                            {
-                                var numericValue = GetMetricDoubleValue(metric.Key);
-
-                                @if (numericValue.HasValue)
-                                {
-                                    <div class="elden-panel elden-panel-gold" style="border-left-color: @GetMetricBorderColor(metric.Key, numericValue);">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <div>
-                                                <div class="font-heading text-sm tracking-wide" style="color: var(--er-text);">
-                                                    @TeamMember.GetMetricDisplayName(metric.Key)
-                                                    @if (IsTopPerformer(metric.Key))
-                                                    {
-                                                        <span class="gold-brilliance" title="Top performer">&#x2726;</span>
-                                                    }
-                                                </div>
-                                                <div class="font-body text-xs" style="color: var(--er-text-dim);">
-                                                    Team Avg: @FormatMetricValue(metric.Key, GetTeamAverage(metric.Key))
-                                                    @if (IsMetricOffTrack(metric.Key, numericValue))
-                                                    {
-                                                        <span class="ml-1 font-bold" style="color: var(--er-orange, #c47830);" title="Off track from target">&#x26A0;</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="font-mono text-lg font-bold" style="color: @GetMetricValueColor(metric.Key, numericValue);">
-                                                @FormatMetricValue(metric.Key, numericValue)
-                                            </div>
-                                        </div>
-
-                                        <div class="mt-2 elden-progress relative" style="height: 10px;">
-                                            <div class="elden-progress-bar @GetMetricBarCssClass(metric.Key, numericValue)"
-                                                 style="width: @GetMetricBarWidth(metric.Key, numericValue)"></div>
-                                            <div class="absolute top-0 bottom-0 w-0.5 opacity-70"
-                                                 style="left: @GetAverageMarkerPosition(metric.Key); background: var(--er-text);"></div>
-                                        </div>
-
-                                        <div class="mt-1 flex justify-between font-mono text-xs" style="color: var(--er-text-dim);">
-                                            @if (IsLowerBetterMetric(metric.Key))
-                                            {
-                                                <span>Best: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                                <span>Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
-                                                <span>Focus: @FormatMetricValue(metric.Key, GetMetricMaxValue(metric.Key))</span>
-                                            }
-                                            else
-                                            {
-                                                <span>Min: @FormatMetricValue(metric.Key, GetMetricMinValue(metric.Key))</span>
-                                                <span>Score: @GetPerformanceScore(metric.Key, numericValue).ToString("F0")</span>
-                                                <span>Max: @{ var displayMax = GetDisplayMaxValue(metric.Key); } @FormatMetricValue(metric.Key, displayMax)</span>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                                else
-                                {
-                                    if (metric.Key.Equals("MVP", StringComparison.OrdinalIgnoreCase) && metric.Value != null)
-                                    {
-                                        <div class="elden-panel elden-panel-gold">
-                                            <div class="flex justify-between items-center">
-                                                <span class="font-heading text-sm" style="color: var(--er-text);">@TeamMember.GetMetricDisplayName(metric.Key)</span>
-                                                <span class="font-mono text-lg font-bold" style="color: var(--er-gold);">@FormatMetricValue(metric.Key, metric.Value)</span>
-                                            </div>
-                                        </div>
-                                    }
-                                }
-                            }
-                        </div>
-                    </div>
-
-                    <div class="champion-ledger-stats">
-                        <div class="elden-panel" style="border-color: var(--er-border-gold);">
-                            <h3 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Champion Stats</h3>
-                            <div class="elden-divider mb-4"></div>
-                            <div class="space-y-3 font-body text-sm">
-                                <div class="flex justify-between">
-                                    <span style="color: var(--er-text-dim);">Overall Rank:</span>
-                                    <span class="font-heading font-bold" style="color: var(--er-text);">#@GetOverallRank() of @_allTeamMembers.Count(m => m.Department == _teamMember.Department)</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span style="color: var(--er-text-dim);">Strongest Area:</span>
-                                    @{
-                                        var strongest = _teamMember.GetStrongestMetricRelativeToTeam(_teamAverages);
-                                        var strongestDisplayName = string.IsNullOrEmpty(strongest) ? "N/A" : TeamMember.GetMetricDisplayName(strongest);
-                                    }
-                                    <span class="font-bold" style="color: var(--er-gold-bright);">@strongestDisplayName</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span style="color: var(--er-text-dim);">Top Categories:</span>
-                                    <span class="font-bold" style="color: var(--er-text);">@GetTopCategories()</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span style="color: var(--er-text-dim);">Needs Improvement:</span>
-                                    <span class="font-bold" style="color: var(--er-red-bright);">@GetImprovedCategories()</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span style="color: var(--er-text-dim);">Performance Score:</span>
-                                    <span class="font-mono font-bold" style="color: var(--er-gold);">@GetTotalPerformanceScore().ToString("F0") / 125</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="elden-corners-inner p-6 relative z-10">
+                    <CascadingValue Value="this">
+                        <CharacterDossierLayout />
+                    </CascadingValue>
                 </div>
             </div>
             </div>
@@ -296,9 +88,34 @@
     private bool _revealActive = true;
     private bool _revealExiting;
     private bool _questCopied;
+    private bool _postRevealScrollDone;
+    private int? _postRevealScrollForId;
 
     private const int MinChampionRevealMs = 1800;
     private const int RevealExitFadeMs = 1000;
+
+    protected override void OnParametersSet()
+    {
+        if (_postRevealScrollForId != Id)
+        {
+            _postRevealScrollForId = Id;
+            _postRevealScrollDone = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_revealActive || _postRevealScrollDone) return;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eldenScrollToTopOnNavigation");
+            _postRevealScrollDone = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"eldenScrollToTopOnNavigation: {ex.Message}");
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -327,19 +144,6 @@
             await Task.Delay(RevealExitFadeMs);
             _revealExiting = false;
             _revealActive = false;
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender) return;
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("eldenScrollToTop");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"eldenScrollToTop: {ex.Message}");
         }
     }
 
@@ -440,7 +244,7 @@
         return metricsDict;
     }
 
-    private IEnumerable<KeyValuePair<string, object?>> GetVisibleMetrics()
+    internal IEnumerable<KeyValuePair<string, object?>> GetVisibleMetrics()
     {
         if (!IsPodMember())
         {
@@ -512,7 +316,7 @@
     // --- TODO: Update Helper methods to use period-specific data --- 
 
     // Example: Update GetMetricDoubleValue to potentially read from _latestMetricsDict first
-     private double? GetMetricDoubleValue(string key)
+    internal double? GetMetricDoubleValue(string key)
      {
          foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(key, _teamMember?.Department))
          {
@@ -534,10 +338,10 @@
         metricKey.Equals("AppEff", StringComparison.OrdinalIgnoreCase) ||
         metricKey.Equals("PMEff", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsLowerBetterMetric(string metricKey) =>
+    internal static bool IsLowerBetterMetric(string metricKey) =>
         metricKey.Equals("Awk", StringComparison.OrdinalIgnoreCase) || IsPodEfficiency(metricKey);
 
-    private bool IsTopPerformer(string metricKey)
+    internal bool IsTopPerformer(string metricKey)
     {
         double? memberValue = GetMetricDoubleValue(metricKey);
         if (!memberValue.HasValue) return false;
@@ -583,7 +387,7 @@
             return memberValue.Value <= scoreList.Min();
     }
     
-    private double GetTeamAverage(string metricKey)
+    internal double GetTeamAverage(string metricKey)
     {
         // Correctly return the pre-calculated average from the dictionary
         return _teamAverages.TryGetValue(metricKey, out var avg) ? avg : 0.0; 
@@ -613,7 +417,7 @@
             return numericValue.Value > teamAverage;
     }
 
-    private bool IsMetricOffTrack(string metricKey, object? value)
+    internal bool IsMetricOffTrack(string metricKey, object? value)
     {
         double? numericValue = GetDoubleValue(value);
         if (!numericValue.HasValue) return false;
@@ -645,7 +449,7 @@
         return "text-white";
     }
     
-    private string GetMetricBarWidth(string metricKey, object? value)
+    internal string GetMetricBarWidth(string metricKey, object? value)
     {
         if (_teamMember == null) return "0%";
         if (value == null) return "0%";
@@ -667,7 +471,7 @@
         return $"{percentage:F1}%";
     }
     
-    private string GetAverageMarkerPosition(string metricKey)
+    internal string GetAverageMarkerPosition(string metricKey)
     {
         double average = GetTeamAverage(metricKey);
         double max = GetMetricMaxValue(metricKey);
@@ -685,7 +489,7 @@
         return $"{percentage:F1}%";
     }
     
-    private double GetMetricMinValue(string metricKey)
+    internal double GetMetricMinValue(string metricKey)
     {
         return _allLatestPeriodDeptRecords
                 .Where(r => r.MetricKey.Equals(metricKey, StringComparison.OrdinalIgnoreCase))
@@ -768,7 +572,7 @@
     }
     
     // Overload GetPerformanceScore to fetch the current value
-    private double GetPerformanceScore(string metricKey, object? currentValue)
+    internal double GetPerformanceScore(string metricKey, object? currentValue)
     {
         double? numericValue = GetDoubleValue(currentValue); // Use helper to convert object?
         if (!numericValue.HasValue) return 50; // Default score if not numeric
@@ -800,7 +604,7 @@
     /// score (not XP). Builds each member's metrics dict from the shared
     /// _allLatestPeriodDeptRecords so every member is scored identically.
     /// </summary>
-    private int GetOverallRank()
+    internal int GetOverallRank()
     {
         if (_teamMember == null || !_allTeamMembers.Any()) return 1;
 
@@ -849,7 +653,7 @@
         return ComputeWeightedScore(metricsDict);
     }
     
-    private string GetTopCategories(int count = 2)
+    internal string GetTopCategories(int count = 2)
     {
         if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
@@ -864,7 +668,7 @@
         return topMetrics.Any() ? string.Join(", ", topMetrics) : "N/A";
     }
     
-    private string GetImprovedCategories(int count = 2)
+    internal string GetImprovedCategories(int count = 2)
     {
         if (_teamMember == null || !_latestMetricsDict.Any()) return "N/A";
 
@@ -897,7 +701,7 @@
     /// Computes the total performance score for the current member.
     /// Pod members use weighted scoring; regular department members use equal weighting.
     /// </summary>
-    private double GetTotalPerformanceScore()
+    internal double GetTotalPerformanceScore()
     {
         if (_teamMember == null || !_latestMetricsDict.Any())
              return 0;
@@ -947,7 +751,7 @@
         return displayName.Split(' ')[0]; // Return just the first word for brevity
     }
     
-    private string FormatMetricValue(string metricKey, object? value)
+    internal string FormatMetricValue(string metricKey, object? value)
     {
         if (value == null) return "N/A";
         var valueText = value.ToString() ?? "N/A";
@@ -989,7 +793,7 @@
     }
     
     // Helper method to determine the Max value to display (Goal or Actual Max)
-    private double? GetDisplayMaxValue(string metricKey)
+    internal double? GetDisplayMaxValue(string metricKey)
     {
         double? goal = metricKey switch
         {
@@ -1008,7 +812,7 @@
         return GetMetricMaxValue(metricKey);
     }
     
-    private double GetMetricMaxValue(string metricKey)
+    internal double GetMetricMaxValue(string metricKey)
     {
         if (_teamMember == null) return 0; // Added null check for _teamMember (Fixes CS8602)
         return _allLatestPeriodDeptRecords
@@ -1078,18 +882,18 @@
     // and by what percentage their target was raised. Buffed metrics carry
     // a negative connotation: "you're behind and need to push harder."
     // =========================================================================
-    private record DailyShiftGoals(
-        double RphGoal, bool RphBuffed, int RphBuffPercent,
-        double? AppGoal, bool AppBuffed, int AppBuffPercent,
-        double? PmGoal, bool PmBuffed, int PmBuffPercent,
-        double? WarrantyAttachGoalPercent, bool WarrantyBuffed, int WarrantyBuffPercent)
-    {
-        public bool AnyBuffed => RphBuffed || AppBuffed || PmBuffed || WarrantyBuffed;
-    }
-
     private DailyShiftGoals? _todayShiftGoals;
 
-    private string GetQuestOffTrackWithCurrent(string metricKey)
+    // CharacterDossierLayout (same assembly)
+    internal TeamMember? DossierMember => _teamMember;
+    internal List<TeamMember> DossierAllTeamMembers => _allTeamMembers;
+    internal Dictionary<string, double> DossierTeamAverages => _teamAverages;
+    internal string? DossierLatestPeriod => _latestPeriod;
+    internal DailyShiftGoals? DossierTodayShiftGoals => _todayShiftGoals;
+    internal object? DossierRadarChartData => _radarChartData;
+    internal Dictionary<string, object?> DossierLatestMetricsDict => _latestMetricsDict;
+
+    internal string GetQuestOffTrackWithCurrent(string metricKey)
     {
         if (!_latestMetricsDict.TryGetValue(metricKey, out var raw) || raw == null)
             return "  Off-track";
@@ -1151,7 +955,7 @@
         return sb.ToString().TrimEnd();
     }
 
-    private async Task CopyTodayQuestToClipboard()
+    internal async Task CopyTodayQuestToClipboard()
     {
         if (_todayShiftGoals == null) return;
         var text = GetTodayQuestCopyText();
@@ -1174,7 +978,7 @@
         }
     }
 
-    private async Task OnQuestPanelKeydown(KeyboardEventArgs e)
+    internal async Task OnQuestPanelKeydown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
         {
@@ -1240,7 +1044,7 @@
             todayWarranty, warBuf, (int)Math.Round((warrantyMult - 1.0) * 100));
     }
 
-    private bool IsPodMember() =>
+    internal bool IsPodMember() =>
         _teamMember != null && !_regularDepartments.Contains(_teamMember.Department);
 
     // =========================================================================
@@ -1268,7 +1072,7 @@
         return numericValue.Value >= goal.Value;
     }
 
-    private string GetMetricBorderColor(string metricKey, object? value)
+    internal string GetMetricBorderColor(string metricKey, object? value)
     {
         if (IsTopPerformer(metricKey)) return "var(--er-gold)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red)";
@@ -1278,7 +1082,7 @@
         return "var(--er-orange)";
     }
 
-    private string GetMetricValueColor(string metricKey, object? value)
+    internal string GetMetricValueColor(string metricKey, object? value)
     {
         if (IsTopPerformer(metricKey)) return "var(--er-gold-bright)";
         if (IsBottomPerformer(metricKey)) return "var(--er-red-bright)";
@@ -1288,7 +1092,7 @@
         return "var(--er-orange-bright)";
     }
 
-    private string GetMetricBarCssClass(string metricKey, object? value)
+    internal string GetMetricBarCssClass(string metricKey, object? value)
     {
         if (IsTopPerformer(metricKey)) return "";                 // gold gradient (default)
         if (IsBottomPerformer(metricKey)) return "bar-red";

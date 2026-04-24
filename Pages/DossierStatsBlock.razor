@@ -1,0 +1,45 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+
+@{
+    var p = Page!;
+    var m = p.DossierMember!;
+    var all = p.DossierAllTeamMembers;
+    var avgs = p.DossierTeamAverages;
+}
+<div>
+    <div class="elden-panel" style="border-color: var(--er-border-gold);">
+        <h3 class="font-heading text-lg mb-4" style="color: var(--er-gold);">Champion Stats</h3>
+        <div class="elden-divider mb-4"></div>
+        <div class="space-y-3 font-body text-sm">
+            <div class="flex justify-between">
+                <span style="color: var(--er-text-dim);">Overall Rank:</span>
+                <span class="font-heading font-bold" style="color: var(--er-text);">#@p.GetOverallRank() of @all.Count(x => x.Department == m.Department)</span>
+            </div>
+            <div class="flex justify-between">
+                <span style="color: var(--er-text-dim);">Strongest Area:</span>
+                @{
+                    var strongest = m.GetStrongestMetricRelativeToTeam(avgs);
+                    var strongestDisplayName = string.IsNullOrEmpty(strongest) ? "N/A" : TeamMember.GetMetricDisplayName(strongest);
+                }
+                <span class="font-bold" style="color: var(--er-gold-bright);">@strongestDisplayName</span>
+            </div>
+            <div class="flex justify-between">
+                <span style="color: var(--er-text-dim);">Top Categories:</span>
+                <span class="font-bold" style="color: var(--er-text);">@p.GetTopCategories()</span>
+            </div>
+            <div class="flex justify-between">
+                <span style="color: var(--er-text-dim);">Needs Improvement:</span>
+                <span class="font-bold" style="color: var(--er-red-bright);">@p.GetImprovedCategories()</span>
+            </div>
+            <div class="flex justify-between">
+                <span style="color: var(--er-text-dim);">Performance Score:</span>
+                <span class="font-mono font-bold" style="color: var(--er-gold);">@p.GetTotalPerformanceScore().ToString("F0") / 125</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}

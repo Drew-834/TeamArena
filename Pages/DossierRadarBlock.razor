@@ -1,0 +1,31 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+
+@{
+    var data = Page!.DossierRadarChartData;
+    var dict = Page.DossierLatestMetricsDict;
+}
+<div>
+    <div class="mb-4 md:mb-0 flex justify-center items-center elden-panel" style="min-height: 320px; border-color: var(--er-border-gold);">
+        @if (data != null && dict.Count(kvp => kvp.Value is double || (kvp.Value is string s && double.TryParse(s, out _))) > 2)
+        {
+            var labels = (List<string>?)data.GetType().GetProperty("labels")?.GetValue(data);
+            var datasets = (List<object>?)data.GetType().GetProperty("datasets")?.GetValue(data);
+            var dataList = (datasets?.FirstOrDefault()?.GetType().GetProperty("data")?.GetValue(datasets.First()) as IEnumerable<double>)?.ToList();
+
+            <RadarChart
+                Labels="labels"
+                NormalizedData="dataList"
+                Width="320px"
+                Height="320px" />
+        }
+        else
+        {
+            <p class="font-body text-center" style="color: var(--er-text-muted);">Not enough data for Radar Chart.</p>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}

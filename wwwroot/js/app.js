@@ -283,9 +283,26 @@ window.scrollToCenter = (element) => {
     element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 };
 
-/** Instant scroll to top; use on character page so route chrome + layout do not leave the viewport offset before the reveal. */
-window.eldenScrollToTop = () => {
-    window.scrollTo(0, 0);
+/** On Blazor in-app navigation, window scroll is often not reset; also run after long reveals when layout is final. */
+window.eldenScrollToTopOnNavigation = () => {
+    const apply = () => {
+        try {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        } catch (e) {
+            try {
+                window.scrollTo(0, 0);
+            } catch (e2) { /* no-op */ }
+        }
+        try {
+            if (document.documentElement) document.documentElement.scrollTop = 0;
+            if (document.body) document.body.scrollTop = 0;
+        } catch (e) { /* no-op */ }
+    };
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => requestAnimationFrame(apply));
+    } else {
+        apply();
+    }
 };
 
 /** Clipboard (Today's Quest copy); returns true on success. */

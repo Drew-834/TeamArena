@@ -349,7 +349,14 @@
         UpdateRouteChrome(e.Location);
         _routeKey = $"route-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
 
-        var rel = NavigationManager.ToBaseRelativePath(e.Location);
+        // SPA client navigation may preserve window scrollY; reset unless navigating to a hash target.
+        var relPath = NavigationManager.ToBaseRelativePath(e.Location);
+        if (relPath.IndexOf('#', StringComparison.Ordinal) < 0)
+        {
+            try { await JSRuntime.InvokeVoidAsync("eldenScrollToTopOnNavigation"); } catch { }
+        }
+
+        var rel = relPath;
         rel = rel.Split('?', '#')[0].Trim('/');
         var firstSeg = rel.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
         var skipRouteStageTransition = firstSeg.Equals("character", StringComparison.OrdinalIgnoreCase);

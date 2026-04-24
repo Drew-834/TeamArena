@@ -1,0 +1,38 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+
+@* Mobile: hero → quest (pod) → radar → metrics → stats *@
+@* Desktop: left hero + metrics; right quest (pod) + radar + stats (tall quest no longer shoves metrics down) *@
+
+@{
+    var p = Page!;
+}
+
+<div class="flex flex-col gap-6 md:hidden">
+    <DossierHeroBlock />
+    @if (p.IsPodMember())
+    {
+        <DossierQuestBlock />
+    }
+    <DossierRadarBlock />
+    <DossierMetricsBlock />
+    <DossierStatsBlock />
+</div>
+<div class="hidden md:flex md:flex-row md:items-start md:gap-6">
+    <div class="dossier-ledger-left w-[60%] min-w-0 flex flex-col gap-6">
+        <DossierHeroBlock />
+        <DossierMetricsBlock />
+    </div>
+    <div class="dossier-ledger-right w-[40%] min-w-0 flex flex-col gap-6">
+        @if (p.IsPodMember())
+        {
+            <DossierQuestBlock />
+        }
+        <DossierRadarBlock />
+        <DossierStatsBlock />
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}

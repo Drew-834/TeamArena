@@ -1,0 +1,67 @@
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+@using Microsoft.AspNetCore.Components.Web
+
+@{
+    var g = Page!.DossierTodayShiftGoals;
+}
+@if (g != null)
+{
+    <div class="elden-panel quest-panel-clickable" style="border-color: @(g.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");"
+         role="button"
+         tabindex="0"
+         @onclick="Page!.CopyTodayQuestToClipboard"
+         @onkeydown="Page!.OnQuestPanelKeydown">
+        <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
+        @if (g.AnyBuffed)
+        {
+            <p class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Off-track rows show today&apos;s target; red tags show your current performance.</p>
+        }
+        else
+        {
+            <p class="font-body text-xs mb-3" style="color: var(--er-green-bright);">On track! Keep it up.</p>
+        }
+        <div class="space-y-1 font-mono text-sm">
+            <div class="@(g.RphBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                @if (g.RphBuffed) { <span class="quest-exclamation">!</span> }
+                RPH Goal: @g.RphGoal.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                @if (g.RphBuffed) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent("RPH")</span> }
+            </div>
+            @if (g.AppGoal.HasValue)
+            {
+                <div class="@(g.AppBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                    @if (g.AppBuffed) { <span class="quest-exclamation">!</span> }
+                    App Goal: @g.AppGoal.Value.ToString("N0") apps
+                    @if (g.AppBuffed) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent("AppEff")</span> }
+                </div>
+            }
+            @if (g.PmGoal.HasValue)
+            {
+                <div class="@(g.PmBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                    @if (g.PmBuffed) { <span class="quest-exclamation">!</span> }
+                    PM Goal: @g.PmGoal.Value.ToString("N0") PMs
+                    @if (g.PmBuffed) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent("PMEff")</span> }
+                </div>
+            }
+            @if (g.WarrantyAttachGoalPercent.HasValue)
+            {
+                <div class="@(g.WarrantyBuffed ? "quest-metric-buffed" : "quest-metric-on-track")">
+                    @if (g.WarrantyBuffed) { <span class="quest-exclamation">!</span> }
+                    Warranty Attach: @g.WarrantyAttachGoalPercent.Value.ToString("F1")%
+                    @if (g.WarrantyBuffed) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent("WarrantyAttach")</span> }
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="elden-panel" style="border-color: var(--er-border-gold);">
+        <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
+        <p class="font-body text-xs" style="color: var(--er-text-muted);">Not enough goal data yet to calculate today's targets.</p>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public CharacterDetails? Page { get; set; }
+}
