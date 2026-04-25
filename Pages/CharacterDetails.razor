@@ -895,7 +895,16 @@
 
     internal string GetQuestOffTrackWithCurrent(string metricKey)
     {
-        if (!_latestMetricsDict.TryGetValue(metricKey, out var raw) || raw == null)
+        object? raw = null;
+        foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(metricKey, _teamMember?.Department))
+        {
+            if (_latestMetricsDict.TryGetValue(lookupKey, out var v) && v != null)
+            {
+                raw = v;
+                break;
+            }
+        }
+        if (raw == null)
             return "  Off-track";
         return "  Off-track — " + FormatMetricValue(metricKey, raw);
     }
@@ -904,6 +913,16 @@
         PodMetricCatalog.IsHTPod(department)
             ? (IReadOnlyList<string>)new[] { "HTBasket", "ServAttach" }
             : new[] { "PCBasket", "Office" };
+
+    private static string GetQuestSupplementKpiLineLabel(string key) =>
+        key switch
+        {
+            "PCBasket" => "PC Basket Goal: ",
+            "HTBasket" => "HT Basket Goal: ",
+            "Office" => "Office Goal: ",
+            "ServAttach" => "Serv Attach Goal: ",
+            _ => TeamMember.GetMetricDisplayName(key) + " Goal: "
+        };
 
     private string GetTodayQuestCopyText()
     {
@@ -943,14 +962,28 @@
             if (g.WarrantyBuffed) sb.Append(GetQuestOffTrackWithCurrent("WarrantyAttach"));
             sb.AppendLine();
         }
-        sb.AppendLine();
-        sb.AppendLine("Other KPIs (latest period):");
         foreach (var key in GetQuestCopySupplementKpis(_teamMember.Department))
         {
-            var d = GetMetricDoubleValue(key);
-            sb.Append(TeamMember.GetMetricDisplayName(key));
-            sb.Append(": ");
-            sb.AppendLine(d.HasValue ? FormatMetricValue(key, d.Value) : "N/A");
+            var goal = GetMemberGoal(key);
+            if (!goal.HasValue || goal.Value <= 0) continue;
+
+            object? currentObj = null;
+            foreach (var lookupKey in PodMetricCatalog.GetLookupKeys(key, _teamMember.Department))
+            {
+                if (_latestMetricsDict.TryGetValue(lookupKey, out var v) && v != null)
+                {
+                    currentObj = v;
+                    break;
+                }
+            }
+
+            var score = GetPerformanceScore(key, currentObj);
+            var offTrack = score < 100.0;
+            if (offTrack) sb.Append("! ");
+            sb.Append(GetQuestSupplementKpiLineLabel(key));
+            sb.Append(FormatMetricValue(key, goal.Value));
+            if (offTrack) sb.Append(GetQuestOffTrackWithCurrent(key));
+            sb.AppendLine();
         }
         return sb.ToString().TrimEnd();
     }

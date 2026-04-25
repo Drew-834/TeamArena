@@ -86,10 +86,10 @@ public static class PodMetricCatalog
         ["PMEff"] = 4000.0,
         ["Surveys"] = 4.6,
         ["WarrantyAttach"] = 10.0,
-        ["PCBasket"] = 120.0,
+        ["PCBasket"] = 140.0,
         ["HTBasket"] = 300.0,
         ["ServAttach"] = 25.0,
-        ["Office"] = 20.0,
+        ["Office"] = 25.0,
         ["AccAttach"] = 25.0
     };
 

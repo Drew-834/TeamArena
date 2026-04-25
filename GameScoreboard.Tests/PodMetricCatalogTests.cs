@@ -34,7 +34,7 @@ public class PodMetricCatalogTests
     {
         Assert.Equal(300.0, PodMetricCatalog.GetTarget("HTBasket"));
         Assert.Equal(25.0, PodMetricCatalog.GetTarget("ServAttach"));
-        Assert.Equal(120.0, PodMetricCatalog.GetTarget("PCBasket"));
-        Assert.Equal(20.0, PodMetricCatalog.GetTarget("Office"));
+        Assert.Equal(140.0, PodMetricCatalog.GetTarget("PCBasket"));
+        Assert.Equal(25.0, PodMetricCatalog.GetTarget("Office"));
     }
 }
