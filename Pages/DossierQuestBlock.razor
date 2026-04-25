@@ -4,16 +4,18 @@
 
 @{
     var g = Page!.DossierTodayShiftGoals;
+    var questSupplementLines = g != null ? Page!.GetQuestSupplementLines() : Array.Empty<QuestSupplementLine>();
+    var anyBuffed = g != null && (g.AnyBuffed || questSupplementLines.Any(s => s.OffTrack));
 }
 @if (g != null)
 {
-    <div class="elden-panel quest-panel-clickable" style="border-color: @(g.AnyBuffed ? "var(--er-red)" : "var(--er-border-gold)");"
+    <div class="elden-panel quest-panel-clickable" style="border-color: @(anyBuffed ? "var(--er-red)" : "var(--er-border-gold)");"
          role="button"
          tabindex="0"
          @onclick="Page!.CopyTodayQuestToClipboard"
          @onkeydown="Page!.OnQuestPanelKeydown">
         <h3 class="font-heading text-lg mb-1" style="color: var(--er-gold);">Today's Quest (8-Hour Shift)</h3>
-        @if (g.AnyBuffed)
+        @if (anyBuffed)
         {
             <p class="font-body text-xs mb-3" style="color: var(--er-text-dim);">Off-track rows show today&apos;s target; red tags show your current performance.</p>
         }
@@ -49,6 +51,14 @@
                     @if (g.WarrantyBuffed) { <span class="quest-exclamation">!</span> }
                     Warranty Attach: @g.WarrantyAttachGoalPercent.Value.ToString("F1")%
                     @if (g.WarrantyBuffed) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent("WarrantyAttach")</span> }
+                </div>
+            }
+            @foreach (var s in questSupplementLines)
+            {
+                <div class="@(s.OffTrack ? "quest-metric-buffed" : "quest-metric-on-track")">
+                    @if (s.OffTrack) { <span class="quest-exclamation">!</span> }
+                    @(s.LabelPrefix + s.GoalFormatted)
+                    @if (s.OffTrack) { <span style="color: var(--er-red-bright);">@Page!.GetQuestOffTrackWithCurrent(s.MetricKey)</span> }
                 </div>
             }
         </div>
