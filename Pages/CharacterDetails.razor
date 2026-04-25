@@ -882,6 +882,8 @@
     // and by what percentage their target was raised. Buffed metrics carry
     // a negative connotation: "you're behind and need to push harder."
     // =========================================================================
+    private const double QuestSupplementPcBasketMinActual = 20.0;
+    private const double QuestSupplementOfficeMinPercent = 5.0;
     private DailyShiftGoals? _todayShiftGoals;
 
     // CharacterDossierLayout (same assembly)
@@ -942,6 +944,17 @@
                     currentObj = v;
                     break;
                 }
+            }
+
+            if (key.Equals("PCBasket", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("Office", StringComparison.OrdinalIgnoreCase))
+            {
+                var actual = GetDoubleValue(currentObj);
+                if (!actual.HasValue) continue;
+                if (key.Equals("PCBasket", StringComparison.OrdinalIgnoreCase) && actual.Value < QuestSupplementPcBasketMinActual)
+                    continue;
+                if (key.Equals("Office", StringComparison.OrdinalIgnoreCase) && actual.Value < QuestSupplementOfficeMinPercent)
+                    continue;
             }
 
             var score = GetPerformanceScore(key, currentObj);
