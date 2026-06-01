@@ -1,0 +1,94 @@
+@using GameScoreboard.Services.Tracking
+
+<div class="review-kpi-slide @PerformanceScorer.GetTierCssClass(Slide.Tier) @(Visible ? "review-kpi-slide-visible" : "")"
+     role="region"
+     aria-label="@Slide.DisplayName performance">
+    @if (Visible)
+    {
+        <div class="review-kpi-burst" aria-hidden="true"></div>
+        <div class="review-kpi-header">
+            <span class="review-kpi-weight">Weight @Slide.Weight</span>
+            <h2 class="review-kpi-title">@Slide.DisplayName</h2>
+            <span class="review-kpi-tier-badge">@GetTierLabel(Slide.Tier)</span>
+        </div>
+
+        <div class="review-kpi-values">
+            <div class="review-kpi-current">
+                <span class="review-kpi-label">This period</span>
+                <span class="review-kpi-value">@FormatValue(Slide.CurrentValue)</span>
+            </div>
+            @if (HasPriorPeriod && Slide.PriorValue.HasValue)
+            {
+                <div class="review-kpi-delta @GetDeltaClass()">
+                    <span class="review-kpi-label">vs prior</span>
+                    <span class="review-kpi-delta-value">@FormatDelta()</span>
+                </div>
+            }
+        </div>
+
+        <div class="review-kpi-goal-block">
+            <div class="review-kpi-goal-header">
+                <span>Goal: @FormatValue(Slide.Goal)</span>
+                <span>@Slide.GoalProgressPercent.ToString("F0")%</span>
+            </div>
+            <div class="review-kpi-goal-track">
+                <div class="review-kpi-goal-fill" style="width: @(Math.Min(Slide.GoalProgressPercent, 100).ToString("F0"))%"></div>
+            </div>
+        </div>
+
+        <div class="review-kpi-score-row">
+            <span class="review-kpi-score-label">Performance score</span>
+            <span class="review-kpi-score-value">@Slide.Score.ToString("F0")</span>
+            @if (Slide.PriorScore.HasValue)
+            {
+                <span class="review-kpi-score-prior">(was @Slide.PriorScore.Value.ToString("F0"))</span>
+            }
+        </div>
+
+        <p class="review-kpi-hint">Press Space or click to continue</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public KpiReviewSlide Slide { get; set; } = default!;
+
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public bool HasPriorPeriod { get; set; }
+
+    private string FormatValue(double? value) =>
+        value.HasValue ? PodMetricCatalog.FormatMetricValue(value.Value, Slide.MetricKey) : "N/A";
+
+    private string GetTierLabel(PerformanceReviewTier tier) => tier switch
+    {
+        PerformanceReviewTier.Exceptional => "Exceptional",
+        PerformanceReviewTier.Strong => "Strong",
+        PerformanceReviewTier.Fair => "Fair",
+        PerformanceReviewTier.Concern => "Needs focus",
+        _ => "No data"
+    };
+
+    private string GetDeltaClass()
+    {
+        if (!Slide.DeltaVsPriorAbsolute.HasValue) return "";
+        bool improved = PerformanceScorer.IsLowerBetterMetric(Slide.MetricKey)
+            ? Slide.DeltaVsPriorAbsolute > 0
+            : Slide.DeltaVsPriorAbsolute > 0;
+        return improved ? "review-delta-positive" : "review-delta-negative";
+    }
+
+    private string FormatDelta()
+    {
+        if (!Slide.DeltaVsPriorAbsolute.HasValue) return "—";
+        var abs = Slide.DeltaVsPriorAbsolute.Value;
+        var pct = Slide.DeltaVsPriorPercent.HasValue
+            ? $" ({Slide.DeltaVsPriorPercent.Value:+0.0;-0.0}%)"
+            : "";
+        if (PerformanceScorer.IsLowerBetterMetric(Slide.MetricKey))
+            return $"{(abs >= 0 ? "↓" : "↑")} {PodMetricCatalog.FormatMetricValue(Math.Abs(abs), Slide.MetricKey)}{pct}";
+        return $"{(abs >= 0 ? "↑" : "↓")} {PodMetricCatalog.FormatMetricValue(Math.Abs(abs), Slide.MetricKey)}{pct}";
+    }
+}

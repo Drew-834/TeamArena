@@ -89,6 +89,42 @@ window.eldenAudio = (function () {
             } catch (e) { }
         },
 
+        playTriumph: function () {
+            if (isMuted) return;
+            playChord([523, 659, 784, 1047], 0.5, 'sine', 0.12);
+        },
+
+        playAffirm: function () {
+            if (isMuted) return;
+            playTone(660, 0.2, 'sine', 0.08, 0.02, 0.06);
+            playTone(880, 0.15, 'sine', 0.05, 0.05, 0.05);
+        },
+
+        playNeutral: function () {
+            if (isMuted) return;
+            playTone(440, 0.25, 'sine', 0.06, 0.03, 0.08);
+        },
+
+        playConcern: function () {
+            if (isMuted) return;
+            playTone(180, 0.3, 'triangle', 0.1, 0.02, 0.1);
+            playTone(140, 0.35, 'triangle', 0.07, 0.08, 0.12);
+        },
+
+        playFinaleHigh: function () {
+            if (isMuted) return;
+            playChord([392, 494, 587, 740], 0.7, 'sine', 0.14);
+            setTimeout(function () {
+                playChord([523, 659, 784], 0.5, 'sine', 0.1);
+            }, 350);
+        },
+
+        playFinaleLow: function () {
+            if (isMuted) return;
+            playTone(220, 0.5, 'sine', 0.08, 0.05, 0.2);
+            playTone(165, 0.6, 'triangle', 0.06, 0.1, 0.25);
+        },
+
         startAmbient: function () {
             if (isMuted || ambientSource) return;
             try {

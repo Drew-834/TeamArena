@@ -514,62 +514,7 @@
     //   - Lower-is-better metrics invert the ratio (goal/value)
     // =========================================================================
     private double CalculatePerformanceScore(string metricKey, double numericValue, Dictionary<string, double> teamAverages)
-    {
-        bool lowerIsBetter = IsLowerBetterMetric(metricKey);
-
-        // Surveys/5Star = 0 means "no data", not "bad performance".
-        // Return a small penalty so it still drags the score slightly.
-        if ((metricKey.Equals("Surveys", StringComparison.OrdinalIgnoreCase) ||
-             metricKey.Equals("5Star", StringComparison.OrdinalIgnoreCase)) && numericValue == 0)
-            return 15;
-
-        // Sentinel values for efficiency metrics (>= $20,000 = unreliable data)
-        if (IsPodEfficiency(metricKey) && numericValue >= 20000) return 0;
-
-        // Use per-person goals first, then pod defaults, then legacy goals
-        double? goal = GetMemberGoal(metricKey);
-
-        double baseScoreTarget;
-        if (goal.HasValue && goal.Value > 0)
-            baseScoreTarget = goal.Value;
-        else if (teamAverages.TryGetValue(metricKey, out double average) && average > 0)
-            baseScoreTarget = average;
-        else
-            return numericValue > 0 ? 50 : 0;
-
-        if (baseScoreTarget <= 0) return 0;
-
-        double score;
-        if (lowerIsBetter)
-        {
-            if (numericValue <= 0) return 100;
-            score = (baseScoreTarget / numericValue) * 100.0;
-        }
-        else
-        {
-            score = (numericValue / baseScoreTarget) * 100.0;
-        }
-
-        // Peer adjustment: nudge score based on team-average comparison.
-        if (teamAverages.TryGetValue(metricKey, out double teamAvg) && teamAvg > 0)
-        {
-            bool aboveAvg = lowerIsBetter
-                ? numericValue < teamAvg
-                : numericValue > teamAvg;
-            score += aboveAvg ? 5.0 : -5.0;
-        }
-
-        // Diminishing returns for exceptional performance: logarithmic bonus
-        // above 100 rewards excellence without letting specialization dominate.
-        if (score > 100)
-        {
-            double excess = score - 100;
-            double bonus = 15.0 * Math.Log(1 + excess / 20.0);
-            score = 100 + Math.Min(bonus, 25.0);
-        }
-
-        return Math.Clamp(score, 0, 125);
-    }
+        => PerformanceScorer.CalculatePerformanceScore(metricKey, numericValue, teamAverages, _teamMember);
     
     // Overload GetPerformanceScore to fetch the current value
     internal double GetPerformanceScore(string metricKey, object? currentValue)

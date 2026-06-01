@@ -1,0 +1,524 @@
+@page "/performance-review"
+@page "/performance-review/{MemberId:int}"
+@namespace GameScoreboard.Pages
+@using GameScoreboard.Models
+@using GameScoreboard.Services
+@using GameScoreboard.Services.Tracking
+@using GameScoreboard.Data
+@inject IDataService DataService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<div class="min-h-screen performance-review-root"
+     style="background-color: var(--er-bg-primary); color: var(--er-text);"
+     tabindex="0"
+     @ref="_focusRoot"
+     @onclick="HandleAdvanceClick"
+     @onkeydown="HandleKeydown">
+
+    @if (!_isAuthenticated)
+    {
+        <div class="elden-modal-backdrop @(_showPasswordModal ? "" : "hidden")">
+            <div class="elden-modal" @onclick:stopPropagation="true">
+                <h2 class="elden-modal-title">Sealed Passage</h2>
+                <div class="elden-divider-ornate mb-4"></div>
+                <div class="mb-4">
+                    <label for="review-password-input" class="block text-sm font-body mb-1" style="color: var(--er-text-dim);">Admin Password:</label>
+                    <input type="password" id="review-password-input"
+                           @bind="_passwordInput"
+                           @bind:event="oninput"
+                           @onkeydown="HandlePasswordInputKeydown"
+                           class="elden-input w-full"
+                           placeholder="Password" />
+                </div>
+                @if (!string.IsNullOrEmpty(_passwordError))
+                {
+                    <p class="text-sm mb-4" style="color: var(--er-red-bright);">@_passwordError</p>
+                }
+                <button type="button" @onclick="CheckPassword" class="elden-btn elden-btn-primary w-full text-center">
+                    Authenticate
+                </button>
+            </div>
+        </div>
+    }
+    else if (_phase == PerformanceReviewPhase.Loading)
+    {
+        <div class="champion-reveal-overlay review-loading-overlay" aria-busy="true" aria-label="Loading review">
+            <div class="champion-reveal-curtain-in" aria-hidden="true"></div>
+            <div class="champion-reveal-burst"></div>
+            <div class="champion-reveal-curtain-exit @(_revealExiting ? "is-active" : null)" aria-hidden="true"></div>
+            <div class="champion-reveal-card">
+                <div class="champion-reveal-rune elden-loading-rune"></div>
+                <p class="champion-reveal-kicker">Monthly Performance Review</p>
+                <p class="champion-reveal-title">@_loadingMessage</p>
+            </div>
+        </div>
+    }
+    else if (_phase == PerformanceReviewPhase.Picker)
+    {
+        <div class="container mx-auto max-w-4xl px-4 py-8" @onclick:stopPropagation="true">
+            <button type="button" @onclick="NavigateToPodTracker" class="elden-btn mb-6">&larr; Back to Pod Tracker</button>
+            <h1 class="font-heading text-3xl mb-2" style="color: var(--er-gold);">Monthly Performance Review</h1>
+            <p class="font-body mb-6" style="color: var(--er-text-dim);">
+                Select a pod champion to run a cinematic KPI review for the latest period.
+            </p>
+
+            <input type="search"
+                   class="elden-input w-full mb-4"
+                   placeholder="Search by name or pod..."
+                   @bind="_searchQuery"
+                   @bind:event="oninput" />
+
+            @if (_loadError != null)
+            {
+                <p class="mb-4" style="color: var(--er-red-bright);">@_loadError</p>
+            }
+            else if (_isLoadingPicker)
+            {
+                <div class="flex flex-col items-center py-12">
+                    <div class="elden-loading-rune mb-4"></div>
+                    <p class="font-body" style="color: var(--er-gold-dim);">Loading champions...</p>
+                </div>
+            }
+            else if (!_pickerMembers.Any())
+            {
+                <p class="font-body" style="color: var(--er-text-muted);">No pod members with metric data found. Enter data in Pod Tracker first.</p>
+            }
+            else
+            {
+                <div class="review-picker-grid">
+                    @foreach (var m in FilteredPickerMembers)
+                    {
+                        <button type="button"
+                                class="review-picker-card elden-card"
+                                @onclick="() => StartReview(m.Id)"
+                                @onclick:stopPropagation="true">
+                            @if (!string.IsNullOrEmpty(m.AvatarUrl))
+                            {
+                                <img src="@m.AvatarUrl" alt="" class="review-picker-avatar" />
+                            }
+                            <div class="review-picker-info">
+                                <span class="review-picker-name">@m.Name</span>
+                                <span class="review-picker-pod">@m.Department</span>
+                                @if (_latestPeriodByMember.TryGetValue(m.Id, out var period))
+                                {
+                                    <span class="review-picker-period">@PeriodHelper.FormatPeriodDisplay(period)</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (_review != null)
+    {
+        <div class="review-stage" aria-hidden="@(_phase == PerformanceReviewPhase.Loading)">
+            <div class="review-stage-header" @onclick:stopPropagation="true">
+                <button type="button" class="elden-btn review-skip-btn" @onclick="ReturnToPicker" @onclick:stopPropagation="true">Exit review</button>
+                <div class="review-stage-champion">
+                    @if (!string.IsNullOrEmpty(_review.Member.AvatarUrl))
+                    {
+                        <img src="@_review.Member.AvatarUrl" alt="" class="review-stage-avatar" />
+                    }
+                    <div>
+                        <p class="review-stage-name">@_review.Member.Name</p>
+                        <p class="review-stage-meta">@_review.Member.Department · @PeriodHelper.FormatPeriodDisplay(_review.CurrentPeriod)</p>
+                    </div>
+                </div>
+                @if (_phase == PerformanceReviewPhase.KpiSlide && _review.Slides.Count > 0)
+                {
+                    <div class="review-progress">
+                        @for (int i = 0; i < _review.Slides.Count; i++)
+                        {
+                            <span class="review-progress-dot @(i <= _slideIndex ? "is-active" : "") @(i == _slideIndex ? "is-current" : "")"></span>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_phase == PerformanceReviewPhase.KpiSlide && _currentSlide != null)
+            {
+                <PerformanceReviewKpiSlide Slide="_currentSlide"
+                                           Visible="_slideVisible"
+                                           HasPriorPeriod="_review.PriorPeriod != null" />
+            }
+            else if (_phase == PerformanceReviewPhase.TotalReveal)
+            {
+                <div class="review-total-reveal @(_totalRevealVisible ? "review-total-visible" : "") @_totalTierClass" @onclick:stopPropagation="true">
+                    <p class="review-total-kicker">Weighted performance</p>
+                    <p class="review-total-score">@_review.WeightedScore.ToString("F1")</p>
+                    @if (_review.ScoreDeltaVsPrior.HasValue)
+                    {
+                        <p class="review-total-delta @( _review.ScoreDeltaVsPrior >= 0 ? "review-delta-positive" : "review-delta-negative")">
+                            @( _review.ScoreDeltaVsPrior >= 0 ? "+" : "")@_review.ScoreDeltaVsPrior.Value.ToString("F1") vs prior period
+                        </p>
+                    }
+                    @if (_review.PriorWeightedScore.HasValue)
+                    {
+                        <p class="review-total-prior">Prior: @_review.PriorWeightedScore.Value.ToString("F1")</p>
+                    }
+                    @if (_review.PodRank.HasValue)
+                    {
+                        <p class="review-total-rank">Rank #@_review.PodRank of @_review.PodMemberCount in pod</p>
+                    }
+                    <p class="review-kpi-hint">Press Space or click to see recap</p>
+                </div>
+            }
+            else if (_phase == PerformanceReviewPhase.Recap)
+            {
+                <PerformanceReviewRecap Review="_review"
+                                        Visible="_recapVisible"
+                                        OnViewDossier="ViewDossier"
+                                        OnReviewAnother="ReturnToPicker" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int MemberId { get; set; }
+
+    private const string AdminGatePassword = "Admin321";
+    private const string AdminAuthSessionKey = "adminGateAuthenticated";
+    private const int MinRevealMs = 1800;
+    private const int RevealExitFadeMs = 1000;
+    private const int SlideRevealDelayMs = 400;
+
+    private bool _isAuthenticated;
+    private bool _showPasswordModal;
+    private string _passwordInput = "";
+    private string _passwordError = "";
+
+    private PerformanceReviewPhase _phase = PerformanceReviewPhase.Picker;
+    private PerformanceReviewResult? _review;
+    private KpiReviewSlide? _currentSlide;
+    private int _slideIndex;
+    private bool _slideVisible;
+    private bool _totalRevealVisible;
+    private bool _recapVisible;
+    private string _totalTierClass = "";
+    private bool _revealExiting;
+    private string _loadingMessage = "Unsealing the ledger…";
+
+    private bool _isLoadingPicker = true;
+    private string? _loadError;
+    private List<TeamMember> _pickerMembers = new();
+    private Dictionary<int, string> _latestPeriodByMember = new();
+    private string _searchQuery = "";
+    private List<TeamMember> _allPodMembersWithRecords = new();
+    private ElementReference _focusRoot;
+    private bool _soundPlayedForCurrentSlide;
+    private bool _reviewStarting;
+
+    private IEnumerable<TeamMember> FilteredPickerMembers
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_searchQuery))
+                return _pickerMembers.OrderBy(m => m.Name);
+            var q = _searchQuery.Trim();
+            return _pickerMembers
+                .Where(m => m.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || m.Department.Contains(q, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(m => m.Name);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            var isAuth = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", AdminAuthSessionKey);
+            _isAuthenticated = isAuth == "true";
+            _showPasswordModal = !_isAuthenticated;
+        }
+        catch
+        {
+            _showPasswordModal = true;
+        }
+
+        if (_isAuthenticated)
+        {
+            await LoadPickerAsync();
+            if (MemberId > 0 && _phase == PerformanceReviewPhase.Picker)
+                await StartReview(MemberId);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadPickerAsync()
+    {
+        _isLoadingPicker = true;
+        _loadError = null;
+        try
+        {
+            var all = await DataService.GetTeamMembersAsync();
+            _allPodMembersWithRecords = new List<TeamMember>();
+            _latestPeriodByMember.Clear();
+
+            foreach (var m in all.Where(m => PodMetricCatalog.IsPodDepartment(m.Department)))
+            {
+                var records = await DataService.GetMetricRecordsAsync(memberId: m.Id);
+                if (!records.Any()) continue;
+
+                m.MetricRecords = records.ToList();
+                var latest = PeriodHelper.GetLatestPeriod(records.Select(r => r.Period));
+                if (latest == null) continue;
+
+                m.AvatarUrl = AvatarResolver.Resolve(m.Name, m.AvatarUrl);
+                _allPodMembersWithRecords.Add(m);
+                _latestPeriodByMember[m.Id] = latest;
+            }
+
+            _pickerMembers = _allPodMembersWithRecords.OrderBy(m => m.Name).ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load members: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingPicker = false;
+        }
+    }
+
+    private async Task CheckPassword()
+    {
+        if (_passwordInput == AdminGatePassword)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", AdminAuthSessionKey, "true");
+            }
+            catch { }
+
+            _isAuthenticated = true;
+            _showPasswordModal = false;
+            _passwordError = "";
+            await LoadPickerAsync();
+
+            if (MemberId > 0)
+                await StartReview(MemberId);
+
+            StateHasChanged();
+        }
+        else
+        {
+            _passwordError = "Incorrect password.";
+        }
+    }
+
+    private async Task HandlePasswordInputKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await CheckPassword();
+    }
+
+    private async Task StartReview(int memberId)
+    {
+        if (_reviewStarting) return;
+        _reviewStarting = true;
+        _phase = PerformanceReviewPhase.Loading;
+        _loadingMessage = "Unsealing the ledger…";
+        _revealExiting = false;
+        _slideIndex = 0;
+        _soundPlayedForCurrentSlide = false;
+        NavigationManager.NavigateTo($"/performance-review/{memberId}", replace: true);
+        StateHasChanged();
+
+        var loadStart = DateTime.UtcNow;
+        try
+        {
+            var member = await DataService.GetTeamMemberByIdAsync(memberId);
+            if (member == null || !PodMetricCatalog.IsPodDepartment(member.Department))
+            {
+                _loadError = "Champion not found or not a pod member.";
+                _phase = PerformanceReviewPhase.Picker;
+                _reviewStarting = false;
+                return;
+            }
+
+            member.AvatarUrl = AvatarResolver.Resolve(member.Name, member.AvatarUrl);
+            var memberRecords = await DataService.GetMetricRecordsAsync(memberId: memberId);
+            member.MetricRecords = memberRecords.ToList();
+
+            var currentPeriod = PeriodHelper.GetLatestPeriod(memberRecords.Select(r => r.Period));
+            if (currentPeriod == null)
+            {
+                _loadError = "No metric periods found for this champion.";
+                _phase = PerformanceReviewPhase.Picker;
+                _reviewStarting = false;
+                return;
+            }
+
+            _loadingMessage = "Forging the verdict…";
+
+            var deptMembers = _allPodMembersWithRecords.Any()
+                ? _allPodMembersWithRecords
+                : (await DataService.GetTeamMembersAsync())
+                    .Where(m => m.Department == member.Department)
+                    .ToList();
+
+            if (!_allPodMembersWithRecords.Any())
+            {
+                foreach (var peer in deptMembers)
+                {
+                    peer.MetricRecords = (await DataService.GetMetricRecordsAsync(memberId: peer.Id)).ToList();
+                }
+            }
+
+            var deptRecords = new List<MetricRecord>();
+            foreach (var peer in deptMembers)
+            {
+                var recs = peer.MetricRecords ?? await DataService.GetMetricRecordsAsync(memberId: peer.Id);
+                deptRecords.AddRange(recs.Where(r => r.Period == currentPeriod));
+            }
+
+            var teamAverages = PerformanceReviewBuilder.ComputeTeamAverages(deptRecords, currentPeriod);
+            _review = PerformanceReviewBuilder.Build(member, memberRecords, teamAverages, deptMembers);
+
+            if (_review == null)
+            {
+                _loadError = "Not enough KPI data to build a review.";
+                _phase = PerformanceReviewPhase.Picker;
+                _reviewStarting = false;
+                return;
+            }
+
+            var elapsed = (DateTime.UtcNow - loadStart).TotalMilliseconds;
+            if (elapsed < MinRevealMs)
+                await Task.Delay((int)(MinRevealMs - elapsed));
+
+            _revealExiting = true;
+            StateHasChanged();
+            await Task.Delay(RevealExitFadeMs);
+            _revealExiting = false;
+
+            _phase = PerformanceReviewPhase.KpiSlide;
+            _reviewStarting = false;
+            await ShowCurrentSlideAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            _phase = PerformanceReviewPhase.Picker;
+            _reviewStarting = false;
+        }
+    }
+
+    private async Task ShowCurrentSlideAsync()
+    {
+        if (_review == null || _slideIndex >= _review.Slides.Count)
+        {
+            await ShowTotalRevealAsync();
+            return;
+        }
+
+        _currentSlide = _review.Slides[_slideIndex];
+        _slideVisible = false;
+        _soundPlayedForCurrentSlide = false;
+        StateHasChanged();
+
+        await Task.Delay(SlideRevealDelayMs);
+        _slideVisible = true;
+        StateHasChanged();
+
+        if (!_soundPlayedForCurrentSlide)
+        {
+            _soundPlayedForCurrentSlide = true;
+            await PlayTierSoundAsync(_currentSlide.Tier);
+        }
+    }
+
+    private async Task ShowTotalRevealAsync()
+    {
+        _phase = PerformanceReviewPhase.TotalReveal;
+        _totalRevealVisible = false;
+        _totalTierClass = _review!.WeightedScore >= 90 ? "review-total-high" : _review.WeightedScore < 70 ? "review-total-low" : "review-total-mid";
+        StateHasChanged();
+
+        await Task.Delay(SlideRevealDelayMs);
+        _totalRevealVisible = true;
+        StateHasChanged();
+
+        var sound = _review.WeightedScore >= 85 ? "eldenAudio.playFinaleHigh" : "eldenAudio.playFinaleLow";
+        try { await JSRuntime.InvokeVoidAsync(sound); } catch { }
+    }
+
+    private async Task ShowRecapAsync()
+    {
+        _phase = PerformanceReviewPhase.Recap;
+        _recapVisible = false;
+        StateHasChanged();
+        await Task.Delay(SlideRevealDelayMs);
+        _recapVisible = true;
+        try { await JSRuntime.InvokeVoidAsync("eldenAudio.playAffirm"); } catch { }
+        StateHasChanged();
+    }
+
+    private async Task AdvanceAsync()
+    {
+        if (_phase == PerformanceReviewPhase.KpiSlide)
+        {
+            _slideIndex++;
+            if (_slideIndex < (_review?.Slides.Count ?? 0))
+                await ShowCurrentSlideAsync();
+            else
+                await ShowTotalRevealAsync();
+        }
+        else if (_phase == PerformanceReviewPhase.TotalReveal)
+        {
+            await ShowRecapAsync();
+        }
+        else if (_phase == PerformanceReviewPhase.Recap)
+        {
+            ReturnToPicker();
+        }
+    }
+
+    private void HandleAdvanceClick()
+    {
+        if (_phase is PerformanceReviewPhase.KpiSlide or PerformanceReviewPhase.TotalReveal or PerformanceReviewPhase.Recap)
+            _ = AdvanceAsync();
+    }
+
+    private void HandleKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == " " || e.Key == "Enter")
+        {
+            if (_phase is PerformanceReviewPhase.KpiSlide or PerformanceReviewPhase.TotalReveal or PerformanceReviewPhase.Recap)
+                _ = AdvanceAsync();
+        }
+    }
+
+    private async Task PlayTierSoundAsync(PerformanceReviewTier tier)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(PerformanceScorer.GetTierSoundMethod(tier));
+        }
+        catch { }
+    }
+
+    private void ReturnToPicker()
+    {
+        _phase = PerformanceReviewPhase.Picker;
+        _review = null;
+        _slideIndex = 0;
+        _reviewStarting = false;
+        NavigationManager.NavigateTo("/performance-review", replace: true);
+    }
+
+    private void ViewDossier()
+    {
+        if (_review != null)
+            NavigationManager.NavigateTo($"/character/{_review.Member.Id}");
+    }
+
+    private void NavigateToPodTracker() => NavigationManager.NavigateTo("/podtracker");
+}

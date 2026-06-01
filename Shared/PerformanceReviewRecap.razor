@@ -1,0 +1,82 @@
+@using GameScoreboard.Services.Tracking
+
+<div class="review-recap @(Visible ? "review-recap-visible" : "")" role="region" aria-label="Review recap">
+    @if (Visible && Review != null)
+    {
+        <div class="review-recap-header">
+            <p class="review-recap-kicker">Monthly Recap</p>
+            <h2 class="review-recap-title">@Review.Member.Name</h2>
+            <p class="review-recap-period">@PeriodHelper.FormatPeriodDisplay(Review.CurrentPeriod)</p>
+        </div>
+
+        <div class="review-recap-score-card">
+            <span class="review-recap-score-label">Weighted total</span>
+            <span class="review-recap-score-value">@Review.WeightedScore.ToString("F1")</span>
+            @if (Review.ScoreDeltaVsPrior.HasValue)
+            {
+                <span class="review-recap-score-delta @(Review.ScoreDeltaVsPrior >= 0 ? "review-delta-positive" : "review-delta-negative")">
+                    @(Review.ScoreDeltaVsPrior >= 0 ? "+" : "")@Review.ScoreDeltaVsPrior.Value.ToString("F1") vs prior period
+                </span>
+            }
+            @if (Review.PodRank.HasValue && Review.PodMemberCount > 0)
+            {
+                <span class="review-recap-rank">#@Review.PodRank of @Review.PodMemberCount in pod</span>
+            }
+        </div>
+
+        @if (Review.Strengths.Any())
+        {
+            <div class="review-recap-section">
+                <h3 class="review-recap-section-title">Strengths</h3>
+                <ul class="review-recap-list review-recap-strengths">
+                    @foreach (var item in Review.Strengths)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (Review.FocusAreas.Any())
+        {
+            <div class="review-recap-section">
+                <h3 class="review-recap-section-title">Focus next month</h3>
+                <ul class="review-recap-list review-recap-focus">
+                    @foreach (var item in Review.FocusAreas)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            </div>
+        }
+        else
+        {
+            <p class="review-recap-all-clear">All KPIs on track — maintain the momentum.</p>
+        }
+
+        <p class="review-recap-note font-body text-xs" style="color: var(--er-text-muted);">
+            Comparison uses the prior tracking period, not calendar-month totals.
+        </p>
+
+        <div class="review-recap-actions" @onclick:stopPropagation="true">
+            <button type="button" class="elden-btn elden-btn-primary" @onclick="OnViewDossier">View dossier</button>
+            <button type="button" class="elden-btn" @onclick="OnReviewAnother">Review another</button>
+        </div>
+
+        <p class="review-kpi-hint">Press Space or click anywhere to return to picker</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public PerformanceReviewResult? Review { get; set; }
+
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback OnViewDossier { get; set; }
+
+    [Parameter]
+    public EventCallback OnReviewAnother { get; set; }
+}
