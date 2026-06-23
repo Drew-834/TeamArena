@@ -51,6 +51,8 @@ jobs:
           action: "upload"
           # Upload prebuilt artifact to avoid Oryx auto-detection
           app_location: "published/wwwroot"
+          api_location: ""
+          output_location: ""
           skip_app_build: true
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
