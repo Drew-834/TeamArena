@@ -5,7 +5,14 @@
       "/_framework/*",
       "/css/*",
       "/js/*",
-      "/images/*"
+      "/images/*",
+      "/*.{css,js,png,jpg,gif,ico,svg,woff,woff2,json,br,gz,wasm,dat,blat,map,html}"
     ]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
   }
 }
