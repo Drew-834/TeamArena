@@ -44,17 +44,51 @@ jobs:
       - name: Publish Blazor WASM
         run: dotnet publish GameScoreboard.csproj -c Release -o published
 
+      - name: Prepare and verify deployment bundle
+        run: |
+          rm -rf deploy
+          mkdir -p deploy
+          cp -a published/wwwroot/. deploy/
+          file_count=$(find deploy -type f | wc -l)
+          echo "Prepared $file_count files for deployment"
+          test "$file_count" -gt 50
+          test -f deploy/index.html
+          test -f deploy/_framework/blazor.webassembly.js
+          test -f deploy/_framework/blazor.boot.json
+          test -f deploy/staticwebapp.config.json
+
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
           action: "upload"
-          app_location: "published/wwwroot"
+          app_location: "deploy"
           api_location: ""
           output_location: ""
           skip_app_build: true
           github_id_token: ${{ steps.idtoken.outputs.result }}
+
+      - name: Verify deployed static assets
+        run: |
+          sleep 30
+          for path in index.html _framework/blazor.webassembly.js _framework/blazor.boot.json css/app.css; do
+            url="https://red-ocean-08c63b90f.1.azurestaticapps.net/${path}"
+            echo "Checking $url"
+            content_type=$(curl -sI "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print $2; exit}')
+            echo "Content-Type: $content_type"
+            case "$path" in
+              _framework/blazor.webassembly.js)
+                echo "$content_type" | grep -qi 'javascript\|ecmascript' || { echo "Blazor JS not served correctly"; exit 1; }
+                ;;
+              _framework/blazor.boot.json)
+                echo "$content_type" | grep -qi 'json' || { echo "Blazor boot JSON not served correctly"; exit 1; }
+                ;;
+              css/app.css)
+                echo "$content_type" | grep -qi 'css' || { echo "CSS not served correctly"; exit 1; }
+                ;;
+            esac
+          done
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
