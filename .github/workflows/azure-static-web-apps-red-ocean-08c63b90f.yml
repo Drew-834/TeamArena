@@ -29,6 +29,18 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+
+      - name: Get Id Token
+        uses: actions/github-script@v6
+        id: idtoken
+        with:
+           script: |
+               const coredemo = require('@actions/core')
+               return await coredemo.getIDToken()
+           result-encoding: string
+
       - name: Publish Blazor WASM
         run: dotnet publish GameScoreboard.csproj -c Release -o published
 
@@ -46,10 +58,17 @@ jobs:
           test -f deploy/staticwebapp.config.json
           cp deploy/index.html deploy/404.html
 
-      - name: Deploy with SWA CLI
-        env:
-          SWA_CLI_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
-        run: npx --yes @azure/static-web-apps-cli@latest deploy deploy --env production --verbose
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
+          action: "upload"
+          app_location: "deploy"
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+          github_id_token: ${{ steps.idtoken.outputs.result }}
 
       - name: Verify deployed static assets
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -63,19 +82,19 @@ jobs:
             case "$path" in
               _framework/blazor.webassembly.js)
                 echo "$content_type" | grep -qi 'javascript\|ecmascript' || {
-                  echo "::error::Blazor JS not served correctly. Refresh the Azure deployment token secret AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F from teamarena-client-start -> Manage deployment token."
+                  echo "::error::Blazor JS not served correctly. In Azure portal open teamarena-client-start -> Manage deployment token, copy the token, and update GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F, then re-run this workflow."
                   exit 1
                 }
                 ;;
               _framework/blazor.boot.json)
                 echo "$content_type" | grep -qi 'json' || {
-                  echo "::error::Blazor boot JSON not served correctly. Refresh the Azure deployment token secret."
+                  echo "::error::Blazor boot JSON not served correctly. Refresh the Azure deployment token GitHub secret, then re-run this workflow."
                   exit 1
                 }
                 ;;
               css/app.css)
                 echo "$content_type" | grep -qi 'css' || {
-                  echo "::error::CSS not served correctly. Refresh the Azure deployment token secret."
+                  echo "::error::CSS not served correctly. Refresh the Azure deployment token GitHub secret, then re-run this workflow."
                   exit 1
                 }
                 ;;
