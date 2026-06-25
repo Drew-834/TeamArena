@@ -10,15 +10,37 @@ public class HealthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly string[] _allowedCorsOrigins;
 
-    public HealthController(AppDbContext db, IConfiguration config)
+    public HealthController(AppDbContext db, IConfiguration config, string[] allowedCorsOrigins)
     {
         _db = db;
         _config = config;
+        _allowedCorsOrigins = allowedCorsOrigins;
     }
 
     [HttpGet]
     public IActionResult Get() => Ok(new { status = "ok" });
+
+    [HttpGet("cors-debug")]
+    public IActionResult CorsDebug()
+    {
+        var origin = Request.Headers.Origin.ToString();
+
+        // #region agent log
+        return Ok(new
+        {
+            sessionId = "e68a4d",
+            runId = "cors-debug-pre-fix",
+            hypothesisId = "H1,H2,H3,H5",
+            origin,
+            hasOriginHeader = !string.IsNullOrWhiteSpace(origin),
+            allowedOrigins = _allowedCorsOrigins,
+            originConfigured = _allowedCorsOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase),
+            timestamp = DateTimeOffset.UtcNow
+        });
+        // #endregion
+    }
 
     [HttpGet("db")]
     public async Task<IActionResult> CheckDb()

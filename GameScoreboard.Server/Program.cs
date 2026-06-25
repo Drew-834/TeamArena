@@ -49,19 +49,22 @@ public class Program
         });
 
         // CORS for WASM client (local dev + production)
+        var allowedCorsOrigins = new[]
+        {
+            "http://localhost:5117",
+            "https://localhost:5117",
+            "http://localhost:5172",
+            "https://localhost:5172",
+            "https://drew-834.github.io",
+            "https://red-ocean-08c63b90f.1.azurestaticapps.net",
+            "https://nice-dune-02544d51e.7.azurestaticapps.net",
+            "https://teamarena-client-start.azurestaticapps.net"
+        };
+        builder.Services.AddSingleton(allowedCorsOrigins);
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
-                policy.WithOrigins(
-                    "http://localhost:5117",
-                    "https://localhost:5117",
-                    "http://localhost:5172",
-                    "https://localhost:5172",
-                    "https://drew-834.github.io",
-                    "https://red-ocean-08c63b90f.1.azurestaticapps.net",
-                    "https://nice-dune-02544d51e.7.azurestaticapps.net",
-                    "https://teamarena-client-start.azurestaticapps.net"
-                )
+                policy.WithOrigins(allowedCorsOrigins)
                 .AllowAnyHeader()
                 .AllowAnyMethod());
         });
