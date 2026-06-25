@@ -15,35 +15,56 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    permissions:
+       id-token: write
+       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          lfs: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      - name: Install OIDC Client from Core Package
+        run: npm install @actions/core@1.6.0 @actions/http-client
+
+      - name: Get Id Token
+        uses: actions/github-script@v6
+        id: idtoken
+        with:
+           script: |
+               const coredemo = require('@actions/core')
+               return await coredemo.getIDToken()
+           result-encoding: string
+
       - name: Publish Blazor WASM
         run: dotnet publish GameScoreboard.csproj -c Release -o published
 
-      - name: Prepare and verify deployment bundle
+      - name: Verify publish output
         run: |
-          rm -rf deploy
-          mkdir -p deploy
-          cp -a published/wwwroot/. deploy/
-          file_count=$(find deploy -type f | wc -l)
-          echo "Prepared $file_count files for deployment"
+          file_count=$(find published/wwwroot -type f | wc -l)
+          echo "Published $file_count files"
           test "$file_count" -gt 50
-          test -f deploy/index.html
-          test -f deploy/_framework/blazor.webassembly.js
-          test -f deploy/_framework/blazor.boot.json
-          test -f deploy/staticwebapp.config.json
-          cp deploy/index.html deploy/404.html
+          test -f published/wwwroot/index.html
+          test -f published/wwwroot/_framework/blazor.webassembly.js
+          test -f published/wwwroot/staticwebapp.config.json
 
-      - name: Deploy with SWA CLI
-        env:
-          SWA_CLI_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
-        run: npx --yes @azure/static-web-apps-cli@latest deploy deploy --env production --verbose
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "published/wwwroot"
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+          github_id_token: ${{ steps.idtoken.outputs.result }}
 
       - name: Verify deployed static assets
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -59,7 +80,8 @@ jobs:
               exit 0
             fi
           done
-          echo "::error::Static assets not live after deploy. Confirm GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F matches teamarena-client-start -> Manage deployment token."
+          echo "::error::Deploy upload did not publish static assets. In Azure Cloud Shell run: az staticwebapp secrets reset-api-key --name teamarena-client-start --resource-group teamarena-rg2 --subscription e7aed8da-7a2a-4e18-bd8e-b4497a53529e"
+          echo "::error::Then update GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F and re-run this workflow."
           exit 1
 
   close_pull_request_job:
@@ -68,6 +90,7 @@ jobs:
     name: Close Pull Request Job
     steps:
       - name: Close Pull Request
+        id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F }}
