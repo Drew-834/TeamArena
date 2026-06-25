@@ -59,6 +59,7 @@ public class Program
                     "https://localhost:5172",
                     "https://drew-834.github.io",
                     "https://red-ocean-08c63b90f.1.azurestaticapps.net",
+                    "https://nice-dune-02544d51e.7.azurestaticapps.net",
                     "https://teamarena-client-start.azurestaticapps.net"
                 )
                 .AllowAnyHeader()
