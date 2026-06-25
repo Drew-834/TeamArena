@@ -6,7 +6,41 @@
     <title>Team Arena</title>
     <base href="/" />
     <meta name="description" content="Team Arena - Performance scoreboard forged in the fires of competition." />
-    <script>fetch("https://teamarena-api-start-d0g2bbetameabcha.eastus-01.azurewebsites.net/api/health").catch(function(){});</script>
+    <script>
+        (function() {
+            var debugEndpoint = 'http://127.0.0.1:7450/ingest/2cd11ed0-c4c1-45c9-bad6-633a57b3dc07';
+            var apiHealthUrl = 'https://teamarena-api-start-d0g2bbetameabcha.eastus-01.azurewebsites.net/api/health';
+            function agentDebugLog(hypothesisId, message, data) {
+                // #region agent log
+                fetch(debugEndpoint,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e68a4d'},body:JSON.stringify({sessionId:'e68a4d',runId:'cors-debug-pre-fix',hypothesisId:hypothesisId,location:'wwwroot/index.html:agent-cors-debug',message:message,data:data,timestamp:Date.now()})}).catch(function(){});
+                // #endregion
+            }
+            agentDebugLog('H1,H2,H3', 'before health fetch', {
+                origin: window.location.origin,
+                href: window.location.href,
+                apiHealthUrl: apiHealthUrl
+            });
+            fetch(apiHealthUrl).then(function(response) {
+                agentDebugLog('H1,H2,H4,H5', 'health fetch resolved', {
+                    status: response.status,
+                    ok: response.ok,
+                    type: response.type,
+                    url: response.url
+                });
+            }).catch(function(error) {
+                agentDebugLog('H1,H2,H4,H5', 'health fetch failed', {
+                    name: error && error.name,
+                    message: error && error.message,
+                    origin: window.location.origin
+                });
+            });
+            window.addEventListener('unhandledrejection', function(event) {
+                agentDebugLog('H4', 'unhandled promise rejection', {
+                    reason: event.reason && (event.reason.message || String(event.reason))
+                });
+            });
+        }());
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="css/elden-ring.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
