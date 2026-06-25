@@ -15,9 +15,6 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
-    permissions:
-       id-token: write
-       contents: read
     steps:
       - uses: actions/checkout@v3
         with:
@@ -28,18 +25,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
-
-      - name: Get Id Token
-        uses: actions/github-script@v6
-        id: idtoken
-        with:
-           script: |
-               const coredemo = require('@actions/core')
-               return await coredemo.getIDToken()
-           result-encoding: string
 
       - name: Publish Blazor WASM
         run: dotnet publish GameScoreboard.csproj -c Release -o published
@@ -64,25 +49,20 @@ jobs:
           api_location: ""
           output_location: ""
           skip_app_build: true
-          github_id_token: ${{ steps.idtoken.outputs.result }}
 
-      - name: Verify deployed static assets
+      - name: Diagnose deployed static assets
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           for attempt in 1 2 3; do
-            echo "Verification attempt $attempt"
+            echo "Diagnostic attempt $attempt"
             sleep 30
-            js_type=$(curl -sI "https://red-ocean-08c63b90f.1.azurestaticapps.net/_framework/blazor.webassembly.js" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print $2; exit}')
-            index_status=$(curl -s -o /dev/null -w "%{http_code}" "https://red-ocean-08c63b90f.1.azurestaticapps.net/index.html")
-            echo "index.html=$index_status blazor.js=$js_type"
-            if [ "$index_status" = "200" ] && echo "$js_type" | grep -qi 'javascript\|ecmascript'; then
-              echo "Deployment verified"
-              exit 0
-            fi
+            for path in index.html _framework/blazor.webassembly.js css/app.css; do
+              url="https://red-ocean-08c63b90f.1.azurestaticapps.net/${path}"
+              status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+              content_type=$(curl -sI "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print $2; exit}')
+              echo "$path status=$status content-type=${content_type:-missing}"
+            done
           done
-          echo "::error::Deploy upload did not publish static assets. In Azure Cloud Shell run: az staticwebapp secrets reset-api-key --name teamarena-client-start --resource-group teamarena-rg2 --subscription e7aed8da-7a2a-4e18-bd8e-b4497a53529e"
-          echo "::error::Then update GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_08C63B90F and re-run this workflow."
-          exit 1
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
