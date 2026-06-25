@@ -12,9 +12,10 @@
     <link href="css/app.css" rel="stylesheet" />
     <link href="favicon.png" rel="icon" type="image/png" />
     <script type="text/javascript">
+        // GitHub Pages SPA redirect only — Azure SWA uses staticwebapp.config.json instead.
         (function(l) {
-            if (l.search[1] === '/' ) {
-                var decoded = l.search.slice(1).split('&').map(function(s) { 
+            if (l.hostname.endsWith('github.io') && l.search[1] === '/') {
+                var decoded = l.search.slice(1).split('&').map(function(s) {
                     return s.replace(/~and~/g, '&')
                 }).join('?');
                 window.history.replaceState(null, null,
