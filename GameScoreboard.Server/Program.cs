@@ -116,6 +116,21 @@ public class Program
 
         // Configure the HTTP request pipeline.
         app.UseResponseCompression();
+        app.Use(async (context, next) =>
+        {
+            var origin = context.Request.Headers.Origin.ToString();
+            var originConfigured = allowedCorsOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+
+            // #region agent log
+            context.Response.Headers["X-Agent-Debug-Session"] = "e68a4d";
+            context.Response.Headers["X-Agent-Cors-Origin-Present"] = (!string.IsNullOrWhiteSpace(origin)).ToString();
+            context.Response.Headers["X-Agent-Cors-Origin-Configured"] = originConfigured.ToString();
+            context.Response.Headers["X-Agent-Cors-Method"] = context.Request.Method;
+            context.Response.Headers["X-Agent-Cors-Path"] = context.Request.Path.ToString();
+            // #endregion
+
+            await next();
+        });
         app.UseCors();
         
         // Enable Swagger in all environments for easier debugging
