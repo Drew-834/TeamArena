@@ -116,6 +116,8 @@ public class Program
 
         // Configure the HTTP request pipeline.
         app.UseResponseCompression();
+        app.UseHttpsRedirection();
+        app.UseRouting();
         app.Use(async (context, next) =>
         {
             var origin = context.Request.Headers.Origin.ToString();
@@ -132,12 +134,10 @@ public class Program
             await next();
         });
         app.UseCors();
-        
+
         // Enable Swagger in all environments for easier debugging
         app.UseSwagger();
         app.UseSwaggerUI();
-
-        app.UseHttpsRedirection();
 
         app.MapControllers();
 
